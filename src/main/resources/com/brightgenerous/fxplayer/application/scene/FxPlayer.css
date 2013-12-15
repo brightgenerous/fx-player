@@ -1,0 +1,28 @@
+.button,
+.toggle-button,
+.check-box {
+  -fx-margin: 0;
+  -fx-padding: 3px 10px;
+  -fx-font-size: 12px;
+}
+.button,
+.toggle-button {
+  -fx-color: #333333;
+}
+.tool-bar .button,
+.tool-bar .toggle-button {
+  -fx-color: #e0e0e0;
+}
+.tool-bar .button:hover,
+.button:hover,
+.tool-bar .toggle-button:hover,
+.toggle-button:hover,
+#move-button:hover {
+  -fx-color: #00aaff;
+}
+
+#control-pane {
+  -fx-spacing: 5;
+  -fx-padding: 5 5 5 5;
+  -fx-alignment: center-left;
+}

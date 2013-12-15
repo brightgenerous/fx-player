@@ -1,0 +1,27 @@
+//# -*- encoding: utf-8 -*-
+brigen fx-player
+
+  2013.12.15 brigen
+
+
+JavaFXで書いたMP3 Playerです
+ムシャクシャして作った。公開はしている
+
+
+このファイルがそのまま実行可能です。
+build/fx-player.jar
+
+
+使い方。
+1. build/fx-player.jarを ダボォクリック
+2. アプリが起動しましたね
+3. 「フォルダ」を非ダボォクリック。
+4. そのまま促されるがままにmp3ファイルを溜め込んでるフォルダを選択すべし
+5. 再帰的には読まぬ
+6. 読み込んだらリストにずらっと出るので、「再生／停止」を非ダボォクリックしてみよう
+7. (ﾟ∀ﾟ)b
+
+
+ビルドする場合はpom.xmlファイルの59行目あたり
+      <systemPath>C:\Program Files\Java\jre7\lib\jfxrt.jar</systemPath>
+    を書き換えてください
