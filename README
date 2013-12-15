@@ -25,3 +25,16 @@ build/fx-player.jar
 ビルドする場合はpom.xmlファイルの59行目あたり
       <systemPath>C:\Program Files\Java\jre7\lib\jfxrt.jar</systemPath>
     を書き換えてください
+
+
+
+
+-- 履歴 --
+2013.12.15
+ - 1.0.1-SNAPSHOT
+  リストをダボォクリックしてジャンプできるようにした
+  ほんのちょこっと修正した
+
+2013.12.15
+ - 1.0.0-SNAPSHOT
+  公開

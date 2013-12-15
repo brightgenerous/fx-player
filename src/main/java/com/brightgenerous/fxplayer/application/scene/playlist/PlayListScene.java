@@ -24,6 +24,7 @@ import javafx.beans.value.WeakChangeListener;
 import javafx.collections.MapChangeListener;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
@@ -31,10 +32,12 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Slider;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaException;
 import javafx.scene.media.MediaPlayer;
@@ -99,13 +102,45 @@ public class PlayListScene implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        {
+            final Callback<TableView<MediaInfo>, TableRow<MediaInfo>> deleg = mediaList
+                    .getRowFactory();
+            final EventHandler<MouseEvent> clickListener = new EventHandler<MouseEvent>() {
+
+                @Override
+                public void handle(MouseEvent event) {
+                    if (1 < event.getClickCount()) {
+                        Object source = event.getSource();
+                        if (source instanceof TableRow) {
+                            TableRow<?> row = (TableRow<?>) source;
+                            Object obj = row.getItem();
+                            if (obj instanceof MediaInfo) {
+                                controlPlayer(Control.SPECIFY, (MediaInfo) obj);
+                            }
+                        }
+                    }
+                }
+            };
+            mediaList.setRowFactory(new Callback<TableView<MediaInfo>, TableRow<MediaInfo>>() {
+
+                @Override
+                public TableRow<MediaInfo> call(TableView<MediaInfo> arg0) {
+                    TableRow<MediaInfo> ret;
+                    if (deleg == null) {
+                        ret = new TableRow<>();
+                    } else {
+                        ret = deleg.call(arg0);
+                    }
+                    ret.addEventFilter(MouseEvent.MOUSE_CLICKED, clickListener);
+                    return ret;
+                }
+            });
+        }
         tableColumnIndex
                 .setCellFactory(new Callback<TableColumn<MediaInfo, Boolean>, TableCell<MediaInfo, Boolean>>() {
 
                     @Override
-                    public TableCell<MediaInfo, Boolean> call(
-                            final TableColumn<MediaInfo, Boolean> param) {
-
+                    public TableCell<MediaInfo, Boolean> call(TableColumn<MediaInfo, Boolean> param) {
                         return new TableCell<MediaInfo, Boolean>() {
 
                             @Override
@@ -247,6 +282,7 @@ public class PlayListScene implements Initializable {
             Lock lLock = listLock.readLock();
             try {
                 lLock.lock();
+
                 List<MediaInfo> items = new ArrayList<>(mediaList.getItems());
                 if (items.isEmpty()) {
                     return;
@@ -285,6 +321,7 @@ public class PlayListScene implements Initializable {
             Lock pLock = playerLock.writeLock();
             try {
                 pLock.lock();
+
                 boolean playing = false;
                 boolean paused = false;
                 if (player != null) {
@@ -304,6 +341,7 @@ public class PlayListScene implements Initializable {
                         volume = player.getVolume();
                         player.dispose();
                     }
+
                     final MediaPlayer mp = new MediaPlayer(nextInfo.getMedia());
                     mp.setOnReady(new Runnable() {
 
@@ -319,11 +357,13 @@ public class PlayListScene implements Initializable {
                             controlPlayer(Control.NEXT, null);
                         }
                     });
-                    mp.setVolume(volume);
+
                     {
+                        mp.setVolume(volume);
                         controlVolume.valueProperty().unbind();
                         controlVolume.valueProperty().bindBidirectional(mp.volumeProperty());
                     }
+
                     {
                         final SimpleDoubleProperty totalDuration;
                         {
@@ -356,7 +396,7 @@ public class PlayListScene implements Initializable {
                             }
                             controlTime.maxProperty().bind(totalDuration);
                         }
-                        controlTime.valueProperty().unbind();
+                        //controlTime.valueProperty().unbind();
                         controlTime.setDisable(true);
                         controlTime.valueProperty().addListener(
                                 new WeakChangeListener<>(new ChangeListener<Number>() {
@@ -384,21 +424,25 @@ public class PlayListScene implements Initializable {
                                     }
                                     if (!controlTime.isValueChanging()) {
                                         controlTime.setValue(last);
-                                        controlTime.requestLayout();
                                     }
                                 }
                             }
                         });
                     }
-                    if (current != null) {
-                        current.setCursor(false);
-                    }
-                    current = nextInfo;
-                    current.setCursor(true);
-                    player = mp;
-                    mediaList.scrollTo(scrollTo);
-                    image.setImage(null);
+
                     {
+                        if (current != null) {
+                            current.setCursor(false);
+                        }
+                        current = nextInfo;
+                        current.setCursor(true);
+                        player = mp;
+                    }
+
+                    mediaList.scrollTo(scrollTo);
+
+                    {
+                        image.setImage(null);
                         current.imageProperty().addListener(
                                 new WeakChangeListener<>(new ChangeListener<Image>() {
 
@@ -414,6 +458,7 @@ public class PlayListScene implements Initializable {
                             image.setImage(img);
                         }
                     }
+
                     mp.play();
                 }
             } finally {
@@ -570,7 +615,7 @@ public class PlayListScene implements Initializable {
         @Override
         public int hashCode() {
             if (url == null) {
-                return super.hashCode();
+                return -1;
             }
             return url.hashCode();
         }
