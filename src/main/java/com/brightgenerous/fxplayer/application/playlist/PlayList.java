@@ -13,6 +13,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
+import javafx.beans.WeakInvalidationListener;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleDoubleProperty;
@@ -60,7 +61,7 @@ public class PlayList implements Initializable {
     private ResourceBundle bundle;
 
     @FXML
-    private ImageView image;
+    private ImageView imageView;
 
     @FXML
     private TextField directoryText;
@@ -368,93 +369,113 @@ public class PlayList implements Initializable {
                     }
 
                     {
-                        final SimpleDoubleProperty totalDuration;
                         {
-                            Duration dur = mp.getTotalDuration();
-                            if ((dur == null) || dur.equals(Duration.UNKNOWN)) {
-                                dur = nextInfo.getDuration();
+                            final SimpleDoubleProperty totalDuration;
+                            {
+                                Duration dur = mp.getTotalDuration();
+                                if ((dur == null) || dur.equals(Duration.UNKNOWN)) {
+                                    dur = nextInfo.getDuration();
+                                }
+                                if ((dur != null) && !dur.equals(Duration.UNKNOWN)) {
+                                    totalDuration = new SimpleDoubleProperty(dur.toMillis());
+                                } else {
+                                    totalDuration = new SimpleDoubleProperty();
+                                    nextInfo.durationProperty().addListener(
+                                            new WeakChangeListener<>(
+                                                    new ChangeListener<Duration>() {
+
+                                                        @Override
+                                                        public void changed(
+                                                                ObservableValue<? extends Duration> observable,
+                                                                Duration oldValue, Duration newValue) {
+                                                            totalDuration.set(newValue.toMillis());
+                                                        }
+                                                    }));
+                                }
                             }
-                            if ((dur != null) && !dur.equals(Duration.UNKNOWN)) {
-                                totalDuration = new SimpleDoubleProperty(dur.toMillis());
+                            controlTime.maxProperty().unbind();
+                            Double v = totalDuration.getValue();
+                            if ((v != null) && (0 < v.doubleValue())) {
+                                controlTime.maxProperty().set(v.doubleValue());
                             } else {
-                                ObjectProperty<Duration> op = nextInfo.durationProperty();
-                                totalDuration = new SimpleDoubleProperty();
-                                op.addListener(new WeakChangeListener<>(
-                                        new ChangeListener<Duration>() {
+                                // OMAJINAI!!!
+                                final double opacity = controlTime.getOpacity();
+                                double tmp = opacity - 0.1;
+                                if (tmp < 0) {
+                                    tmp = opacity + 0.1;
+                                }
+                                controlTime.setOpacity(tmp);
+                                totalDuration.addListener(new WeakInvalidationListener(
+                                        new InvalidationListener() {
 
                                             @Override
-                                            public void changed(
-                                                    ObservableValue<? extends Duration> observable,
-                                                    Duration oldValue, Duration newValue) {
-                                                totalDuration.set(newValue.toMillis());
+                                            public void invalidated(Observable arg0) {
+                                                if (controlTime.getOpacity() != opacity) {
+                                                    controlTime.setOpacity(opacity);
+                                                }
                                             }
                                         }));
                             }
-                        }
-                        controlTime.maxProperty().unbind();
-                        {
-                            Double v = totalDuration.getValue();
-                            if (v != null) {
-                                controlTime.maxProperty().set(v.doubleValue());
-                            }
                             controlTime.maxProperty().bind(totalDuration);
                         }
-                        //controlTime.valueProperty().unbind();
-                        controlTime.valueProperty().addListener(
-                                new WeakChangeListener<>(new ChangeListener<Number>() {
+                        {
+                            controlTime.valueProperty().addListener(
+                                    new WeakChangeListener<>(new ChangeListener<Number>() {
 
-                                    @Override
-                                    public void changed(
-                                            ObservableValue<? extends Number> observable,
-                                            Number oldValue, Number newValue) {
-                                        if (controlTime.isValueChanging()) {
-                                            mp.seek(Duration.millis(newValue.doubleValue()));
+                                        @Override
+                                        public void changed(
+                                                ObservableValue<? extends Number> observable,
+                                                Number oldValue, Number newValue) {
+                                            if (controlTime.isValueChanging()) {
+                                                mp.seek(Duration.millis(newValue.doubleValue()));
+                                            }
+                                        }
+                                    }));
+                            mp.currentTimeProperty().addListener(new InvalidationListener() {
+
+                                private long last;
+
+                                @Override
+                                public void invalidated(Observable ov) {
+                                    final long cv = (long) mp.getCurrentTime().toMillis();
+                                    if ((last + UPDATE_SEEK_FREQUENCY) < cv) {
+                                        if (!controlTime.isValueChanging()) {
+                                            last = cv;
+                                            controlTime.setValue(last);
                                         }
                                     }
-                                }));
-                        mp.currentTimeProperty().addListener(new InvalidationListener() {
-
-                            private long last;
-
-                            @Override
-                            public void invalidated(Observable ov) {
-                                final long cv = (long) mp.getCurrentTime().toMillis();
-                                if ((last + UPDATE_SEEK_FREQUENCY) < cv) {
-                                    if (!controlTime.isValueChanging()) {
-                                        last = cv;
-                                        controlTime.setValue(last);
-                                    }
                                 }
-                            }
-                        });
+                            });
+                        }
                     }
 
                     {
-                        if (current != null) {
-                            current.setCursor(false);
-                        }
-                        current = nextInfo;
-                        current.setCursor(true);
-                        player = mp;
-                    }
-                    {
-                        current.imageProperty().addListener(
+                        nextInfo.imageProperty().addListener(
                                 new WeakChangeListener<>(new ChangeListener<Image>() {
 
                                     @Override
                                     public void changed(
                                             ObservableValue<? extends Image> observable,
                                             Image oldValue, Image newValue) {
-                                        image.setImage(newValue);
+                                        imageView.setImage(newValue);
                                         requestScroll(scrollTo);
                                     }
                                 }));
-                        image.setImage(current.imageProperty().get());
+                        imageView.setImage(nextInfo.imageProperty().get());
+                        requestScroll(scrollTo);
                     }
 
-                    requestScroll(scrollTo);
+                    {
+                        if (current != null) {
+                            current.setCursor(false);
+                        }
+                        nextInfo.setCursor(true);
+                    }
 
                     mp.play();
+
+                    current = nextInfo;
+                    player = mp;
                 }
             } finally {
                 pLock.unlock();

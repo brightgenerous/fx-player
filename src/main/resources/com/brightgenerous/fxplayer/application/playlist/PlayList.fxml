@@ -48,7 +48,7 @@
         <Slider fx:id="controlVolume" min="0.0" max="1.0" value="0.5" HBox.hgrow="ALWAYS" />
       </HBox>
     </VBox>
-    <ImageView fx:id="image" fitWidth="100" preserveRatio="true" smooth="true"
+    <ImageView fx:id="imageView" fitWidth="100" preserveRatio="true" smooth="true"
         style="-fx-effect:dropshadow(three-pass-box,rgba(0,0,0,0.8),3,0,0,0);" />
   </HBox>
 </VBox>
