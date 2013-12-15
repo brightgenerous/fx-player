@@ -10,6 +10,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
 import javafx.beans.property.ObjectProperty;
@@ -99,6 +100,10 @@ public class PlayList implements Initializable {
     private volatile MediaInfo current;
 
     private volatile MediaPlayer player;
+
+    private static final double DEFAULT_VOLUME = 0.5d;
+
+    private static final long UPDATE_SEEK_FREQUENCY = 30;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -238,9 +243,7 @@ public class PlayList implements Initializable {
                     for (File file : dir.listFiles()) {
                         if (file.exists() && file.isFile() && file.canRead()) {
                             try {
-                                String url = file.toURI().toURL().toString();
-                                Media media = new Media(url);
-                                tmp.add(new MediaInfo(media));
+                                tmp.add(new MediaInfo(new Media(file.toURI().toURL().toString())));
                             } catch (MalformedURLException | MediaException e) {
                             }
                         }
@@ -277,7 +280,7 @@ public class PlayList implements Initializable {
 
     private void controlPlayer(Control control, MediaInfo info) {
         final MediaInfo nextInfo;
-        int scrollTo;
+        final int scrollTo;
         {
             Lock lLock = listLock.readLock();
             try {
@@ -332,11 +335,11 @@ public class PlayList implements Initializable {
                     if (playing) {
                         player.pause();
                     } else {
-                        mediaList.scrollTo(scrollTo);
+                        requestScroll(scrollTo);
                         player.play();
                     }
                 } else {
-                    double volume = 0.5;
+                    double volume = DEFAULT_VOLUME;
                     if (player != null) {
                         volume = player.getVolume();
                         player.dispose();
@@ -397,7 +400,6 @@ public class PlayList implements Initializable {
                             controlTime.maxProperty().bind(totalDuration);
                         }
                         //controlTime.valueProperty().unbind();
-                        controlTime.setDisable(true);
                         controlTime.valueProperty().addListener(
                                 new WeakChangeListener<>(new ChangeListener<Number>() {
 
@@ -406,7 +408,7 @@ public class PlayList implements Initializable {
                                             ObservableValue<? extends Number> observable,
                                             Number oldValue, Number newValue) {
                                         if (controlTime.isValueChanging()) {
-                                            mp.seek(Duration.millis(controlTime.getValue()));
+                                            mp.seek(Duration.millis(newValue.doubleValue()));
                                         }
                                     }
                                 }));
@@ -417,12 +419,9 @@ public class PlayList implements Initializable {
                             @Override
                             public void invalidated(Observable ov) {
                                 final long cv = (long) mp.getCurrentTime().toMillis();
-                                if ((last + 100) < cv) {
-                                    last = cv;
-                                    if (controlTime.isDisable()) {
-                                        controlTime.setDisable(false);
-                                    }
+                                if ((last + UPDATE_SEEK_FREQUENCY) < cv) {
                                     if (!controlTime.isValueChanging()) {
+                                        last = cv;
                                         controlTime.setValue(last);
                                     }
                                 }
@@ -438,11 +437,7 @@ public class PlayList implements Initializable {
                         current.setCursor(true);
                         player = mp;
                     }
-
-                    mediaList.scrollTo(scrollTo);
-
                     {
-                        image.setImage(null);
                         current.imageProperty().addListener(
                                 new WeakChangeListener<>(new ChangeListener<Image>() {
 
@@ -451,13 +446,13 @@ public class PlayList implements Initializable {
                                             ObservableValue<? extends Image> observable,
                                             Image oldValue, Image newValue) {
                                         image.setImage(newValue);
+                                        requestScroll(scrollTo);
                                     }
                                 }));
-                        Image img = current.imageProperty().get();
-                        if (img != null) {
-                            image.setImage(img);
-                        }
+                        image.setImage(current.imageProperty().get());
                     }
+
+                    requestScroll(scrollTo);
 
                     mp.play();
                 }
@@ -465,6 +460,16 @@ public class PlayList implements Initializable {
                 pLock.unlock();
             }
         }
+    }
+
+    private void requestScroll(final int row) {
+        Platform.runLater(new Runnable() {
+
+            @Override
+            public void run() {
+                mediaList.scrollTo(row);
+            }
+        });
     }
 
     private enum Control {
