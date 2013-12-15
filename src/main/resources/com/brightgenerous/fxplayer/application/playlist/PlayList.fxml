@@ -6,9 +6,9 @@
 <?import javafx.scene.control.Slider?>
 <?import javafx.scene.image.ImageView?>
 <VBox xmlns:fx="http://javafx.com/fxml"
-    fx:controller="com.brightgenerous.fxplayer.application.scene.playlist.PlayListScene"
-    stylesheets="com/brightgenerous/fxplayer/application/scene/FxPlayer.css,
-        com/brightgenerous/fxplayer/application/scene/playlist/PlayListScene.css"
+    fx:controller="com.brightgenerous.fxplayer.application.playlist.PlayList"
+    stylesheets="com/brightgenerous/fxplayer/application/FxPlayer.css,
+        com/brightgenerous/fxplayer/application/playlist/PlayList.css"
     minWidth="640" minHeight="240">
   <HBox id="control-pane">
     <Button text="%control.directory-chooser"
@@ -37,7 +37,10 @@
   </TableView>
   <HBox id="control-pane">
     <VBox HBox.hgrow="ALWAYS">
-      <Slider fx:id="controlTime" min="0" max="0" HBox.hgrow="ALWAYS" />
+      <Region prefHeight="-1.0" prefWidth="-1.0" VBox.vgrow="ALWAYS" />
+      <HBox id="control-pane">
+        <Slider fx:id="controlTime" min="0" max="0" HBox.hgrow="ALWAYS" />
+      </HBox>
       <HBox id="control-pane">
         <Button fx:id="controlPlay" onAction="#controlPlay" text="%control.play" mnemonicParsing="true" />
         <Button onAction="#controlPrev" text="%control.prev" mnemonicParsing="true"/>

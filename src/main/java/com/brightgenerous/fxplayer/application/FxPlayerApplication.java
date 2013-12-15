@@ -7,7 +7,7 @@ import javafx.application.Application;
 import javafx.stage.Stage;
 import javafx.stage.StageBuilder;
 
-import com.brightgenerous.fxplayer.application.scene.playlist.PlayListScene;
+import com.brightgenerous.fxplayer.application.playlist.PlayList;
 
 public class FxPlayerApplication extends Application {
 
@@ -20,7 +20,7 @@ public class FxPlayerApplication extends Application {
         String title = ResourceBundle.getBundle(getClass().getName(), Locale.getDefault())
                 .getString("title");
         StageBuilder.create().title(title).applyTo(stage);
-        Utils.move(stage, PlayListScene.class);
+        Utils.move(stage, PlayList.class);
         stage.show();
     }
 }

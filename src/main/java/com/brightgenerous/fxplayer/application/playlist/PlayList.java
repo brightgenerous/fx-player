@@ -1,4 +1,4 @@
-package com.brightgenerous.fxplayer.application.scene.playlist;
+package com.brightgenerous.fxplayer.application.playlist;
 
 import java.io.File;
 import java.net.MalformedURLException;
@@ -50,7 +50,7 @@ import javafx.util.Duration;
 
 import com.brightgenerous.fxplayer.application.Utils.Inject;
 
-public class PlayListScene implements Initializable {
+public class PlayList implements Initializable {
 
     @Inject
     private Stage owner;
