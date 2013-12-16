@@ -279,6 +279,8 @@ public class PlayList implements Initializable {
         controlPlayer(Control.NEXT, null);
     }
 
+    private long lastCreate = -1;
+
     private void controlPlayer(Control control, MediaInfo info) {
         final MediaInfo nextInfo;
         final int scrollTo;
@@ -340,6 +342,14 @@ public class PlayList implements Initializable {
                         player.play();
                     }
                 } else {
+                    {
+                        // OMAJINAI!!!
+                        long currentTime = System.currentTimeMillis();
+                        if (currentTime < (lastCreate + 500)) {
+                            return;
+                        }
+                        lastCreate = currentTime;
+                    }
                     double volume = DEFAULT_VOLUME;
                     if (player != null) {
                         volume = player.getVolume();
@@ -399,17 +409,23 @@ public class PlayList implements Initializable {
                                 controlTime.maxProperty().set(v.doubleValue());
                             } else {
                                 // OMAJINAI!!!
-                                final double opacity = controlTime.getOpacity();
-                                double tmp = opacity - 0.1;
-                                if (tmp < 0) {
-                                    tmp = opacity + 0.1;
+                                {
+                                    final double opacity = controlTime.getOpacity();
+                                    if (controlTime.getUserData() == null) {
+                                        controlTime.setUserData(Double.valueOf(opacity));
+                                    }
+                                    double tmp = opacity - 0.1;
+                                    if (tmp < 0) {
+                                        tmp = opacity + 0.1;
+                                    }
+                                    controlTime.setOpacity(tmp);
                                 }
-                                controlTime.setOpacity(tmp);
                                 totalDuration.addListener(new WeakInvalidationListener(
                                         new InvalidationListener() {
 
                                             @Override
                                             public void invalidated(Observable arg0) {
+                                                double opacity = (Double) controlTime.getUserData();
                                                 if (controlTime.getOpacity() != opacity) {
                                                     controlTime.setOpacity(opacity);
                                                 }
