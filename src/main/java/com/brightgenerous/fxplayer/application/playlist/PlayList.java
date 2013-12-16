@@ -92,15 +92,15 @@ public class PlayList implements Initializable {
 
     private final DirectoryChooser chooser = new DirectoryChooser();
 
-    // lock priority high
+    private File directory;
+
     private final ReadWriteLock listLock = new ReentrantReadWriteLock();
 
-    // lock priority low
-    private final ReadWriteLock playerLock = new ReentrantReadWriteLock();
+    private MediaInfo current;
 
-    private volatile MediaInfo current;
+    private MediaPlayer player;
 
-    private volatile MediaPlayer player;
+    private long lastCreate = Long.MIN_VALUE;
 
     private static final double DEFAULT_VOLUME = 0.5d;
 
@@ -130,12 +130,12 @@ public class PlayList implements Initializable {
             mediaList.setRowFactory(new Callback<TableView<MediaInfo>, TableRow<MediaInfo>>() {
 
                 @Override
-                public TableRow<MediaInfo> call(TableView<MediaInfo> arg0) {
+                public TableRow<MediaInfo> call(TableView<MediaInfo> param) {
                     TableRow<MediaInfo> ret;
                     if (deleg == null) {
                         ret = new TableRow<>();
                     } else {
-                        ret = deleg.call(arg0);
+                        ret = deleg.call(param);
                     }
                     ret.addEventFilter(MouseEvent.MOUSE_CLICKED, clickListener);
                     return ret;
@@ -168,7 +168,7 @@ public class PlayList implements Initializable {
                 .setCellFactory(new Callback<TableColumn<MediaInfo, Boolean>, TableCell<MediaInfo, Boolean>>() {
 
                     @Override
-                    public TableCell<MediaInfo, Boolean> call(TableColumn<MediaInfo, Boolean> arg0) {
+                    public TableCell<MediaInfo, Boolean> call(TableColumn<MediaInfo, Boolean> param) {
                         return new TableCell<MediaInfo, Boolean>() {
 
                             @Override
@@ -210,8 +210,6 @@ public class PlayList implements Initializable {
                     }
                 });
     }
-
-    private volatile File directory;
 
     @FXML
     protected void controlDirectoryChooser() {
@@ -279,224 +277,237 @@ public class PlayList implements Initializable {
         controlPlayer(Control.NEXT, null);
     }
 
-    private long lastCreate = -1;
-
     private void controlPlayer(Control control, MediaInfo info) {
-        final MediaInfo nextInfo;
-        final int scrollTo;
-        {
-            Lock lLock = listLock.readLock();
-            try {
-                lLock.lock();
-
-                List<MediaInfo> items = new ArrayList<>(mediaList.getItems());
-                if (items.isEmpty()) {
-                    return;
-                }
-                int index = -1;
-                if (control.equals(Control.SPECIFY)) {
-                    index = items.indexOf(info);
-                } else {
-                    if (current != null) {
-                        index = items.indexOf(current);
-                    }
-                    if (index != -1) {
-                        if (control.equals(Control.NEXT)) {
-                            index++;
-                            if (items.size() <= index) {
-                                index = 0;
-                            }
-                        } else if (control.equals(Control.PREV)) {
-                            index--;
-                            if (index < 0) {
-                                index = items.size() - 1;
-                            }
-                        }
-                    }
-                }
-                if (index < 0) {
-                    index = 0;
-                }
-                nextInfo = items.get(index);
-                scrollTo = index;
-            } finally {
-                lLock.unlock();
-            }
-        }
-        {
-            Lock pLock = playerLock.writeLock();
-            try {
-                pLock.lock();
-
+        player_block: {
+            if (control.equals(Control.PLAY)) {
                 boolean playing = false;
                 boolean paused = false;
                 if (player != null) {
                     playing = player.getStatus().equals(Status.PLAYING);
                     paused = player.getStatus().equals(Status.PAUSED);
                 }
-                if (control.equals(Control.PLAY) && (playing || paused)) {
-                    if (playing) {
-                        player.pause();
-                    } else {
-                        requestScroll(scrollTo);
-                        player.play();
+                if (playing) {
+                    player.pause();
+                    break player_block;
+                } else if (paused) {
+                    if (current != null) {
+                        List<MediaInfo> items = getItemsSnapshot();
+                        int scrollTo = items.indexOf(current);
+                        if (scrollTo != -1) {
+                            requestScroll(scrollTo);
+                        }
+                    }
+                    player.play();
+                    break player_block;
+                }
+            }
+
+            {
+                // OMAJINAI!!!
+                long currentTime = System.currentTimeMillis();
+                if (currentTime < (lastCreate + 500)) {
+                    break player_block;
+                }
+                lastCreate = currentTime;
+            }
+
+            final MediaInfo targetInfo;
+            final int scrollTo;
+            {
+                List<MediaInfo> items = getItemsSnapshot();
+                if (items.isEmpty()) {
+                    return;
+                }
+                int index = -1;
+                {
+                    if (info == null) {
+                        info = current;
+                    }
+                    if (info != null) {
+                        index = items.indexOf(info);
+                    }
+                }
+                if (index != -1) {
+                    if (control.equals(Control.NEXT)) {
+                        index++;
+                        if (items.size() <= index) {
+                            index = 0;
+                        }
+                    } else if (control.equals(Control.PREV)) {
+                        index--;
+                        if (index < 0) {
+                            index = items.size() - 1;
+                        }
                     }
                 } else {
+                    index = 0;
+                }
+                targetInfo = items.get(index);
+                scrollTo = index;
+            }
+
+            double volume = DEFAULT_VOLUME;
+            if (player != null) {
+                volume = player.getVolume();
+                player.dispose();
+            }
+
+            final MediaPlayer mp = new MediaPlayer(targetInfo.getMedia());
+            mp.setOnReady(new Runnable() {
+
+                @Override
+                public void run() {
+                    targetInfo.setDuration(mp.getTotalDuration());
+                }
+            });
+            mp.setOnEndOfMedia(new Runnable() {
+
+                @Override
+                public void run() {
+                    // no fear, would be called on main thread.
+                    controlPlayer(Control.NEXT, null);
+                }
+            });
+
+            // volume
+            {
+                mp.setVolume(volume);
+                controlVolume.valueProperty().unbind();
+                controlVolume.valueProperty().bindBidirectional(mp.volumeProperty());
+            }
+
+            {
+                // time max
+                {
+                    final SimpleDoubleProperty totalDuration;
                     {
-                        // OMAJINAI!!!
-                        long currentTime = System.currentTimeMillis();
-                        if (currentTime < (lastCreate + 500)) {
-                            return;
+                        Duration dur = mp.getTotalDuration();
+                        if ((dur == null) || dur.equals(Duration.UNKNOWN)) {
+                            dur = targetInfo.getDuration();
                         }
-                        lastCreate = currentTime;
-                    }
-                    double volume = DEFAULT_VOLUME;
-                    if (player != null) {
-                        volume = player.getVolume();
-                        player.dispose();
-                    }
-
-                    final MediaPlayer mp = new MediaPlayer(nextInfo.getMedia());
-                    mp.setOnReady(new Runnable() {
-
-                        @Override
-                        public void run() {
-                            nextInfo.setDuration(mp.getTotalDuration());
-                        }
-                    });
-                    mp.setOnEndOfMedia(new Runnable() {
-
-                        @Override
-                        public void run() {
-                            controlPlayer(Control.NEXT, null);
-                        }
-                    });
-
-                    {
-                        mp.setVolume(volume);
-                        controlVolume.valueProperty().unbind();
-                        controlVolume.valueProperty().bindBidirectional(mp.volumeProperty());
-                    }
-
-                    {
-                        {
-                            final SimpleDoubleProperty totalDuration;
-                            {
-                                Duration dur = mp.getTotalDuration();
-                                if ((dur == null) || dur.equals(Duration.UNKNOWN)) {
-                                    dur = nextInfo.getDuration();
-                                }
-                                if ((dur != null) && !dur.equals(Duration.UNKNOWN)) {
-                                    totalDuration = new SimpleDoubleProperty(dur.toMillis());
-                                } else {
-                                    totalDuration = new SimpleDoubleProperty();
-                                    nextInfo.durationProperty().addListener(
-                                            new WeakChangeListener<>(
-                                                    new ChangeListener<Duration>() {
-
-                                                        @Override
-                                                        public void changed(
-                                                                ObservableValue<? extends Duration> observable,
-                                                                Duration oldValue, Duration newValue) {
-                                                            totalDuration.set(newValue.toMillis());
-                                                        }
-                                                    }));
-                                }
-                            }
-                            controlTime.maxProperty().unbind();
-                            Double v = totalDuration.getValue();
-                            if ((v != null) && (0 < v.doubleValue())) {
-                                controlTime.maxProperty().set(v.doubleValue());
-                            } else {
-                                // OMAJINAI!!!
-                                {
-                                    final double opacity = controlTime.getOpacity();
-                                    if (controlTime.getUserData() == null) {
-                                        controlTime.setUserData(Double.valueOf(opacity));
-                                    }
-                                    double tmp = opacity - 0.1;
-                                    if (tmp < 0) {
-                                        tmp = opacity + 0.1;
-                                    }
-                                    controlTime.setOpacity(tmp);
-                                }
-                                totalDuration.addListener(new WeakInvalidationListener(
-                                        new InvalidationListener() {
-
-                                            @Override
-                                            public void invalidated(Observable arg0) {
-                                                double opacity = (Double) controlTime.getUserData();
-                                                if (controlTime.getOpacity() != opacity) {
-                                                    controlTime.setOpacity(opacity);
-                                                }
-                                            }
-                                        }));
-                            }
-                            controlTime.maxProperty().bind(totalDuration);
-                        }
-                        {
-                            controlTime.valueProperty().addListener(
-                                    new WeakChangeListener<>(new ChangeListener<Number>() {
+                        if ((dur != null) && !dur.equals(Duration.UNKNOWN)) {
+                            totalDuration = new SimpleDoubleProperty(dur.toMillis());
+                        } else {
+                            totalDuration = new SimpleDoubleProperty();
+                            targetInfo.durationProperty().addListener(
+                                    new WeakChangeListener<>(new ChangeListener<Duration>() {
 
                                         @Override
                                         public void changed(
-                                                ObservableValue<? extends Number> observable,
-                                                Number oldValue, Number newValue) {
-                                            if (controlTime.isValueChanging()) {
-                                                mp.seek(Duration.millis(newValue.doubleValue()));
-                                            }
+                                                ObservableValue<? extends Duration> observable,
+                                                Duration oldValue, Duration newValue) {
+                                            totalDuration.set(newValue.toMillis());
                                         }
                                     }));
-                            mp.currentTimeProperty().addListener(new InvalidationListener() {
-
-                                private long last;
-
-                                @Override
-                                public void invalidated(Observable ov) {
-                                    final long cv = (long) mp.getCurrentTime().toMillis();
-                                    if ((last + UPDATE_SEEK_FREQUENCY) < cv) {
-                                        if (!controlTime.isValueChanging()) {
-                                            last = cv;
-                                            controlTime.setValue(last);
-                                        }
-                                    }
-                                }
-                            });
                         }
                     }
-
-                    {
-                        nextInfo.imageProperty().addListener(
-                                new WeakChangeListener<>(new ChangeListener<Image>() {
+                    controlTime.maxProperty().unbind();
+                    Double v = totalDuration.getValue();
+                    if ((v != null) && (0 < v.doubleValue())) {
+                        controlTime.maxProperty().set(v.doubleValue());
+                    } else {
+                        // OMAJINAI!!!
+                        {
+                            final double opacity = controlTime.getOpacity();
+                            if (controlTime.getUserData() == null) {
+                                controlTime.setUserData(Double.valueOf(opacity));
+                            }
+                            double tmp = opacity - 0.1;
+                            if (tmp < 0) {
+                                tmp = opacity + 0.1;
+                            }
+                            controlTime.setOpacity(tmp);
+                        }
+                        totalDuration.addListener(new WeakInvalidationListener(
+                                new InvalidationListener() {
 
                                     @Override
-                                    public void changed(
-                                            ObservableValue<? extends Image> observable,
-                                            Image oldValue, Image newValue) {
-                                        imageView.setImage(newValue);
-                                        requestScroll(scrollTo);
+                                    public void invalidated(Observable arg0) {
+                                        Object obj = controlTime.getUserData();
+                                        if (obj instanceof Double) {
+                                            double opacity = ((Double) obj).doubleValue();
+                                            if (controlTime.getOpacity() != opacity) {
+                                                controlTime.setOpacity(opacity);
+                                            }
+                                        }
                                     }
                                 }));
-                        imageView.setImage(nextInfo.imageProperty().get());
-                        requestScroll(scrollTo);
                     }
-
-                    {
-                        if (current != null) {
-                            current.setCursor(false);
-                        }
-                        nextInfo.setCursor(true);
-                    }
-
-                    mp.play();
-
-                    current = nextInfo;
-                    player = mp;
+                    controlTime.maxProperty().bind(totalDuration);
                 }
-            } finally {
-                pLock.unlock();
+
+                // time current
+                {
+                    controlTime.valueProperty().addListener(
+                            new WeakChangeListener<>(new ChangeListener<Number>() {
+
+                                @Override
+                                public void changed(ObservableValue<? extends Number> observable,
+                                        Number oldValue, Number newValue) {
+                                    if (controlTime.isValueChanging()) {
+                                        mp.seek(Duration.millis(newValue.doubleValue()));
+                                    }
+                                }
+                            }));
+                    mp.currentTimeProperty().addListener(new InvalidationListener() {
+
+                        private long last;
+
+                        @Override
+                        public void invalidated(Observable ov) {
+                            final long cv = (long) mp.getCurrentTime().toMillis();
+                            if ((last + UPDATE_SEEK_FREQUENCY) < cv) {
+                                if (!controlTime.isValueChanging()) {
+                                    last = cv;
+                                    controlTime.setValue(last);
+                                }
+                            }
+                        }
+                    });
+                }
             }
+
+            // image
+            {
+                targetInfo.imageProperty().addListener(
+                        new WeakChangeListener<>(new ChangeListener<Image>() {
+
+                            @Override
+                            public void changed(ObservableValue<? extends Image> observable,
+                                    Image oldValue, Image newValue) {
+                                imageView.setImage(newValue);
+                                requestScroll(scrollTo);
+                            }
+                        }));
+                imageView.setImage(targetInfo.imageProperty().get());
+                requestScroll(scrollTo);
+            }
+
+            // cursor
+            {
+                if (current != null) {
+                    current.setCursor(false);
+                }
+                targetInfo.setCursor(true);
+            }
+
+            mp.play();
+
+            current = targetInfo;
+            player = mp;
         }
+    }
+
+    private List<MediaInfo> getItemsSnapshot() {
+        List<MediaInfo> ret;
+        Lock lLock = listLock.readLock();
+        try {
+            lLock.lock();
+            ret = new ArrayList<>(mediaList.getItems());
+        } finally {
+            lLock.unlock();
+        }
+        return ret;
     }
 
     private void requestScroll(final int row) {
