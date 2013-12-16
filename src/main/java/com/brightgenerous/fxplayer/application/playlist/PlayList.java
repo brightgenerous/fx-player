@@ -14,7 +14,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
-import javafx.beans.WeakInvalidationListener;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleDoubleProperty;
@@ -250,6 +249,19 @@ public class PlayList implements Initializable {
                         };
                     }
                 });
+
+        controlTime.valueProperty().addListener(new ChangeListener<Number>() {
+
+            @Override
+            public void changed(ObservableValue<? extends Number> observable, Number oldValue,
+                    Number newValue) {
+                MediaPlayer mp = player;
+                if ((mp != null) && (controlTime.isValueChanging())) {
+                    mp.seek(Duration.millis(newValue.doubleValue()));
+                }
+            }
+        });
+
         imageView.addEventFilter(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
 
             @Override
@@ -577,37 +589,25 @@ public class PlayList implements Initializable {
                             }
                             controlTime.setOpacity(tmp);
                         }
-                        totalDuration.addListener(new WeakInvalidationListener(
-                                new InvalidationListener() {
+                        totalDuration.addListener(new InvalidationListener() {
 
-                                    @Override
-                                    public void invalidated(Observable arg0) {
-                                        Object obj = controlTime.getUserData();
-                                        if (obj instanceof Double) {
-                                            double opacity = ((Double) obj).doubleValue();
-                                            if (controlTime.getOpacity() != opacity) {
-                                                controlTime.setOpacity(opacity);
-                                            }
-                                        }
+                            @Override
+                            public void invalidated(Observable arg0) {
+                                Object obj = controlTime.getUserData();
+                                if (obj instanceof Double) {
+                                    double opacity = ((Double) obj).doubleValue();
+                                    if (controlTime.getOpacity() != opacity) {
+                                        controlTime.setOpacity(opacity);
                                     }
-                                }));
+                                }
+                            }
+                        });
                     }
                     controlTime.maxProperty().bind(totalDuration);
                 }
 
                 // time current
                 {
-                    controlTime.valueProperty().addListener(
-                            new WeakChangeListener<>(new ChangeListener<Number>() {
-
-                                @Override
-                                public void changed(ObservableValue<? extends Number> observable,
-                                        Number oldValue, Number newValue) {
-                                    if (controlTime.isValueChanging()) {
-                                        mp.seek(Duration.millis(newValue.doubleValue()));
-                                    }
-                                }
-                            }));
                     mp.currentTimeProperty().addListener(new ChangeListener<Duration>() {
 
                         @Override
