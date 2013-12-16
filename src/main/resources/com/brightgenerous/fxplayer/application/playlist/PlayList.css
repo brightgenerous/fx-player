@@ -2,3 +2,16 @@
 #directory-text {
   -fx-alignment: center-right;
 }
+
+#control-pane {
+  -fx-spacing: 5;
+  -fx-padding: 5 5 5 5;
+  -fx-alignment: center-left;
+}
+
+#time-text,
+#volume-text {
+  -fx-fill: #333;
+  -fx-font-size: 14px;
+  -fx-text-alignment: right;
+}

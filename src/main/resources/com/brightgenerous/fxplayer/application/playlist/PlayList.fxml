@@ -5,11 +5,12 @@
 <?import javafx.scene.text.*?>
 <?import javafx.scene.control.Slider?>
 <?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.Region?>
 <VBox xmlns:fx="http://javafx.com/fxml"
     fx:controller="com.brightgenerous.fxplayer.application.playlist.PlayList"
     stylesheets="com/brightgenerous/fxplayer/application/FxPlayer.css,
         com/brightgenerous/fxplayer/application/playlist/PlayList.css"
-    minWidth="640" minHeight="240">
+    maxWidth="640" minHeight="240">
   <HBox id="control-pane">
     <Button text="%control.directory-chooser"
         onAction="#controlDirectoryChooser" mnemonicParsing="true" />
@@ -39,13 +40,23 @@
     <VBox HBox.hgrow="ALWAYS">
       <Region prefHeight="-1.0" prefWidth="-1.0" minHeight="5" VBox.vgrow="ALWAYS" />
       <HBox id="control-pane">
+        <Region prefWidth="5" />
+        <ProgressBar fx:id="progressBar1" prefWidth="1000" />
+        <ProgressBar fx:id="progressBar2" prefWidth="1000" />
+        <ProgressBar fx:id="progressBar3" prefWidth="1000" />
+        <ProgressBar fx:id="progressBar4" prefWidth="1000" />
+        <Region prefWidth="10" />
+      </HBox>
+      <HBox id="control-pane">
         <Slider fx:id="controlTime" min="0" max="0" HBox.hgrow="ALWAYS" />
+        <Text fx:id="timeText" id="time-text" wrappingWidth="40" />
       </HBox>
       <HBox id="control-pane">
         <Button fx:id="controlPlay" onAction="#controlPlay" text="%control.play" mnemonicParsing="true" />
         <Button onAction="#controlPrev" text="%control.prev" mnemonicParsing="true"/>
         <Button onAction="#controlNext" text="%control.next" mnemonicParsing="true" />
         <Slider fx:id="controlVolume" min="0.0" max="1.0" value="0.5" HBox.hgrow="ALWAYS" />
+        <Text fx:id="volumeText" id="volume-text" wrappingWidth="40" />
       </HBox>
     </VBox>
     <ImageView fx:id="imageView" fitWidth="100" preserveRatio="true" smooth="true"

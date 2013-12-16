@@ -32,7 +32,9 @@ import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
+import javafx.scene.Cursor;
 import javafx.scene.control.Button;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.control.Slider;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
@@ -42,6 +44,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.media.AudioSpectrumListener;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaException;
 import javafx.scene.media.MediaPlayer;
@@ -93,7 +96,25 @@ public class PlayList implements Initializable {
     private Slider controlTime;
 
     @FXML
+    private Text timeText;
+
+    @FXML
     private Slider controlVolume;
+
+    @FXML
+    private Text volumeText;
+
+    @FXML
+    private ProgressBar progressBar1;
+
+    @FXML
+    private ProgressBar progressBar2;
+
+    @FXML
+    private ProgressBar progressBar3;
+
+    @FXML
+    private ProgressBar progressBar4;
 
     private final DirectoryChooser loadChooser = new DirectoryChooser();
 
@@ -125,8 +146,6 @@ public class PlayList implements Initializable {
     private long lastCreate = Long.MIN_VALUE;
 
     private static final double DEFAULT_VOLUME = 0.5d;
-
-    private static final long UPDATE_SEEK_FREQUENCY = 30;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -249,6 +268,18 @@ public class PlayList implements Initializable {
                             }
                         }
                     }
+                }
+            }
+        });
+        imageView.imageProperty().addListener(new ChangeListener<Image>() {
+
+            @Override
+            public void changed(ObservableValue<? extends Image> observable, Image oldValue,
+                    Image newValue) {
+                if (newValue == null) {
+                    imageView.setCursor(Cursor.DEFAULT);
+                } else {
+                    imageView.setCursor(Cursor.HAND);
                 }
             }
         });
@@ -472,7 +503,10 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void run() {
-                    targetInfo.setDuration(mp.getTotalDuration());
+                    Duration dur = mp.getTotalDuration();
+                    if (dur != null) {
+                        targetInfo.setDuration(dur);
+                    }
                 }
             });
             mp.setOnEndOfMedia(new Runnable() {
@@ -489,6 +523,16 @@ public class PlayList implements Initializable {
                 mp.setVolume(volume);
                 controlVolume.valueProperty().unbind();
                 controlVolume.valueProperty().bindBidirectional(mp.volumeProperty());
+                mp.volumeProperty().addListener(new ChangeListener<Number>() {
+
+                    @Override
+                    public void changed(ObservableValue<? extends Number> observable,
+                            Number oldValue, Number newValue) {
+                        int vol = (int) (newValue.doubleValue() * 100);
+                        volumeText.setText(String.format("%3d%%", Integer.valueOf(vol)));
+                    }
+                });
+                volumeText.setText(String.format("%3d%%", Integer.valueOf((int) (volume * 100))));
             }
 
             {
@@ -564,22 +608,38 @@ public class PlayList implements Initializable {
                                     }
                                 }
                             }));
-                    mp.currentTimeProperty().addListener(new InvalidationListener() {
-
-                        private long last;
+                    mp.currentTimeProperty().addListener(new ChangeListener<Duration>() {
 
                         @Override
-                        public void invalidated(Observable ov) {
-                            final long cv = (long) mp.getCurrentTime().toMillis();
-                            if ((last + UPDATE_SEEK_FREQUENCY) < cv) {
-                                if (!controlTime.isValueChanging()) {
-                                    last = cv;
-                                    controlTime.setValue(last);
-                                }
+                        public void changed(ObservableValue<? extends Duration> observable,
+                                Duration oldValue, Duration newValue) {
+                            if (!controlTime.isValueChanging()) {
+                                double millis = newValue.toMillis();
+                                controlTime.setValue(millis);
+                                int sec = (int) (millis / 1000);
+                                timeText.setText(String.format("%3d:%02d",
+                                        Integer.valueOf(sec / 60), Integer.valueOf(sec % 60)));
                             }
                         }
                     });
                 }
+            }
+
+            // something
+            {
+                mp.setAudioSpectrumInterval(0.3);
+                mp.setAudioSpectrumNumBands(0);
+                mp.setAudioSpectrumListener(new AudioSpectrumListener() {
+
+                    @Override
+                    public void spectrumDataUpdate(double arg0, double arg1, float[] arg2,
+                            float[] arg3) {
+                        progressBar1.setProgress((arg2[0] + 60) / 60);
+                        progressBar2.setProgress((arg2[1] + 60) / 60);
+                        progressBar3.setProgress(arg3[0] / Math.PI);
+                        progressBar4.setProgress(arg3[1] / Math.PI);
+                    }
+                });
             }
 
             // image
@@ -742,12 +802,10 @@ public class PlayList implements Initializable {
         }
 
         public void setDuration(Duration duration) {
-            if (duration != null) {
-                if (durationProperty != null) {
-                    durationProperty.setValue(duration);
-                }
-                this.duration = duration;
+            if (durationProperty != null) {
+                durationProperty.setValue(duration);
             }
+            this.duration = duration;
         }
 
         public ObjectProperty<Duration> durationProperty() {
@@ -775,19 +833,21 @@ public class PlayList implements Initializable {
         }
 
         public ObjectProperty<Image> imageProperty() {
-            Image image = getImage();
-            imageProperty = new SimpleObjectProperty<>(image);
-            if (image == null) {
-                media.getMetadata().addListener(new MapChangeListener<String, Object>() {
+            if (imageProperty == null) {
+                Image image = getImage();
+                imageProperty = new SimpleObjectProperty<>(image);
+                if (image == null) {
+                    media.getMetadata().addListener(new MapChangeListener<String, Object>() {
 
-                    @Override
-                    public void onChanged(Change<? extends String, ? extends Object> change) {
-                        Image image = getImage();
-                        if (image != null) {
-                            imageProperty.setValue(image);
+                        @Override
+                        public void onChanged(Change<? extends String, ? extends Object> change) {
+                            Image image = getImage();
+                            if (image != null) {
+                                imageProperty.setValue(image);
+                            }
                         }
-                    }
-                });
+                    });
+                }
             }
             return imageProperty;
         }

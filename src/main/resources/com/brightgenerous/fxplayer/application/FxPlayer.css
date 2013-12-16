@@ -28,13 +28,6 @@
 .tool-bar .button:hover,
 .button:hover,
 .tool-bar .toggle-button:hover,
-.toggle-button:hover,
-#move-button:hover {
+.toggle-button:hover {
   -fx-color: #00aaff;
-}
-
-#control-pane {
-  -fx-spacing: 5;
-  -fx-padding: 5 5 5 5;
-  -fx-alignment: center-left;
 }
