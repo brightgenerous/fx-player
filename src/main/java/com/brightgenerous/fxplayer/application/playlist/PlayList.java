@@ -1,6 +1,7 @@
 package com.brightgenerous.fxplayer.application.playlist;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -26,6 +27,7 @@ import javafx.beans.value.WeakChangeListener;
 import javafx.collections.MapChangeListener;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -46,9 +48,12 @@ import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.MediaPlayer.Status;
 import javafx.scene.text.Text;
 import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 import javafx.util.Duration;
+
+import javax.imageio.ImageIO;
 
 import com.brightgenerous.fxplayer.application.Utils.Inject;
 
@@ -90,9 +95,26 @@ public class PlayList implements Initializable {
     @FXML
     private Slider controlVolume;
 
-    private final DirectoryChooser chooser = new DirectoryChooser();
+    private final DirectoryChooser loadChooser = new DirectoryChooser();
 
-    private File directory;
+    private final FileChooser saveChooser = new FileChooser();
+    {
+        File home = null;
+        {
+            String userHome = System.getProperty("user.home");
+            if (userHome != null) {
+                File tmp = new File(userHome);
+                if (tmp.exists() && tmp.isDirectory()) {
+                    home = tmp;
+                }
+            }
+        }
+        if (home != null) {
+            loadChooser.setInitialDirectory(home);
+            saveChooser.setInitialDirectory(home);
+        }
+        saveChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PNG", "*.png*"));
+    }
 
     private final ReadWriteLock listLock = new ReentrantReadWriteLock();
 
@@ -209,24 +231,30 @@ public class PlayList implements Initializable {
                         };
                     }
                 });
-    }
+        imageView.addEventFilter(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
 
-    @FXML
-    protected void controlDirectoryChooser() {
-        if (directory != null) {
-            chooser.setInitialDirectory(directory);
-        }
-        File dir = chooser.showDialog(owner);
-        if (dir != null) {
-            directory = dir;
-            if (directoryChooserService.isRunning()) {
-                directoryChooserService.cancel();
+            @Override
+            public void handle(MouseEvent event) {
+                if (1 < event.getClickCount()) {
+                    if (saveService.isRunning()) {
+                        return;
+                    }
+                    Object source = event.getSource();
+                    if (source instanceof ImageView) {
+                        ImageView imageView = (ImageView) source;
+                        final Image image = imageView.getImage();
+                        if (image != null) {
+                            if (!saveService.isRunning()) {
+                                saveService.restart();
+                            }
+                        }
+                    }
+                }
             }
-            directoryChooserService.restart();
-        }
+        });
     }
 
-    private final Service<Boolean> directoryChooserService = new Service<Boolean>() {
+    private final Service<Boolean> saveService = new Service<Boolean>() {
 
         @Override
         protected Task<Boolean> createTask() {
@@ -234,7 +262,94 @@ public class PlayList implements Initializable {
 
                 @Override
                 protected Boolean call() throws Exception {
-                    File dir = directory;
+                    MediaInfo info = current;
+                    if (info == null) {
+                        return Boolean.FALSE;
+                    }
+
+                    Image image = info.getImage();
+                    if (image == null) {
+                        return Boolean.FALSE;
+                    }
+
+                    File file;
+                    {
+                        String title = info.getTitle();
+                        if (title == null) {
+                            saveChooser.setInitialFileName("");
+                        } else {
+                            saveChooser.setInitialFileName(title.replaceAll(
+                                    "[\\s\\\\/:*?\"<>\\|]{1}", "_") + ".png");
+                        }
+                        file = saveChooser.showSaveDialog(owner);
+                        if (file == null) {
+                            return Boolean.FALSE;
+                        }
+                        {
+                            File parent = file.getParentFile();
+                            if ((parent != null) && parent.isDirectory()) {
+                                saveChooser.setInitialDirectory(parent);
+                            }
+                        }
+                    }
+
+                    File out;
+                    out: {
+                        String base = file.getAbsolutePath();
+                        if (base.endsWith(".png")) {
+                            // here
+                            // when over write, must be confirmed.
+                            //   or create the file.
+                            out = file;
+                            break out;
+                        }
+                        base = base.replaceAll("\\.png$", "");
+                        String name;
+                        int index = 0;
+                        do {
+                            if (index == 0) {
+                                name = base;
+                            } else {
+                                name = base + "_" + index;
+                            }
+                            index++;
+                            out = new File(name + ".png");
+                        } while (out.exists());
+                    }
+                    try {
+                        ImageIO.write(SwingFXUtils.fromFXImage(image, null), "png", out);
+                    } catch (IOException e) {
+                    }
+                    return Boolean.TRUE;
+                }
+            };
+        }
+    };
+
+    @FXML
+    protected void controlDirectoryChooser() {
+        if (!loadService.isRunning()) {
+            loadService.restart();
+        }
+    }
+
+    private final Service<Boolean> loadService = new Service<Boolean>() {
+
+        @Override
+        protected Task<Boolean> createTask() {
+            return new Task<Boolean>() {
+
+                @Override
+                protected Boolean call() throws Exception {
+                    File dir = loadChooser.showDialog(owner);
+                    if (dir != null) {
+                        File parent = dir.getParentFile();
+                        if ((parent != null) && parent.isDirectory()) {
+                            loadChooser.setInitialDirectory(parent);
+                        } else {
+                            loadChooser.setInitialDirectory(dir);
+                        }
+                    }
                     if (dir == null) {
                         return Boolean.FALSE;
                     }
@@ -511,13 +626,25 @@ public class PlayList implements Initializable {
     }
 
     private void requestScroll(final int row) {
-        Platform.runLater(new Runnable() {
+        if (0 <= row) {
+            Platform.runLater(new Runnable() {
 
-            @Override
-            public void run() {
-                mediaList.scrollTo(row);
-            }
-        });
+                @Override
+                public void run() {
+                    Lock lLock = listLock.readLock();
+                    try {
+                        lLock.lock();
+                        int size = mediaList.getItems().size();
+                        if (row < size) {
+                            mediaList.getSelectionModel().select(row);
+                            mediaList.scrollTo(row);
+                        }
+                    } finally {
+                        lLock.unlock();
+                    }
+                }
+            });
+        }
     }
 
     private enum Control {

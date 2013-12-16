@@ -4,6 +4,7 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 
 import javafx.application.Application;
+import javafx.scene.image.Image;
 import javafx.stage.Stage;
 import javafx.stage.StageBuilder;
 
@@ -19,7 +20,8 @@ public class FxPlayerApplication extends Application {
     public void start(Stage stage) throws Exception {
         String title = ResourceBundle.getBundle(getClass().getName(), Locale.getDefault())
                 .getString("title");
-        StageBuilder.create().title(title).applyTo(stage);
+        StageBuilder.create().title(title)
+                .icons(new Image(getClass().getResourceAsStream("icon.png"))).applyTo(stage);
         Utils.move(stage, PlayList.class);
         stage.show();
     }
