@@ -805,7 +805,9 @@ public class PlayList implements Initializable {
                                             public void changed(
                                                     ObservableValue<? extends Duration> observable,
                                                     Duration oldValue, Duration newValue) {
-                                                totalDuration.set(newValue.toMillis());
+                                                if (targetInfo == current) {
+                                                    totalDuration.set(newValue.toMillis());
+                                                }
                                                 targetInfo.durationProperty().removeListener(this);
                                             }
                                         });
@@ -822,6 +824,9 @@ public class PlayList implements Initializable {
 
                                 @Override
                                 public void invalidated(Observable observable) {
+                                    if (targetInfo != current) {
+                                        return;
+                                    }
                                     layoutTimer();
                                 }
                             });
@@ -836,6 +841,9 @@ public class PlayList implements Initializable {
                             @Override
                             public void changed(ObservableValue<? extends Duration> observable,
                                     Duration oldValue, Duration newValue) {
+                                if (targetInfo != current) {
+                                    return;
+                                }
                                 if (controlTime.isValueChanging()) {
                                     return;
                                 }
@@ -865,8 +873,10 @@ public class PlayList implements Initializable {
                             @Override
                             public void changed(ObservableValue<? extends Image> observable,
                                     Image oldValue, Image newValue) {
-                                imageView.setImage(newValue);
-                                requestScroll(scrollTo);
+                                if (targetInfo == current) {
+                                    imageView.setImage(newValue);
+                                    requestScroll(scrollTo);
+                                }
                                 targetInfo.imageProperty().removeListener(this);
                             }
                         });
@@ -882,6 +892,9 @@ public class PlayList implements Initializable {
                             @Override
                             public void changed(ObservableValue<? extends Number> observable,
                                     Number oldValue, Number newValue) {
+                                if (targetInfo != current) {
+                                    return;
+                                }
                                 String newVol = LabelUtils.toVolume(newValue.doubleValue());
                                 String oldVol = LabelUtils.toVolume(oldValue.doubleValue());
                                 if (!oldVol.equals(newVol)) {
