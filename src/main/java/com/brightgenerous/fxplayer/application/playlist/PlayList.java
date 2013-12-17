@@ -2,7 +2,6 @@ package com.brightgenerous.fxplayer.application.playlist;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,16 +13,10 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
-import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleDoubleProperty;
-import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.property.StringProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.beans.value.WeakChangeListener;
-import javafx.collections.MapChangeListener;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import javafx.embed.swing.SwingFXUtils;
@@ -42,10 +35,10 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.media.AudioSpectrumListener;
-import javafx.scene.media.Media;
-import javafx.scene.media.MediaException;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.MediaPlayer.Status;
 import javafx.scene.text.Text;
@@ -71,7 +64,7 @@ public class PlayList implements Initializable {
     private ImageView imageView;
 
     @FXML
-    private TextField directoryText;
+    private TextField pathText;
 
     @FXML
     private Text infoText;
@@ -115,7 +108,9 @@ public class PlayList implements Initializable {
     @FXML
     private ProgressBar progressBar4;
 
-    private final DirectoryChooser loadChooser = new DirectoryChooser();
+    private final DirectoryChooser directoryChooser = new DirectoryChooser();
+
+    private final FileChooser fileChooser = new FileChooser();
 
     private final FileChooser saveChooser = new FileChooser();
     {
@@ -130,7 +125,8 @@ public class PlayList implements Initializable {
             }
         }
         if (home != null) {
-            loadChooser.setInitialDirectory(home);
+            directoryChooser.setInitialDirectory(home);
+            fileChooser.setInitialDirectory(home);
             saveChooser.setInitialDirectory(home);
         }
         saveChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PNG", "*.png*"));
@@ -295,6 +291,18 @@ public class PlayList implements Initializable {
                 }
             }
         });
+
+        pathText.setOnKeyPressed(new EventHandler<KeyEvent>() {
+
+            @Override
+            public void handle(KeyEvent event) {
+                if (event.getCode().equals(KeyCode.ENTER)) {
+                    if (!loadHttpService.isRunning()) {
+                        loadHttpService.restart();
+                    }
+                }
+            }
+        });
     }
 
     private final Service<Boolean> saveService = new Service<Boolean>() {
@@ -310,14 +318,14 @@ public class PlayList implements Initializable {
                         return Boolean.FALSE;
                     }
 
-                    Image image = info.getImage();
+                    Image image = info.imageProperty().getValue();
                     if (image == null) {
                         return Boolean.FALSE;
                     }
 
                     File file;
                     {
-                        String title = info.getTitle();
+                        String title = info.titleProperty().getValue();
                         if (title == null) {
                             saveChooser.setInitialFileName("");
                         } else {
@@ -371,12 +379,19 @@ public class PlayList implements Initializable {
 
     @FXML
     protected void controlDirectoryChooser() {
-        if (!loadService.isRunning()) {
-            loadService.restart();
+        if (!loadDirectoryService.isRunning()) {
+            loadDirectoryService.restart();
         }
     }
 
-    private final Service<Boolean> loadService = new Service<Boolean>() {
+    @FXML
+    protected void controlFileChooser() {
+        if (!loadFileService.isRunning()) {
+            loadFileService.restart();
+        }
+    }
+
+    private final Service<Boolean> loadDirectoryService = new Service<Boolean>() {
 
         @Override
         protected Task<Boolean> createTask() {
@@ -384,41 +399,105 @@ public class PlayList implements Initializable {
 
                 @Override
                 protected Boolean call() throws Exception {
-                    File dir = loadChooser.showDialog(owner);
-                    if (dir != null) {
-                        File parent = dir.getParentFile();
-                        if ((parent != null) && parent.isDirectory()) {
-                            loadChooser.setInitialDirectory(parent);
-                        } else {
-                            loadChooser.setInitialDirectory(dir);
-                        }
-                    }
+                    File dir = directoryChooser.showDialog(owner);
                     if (dir == null) {
                         return Boolean.FALSE;
                     }
-                    List<MediaInfo> tmp = new ArrayList<>();
-                    for (File file : dir.listFiles()) {
-                        if (file.exists() && file.isFile() && file.canRead()) {
-                            try {
-                                tmp.add(new MediaInfo(new Media(file.toURI().toURL().toString())));
-                            } catch (MalformedURLException | MediaException e) {
-                            }
+                    {
+                        File parent = dir.getParentFile();
+                        if ((parent != null) && parent.isDirectory()) {
+                            directoryChooser.setInitialDirectory(parent);
+                        } else {
+                            directoryChooser.setInitialDirectory(dir);
                         }
                     }
-                    Lock lock = listLock.writeLock();
-                    try {
-                        lock.lock();
-                        directoryText.setText(dir.toString());
-                        mediaList.getItems().clear();
-                        mediaList.getItems().addAll(tmp);
-                    } finally {
-                        lock.unlock();
+
+                    List<MediaInfo> infos = PlayListReader.fromDirectory(dir, loadMediaService);
+                    if (infos == null) {
+                        return Boolean.FALSE;
                     }
+
+                    updateItems(dir.toString(), infos);
+
+                    loadMediaLater();
+
                     return Boolean.TRUE;
                 }
             };
         }
     };
+
+    private final Service<Boolean> loadFileService = new Service<Boolean>() {
+
+        @Override
+        protected Task<Boolean> createTask() {
+            return new Task<Boolean>() {
+
+                @Override
+                protected Boolean call() throws Exception {
+                    File file = fileChooser.showOpenDialog(owner);
+                    if (file == null) {
+                        return Boolean.FALSE;
+                    }
+                    {
+                        File parent = file.getParentFile();
+                        if ((parent != null) && parent.isDirectory()) {
+                            fileChooser.setInitialDirectory(parent);
+                        }
+                    }
+
+                    List<MediaInfo> infos = PlayListReader.fromFile(file, loadMediaService);
+                    if (infos == null) {
+                        return Boolean.FALSE;
+                    }
+
+                    updateItems(file.toString(), infos);
+
+                    loadMediaLater();
+
+                    return Boolean.TRUE;
+                }
+            };
+        }
+    };
+
+    private final Service<Boolean> loadHttpService = new Service<Boolean>() {
+
+        @Override
+        protected Task<Boolean> createTask() {
+            return new Task<Boolean>() {
+
+                @Override
+                protected Boolean call() throws Exception {
+                    String text = pathText.getText().trim();
+
+                    List<MediaInfo> infos = PlayListReader.fromURL(text, loadMediaService);
+                    if (infos == null) {
+                        return Boolean.FALSE;
+                    }
+
+                    updateItems(text, infos);
+
+                    loadMediaLater();
+
+                    return Boolean.TRUE;
+                }
+            };
+        }
+    };
+
+    private void loadMediaLater() {
+        Platform.runLater(new Runnable() {
+
+            @Override
+            public void run() {
+                if (loadMediaService.isRunning()) {
+                    loadMediaService.cancel();
+                }
+                loadMediaService.restart();
+            }
+        });
+    }
 
     @FXML
     protected void controlPlay() {
@@ -436,6 +515,14 @@ public class PlayList implements Initializable {
     }
 
     private void controlPlayer(Control control, MediaInfo info) {
+        controlPlayer(control, info, false);
+    }
+
+    private enum Control {
+        PLAY, PREV, NEXT, SPECIFY;
+    }
+
+    private void controlPlayer(Control control, MediaInfo info, boolean chain) {
         player_block: {
             if (control.equals(Control.PLAY)) {
                 boolean playing = false;
@@ -460,7 +547,7 @@ public class PlayList implements Initializable {
                 }
             }
 
-            {
+            if (!chain) {
                 // OMAJINAI!!!
                 long currentTime = System.currentTimeMillis();
                 if (currentTime < (lastCreate + 500)) {
@@ -504,20 +591,86 @@ public class PlayList implements Initializable {
                 scrollTo = index;
             }
 
-            double volume = DEFAULT_VOLUME;
-            if (player != null) {
-                volume = player.getVolume();
+            final MediaPlayer mp;
+            try {
+                mp = new MediaPlayer(targetInfo.getMedia());
+            } catch (MediaLoadException e) {
+                onErrorLoadMedia(targetInfo);
+                if (!chain) {
+                    final Control ctrl = control;
+                    Platform.runLater(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            if (ctrl.equals(Control.PREV)) {
+                                controlPlayer(Control.PREV, targetInfo, true);
+                            } else {
+                                controlPlayer(Control.NEXT, targetInfo, true);
+                            }
+                        }
+                    });
+                }
+                break player_block;
+            }
+
+            final double volume;
+            if (player == null) {
+                volume = DEFAULT_VOLUME;
+            } else {
+                if (player.getStatus().equals(Status.UNKNOWN)) {
+                    volume = DEFAULT_VOLUME;
+                } else {
+                    volume = player.getVolume();
+                }
                 player.dispose();
             }
 
-            final MediaPlayer mp = new MediaPlayer(targetInfo.getMedia());
+            mp.setOnError(new Runnable() {
+
+                @Override
+                public void run() {
+                    {
+                        // OMAJINAI!!!
+                        layoutTimer();
+                    }
+                    imageView.setImage(new Image(PlayList.class.getResourceAsStream("dame.png")));
+                }
+            });
             mp.setOnReady(new Runnable() {
 
                 @Override
                 public void run() {
                     Duration dur = mp.getTotalDuration();
-                    if (dur != null) {
-                        targetInfo.setDuration(dur);
+                    if ((dur != null) && !dur.isUnknown()) {
+                        targetInfo.durationProperty().setValue(dur);
+                    }
+
+                    // volume
+                    {
+                        mp.setVolume(volume);
+                        controlVolume.valueProperty().bindBidirectional(mp.volumeProperty());
+                    }
+
+                    // something
+                    {
+                        mp.setAudioSpectrumInterval(0.3);
+                        mp.setAudioSpectrumNumBands(0);
+                        mp.setAudioSpectrumListener(new AudioSpectrumListener() {
+
+                            @Override
+                            public void spectrumDataUpdate(double arg0, double arg1, float[] arg2,
+                                    float[] arg3) {
+                                progressBar1.setProgress((arg2[0] + 60) / 60);
+                                progressBar2.setProgress((arg2[1] + 60) / 60);
+                                progressBar3.setProgress(arg3[0] / Math.PI);
+                                progressBar4.setProgress(arg3[1] / Math.PI);
+                            }
+                        });
+                    }
+
+                    // play
+                    {
+                        mp.play();
                     }
                 }
             });
@@ -532,9 +685,7 @@ public class PlayList implements Initializable {
 
             // volume
             {
-                mp.setVolume(volume);
                 controlVolume.valueProperty().unbind();
-                controlVolume.valueProperty().bindBidirectional(mp.volumeProperty());
                 mp.volumeProperty().addListener(new ChangeListener<Number>() {
 
                     @Override
@@ -554,7 +705,7 @@ public class PlayList implements Initializable {
                     {
                         Duration dur = mp.getTotalDuration();
                         if ((dur == null) || dur.equals(Duration.UNKNOWN)) {
-                            dur = targetInfo.getDuration();
+                            dur = targetInfo.durationProperty().getValue();
                         }
                         if ((dur != null) && !dur.equals(Duration.UNKNOWN)) {
                             totalDuration = new SimpleDoubleProperty(dur.toMillis());
@@ -578,28 +729,12 @@ public class PlayList implements Initializable {
                         controlTime.maxProperty().set(v.doubleValue());
                     } else {
                         // OMAJINAI!!!
-                        {
-                            final double opacity = controlTime.getOpacity();
-                            if (controlTime.getUserData() == null) {
-                                controlTime.setUserData(Double.valueOf(opacity));
-                            }
-                            double tmp = opacity - 0.1;
-                            if (tmp < 0) {
-                                tmp = opacity + 0.1;
-                            }
-                            controlTime.setOpacity(tmp);
-                        }
+                        prepareLayoutTimer();
                         totalDuration.addListener(new InvalidationListener() {
 
                             @Override
                             public void invalidated(Observable arg0) {
-                                Object obj = controlTime.getUserData();
-                                if (obj instanceof Double) {
-                                    double opacity = ((Double) obj).doubleValue();
-                                    if (controlTime.getOpacity() != opacity) {
-                                        controlTime.setOpacity(opacity);
-                                    }
-                                }
+                                layoutTimer();
                             }
                         });
                     }
@@ -625,23 +760,6 @@ public class PlayList implements Initializable {
                 }
             }
 
-            // something
-            {
-                mp.setAudioSpectrumInterval(0.3);
-                mp.setAudioSpectrumNumBands(0);
-                mp.setAudioSpectrumListener(new AudioSpectrumListener() {
-
-                    @Override
-                    public void spectrumDataUpdate(double arg0, double arg1, float[] arg2,
-                            float[] arg3) {
-                        progressBar1.setProgress((arg2[0] + 60) / 60);
-                        progressBar2.setProgress((arg2[1] + 60) / 60);
-                        progressBar3.setProgress(arg3[0] / Math.PI);
-                        progressBar4.setProgress(arg3[1] / Math.PI);
-                    }
-                });
-            }
-
             // image
             {
                 targetInfo.imageProperty().addListener(
@@ -661,17 +779,78 @@ public class PlayList implements Initializable {
             // cursor
             {
                 if (current != null) {
-                    current.setCursor(false);
+                    current.cursorProperty().setValue(Boolean.FALSE);
                 }
-                targetInfo.setCursor(true);
+                targetInfo.cursorProperty().setValue(Boolean.TRUE);
             }
-
-            mp.play();
 
             current = targetInfo;
             player = mp;
         }
     }
+
+    private void prepareLayoutTimer() {
+        final double opacity = controlTime.getOpacity();
+        if (controlTime.getUserData() == null) {
+            controlTime.setUserData(Double.valueOf(opacity));
+        }
+        double tmp = opacity - 0.1;
+        if (tmp < 0) {
+            tmp = opacity + 0.1;
+        }
+        controlTime.setOpacity(tmp);
+    }
+
+    private void layoutTimer() {
+        Object obj = controlTime.getUserData();
+        if (obj instanceof Double) {
+            double opacity = ((Double) obj).doubleValue();
+            if (controlTime.getOpacity() != opacity) {
+                controlTime.setOpacity(opacity);
+            }
+        }
+    }
+
+    private void updateItems(String text, List<MediaInfo> items) {
+        Lock lock = listLock.writeLock();
+        try {
+            lock.lock();
+            pathText.setText(text);
+            mediaList.getItems().clear();
+            mediaList.getItems().addAll(items);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private final Service<Boolean> loadMediaService = new Service<Boolean>() {
+
+        @Override
+        protected Task<Boolean> createTask() {
+            return new Task<Boolean>() {
+
+                @Override
+                protected Boolean call() throws Exception {
+                    List<MediaInfo> items = getItemsSnapshot();
+                    int i = 0;
+                    for (; i < items.size(); i++) {
+                        MediaInfo info = items.get(i);
+                        if (!info.loaded()) {
+                            if (!isCancelled()) {
+                                if (info.load()) {
+                                    // expect chain loading
+                                    break;
+                                }
+                                onErrorLoadMedia(info);
+                                Thread.yield();
+                            }
+                        }
+                    }
+                    return Boolean.TRUE;
+                }
+            };
+        }
+    };
 
     private List<MediaInfo> getItemsSnapshot() {
         List<MediaInfo> ret;
@@ -683,6 +862,9 @@ public class PlayList implements Initializable {
             lLock.unlock();
         }
         return ret;
+    }
+
+    private void onErrorLoadMedia(MediaInfo info) {
     }
 
     private void requestScroll(final int row) {
@@ -704,175 +886,6 @@ public class PlayList implements Initializable {
                     }
                 }
             });
-        }
-    }
-
-    private enum Control {
-        PLAY, PREV, NEXT, SPECIFY;
-    }
-
-    public static class MediaInfo {
-
-        private final Media media;
-
-        private final String url;
-
-        private Duration duration;
-
-        private final SimpleBooleanProperty cursorProperty = new SimpleBooleanProperty();
-
-        private ObjectProperty<Duration> durationProperty;
-
-        private ObjectProperty<Image> imageProperty;
-
-        public MediaInfo(Media media) {
-            this.media = media;
-            url = media.getSource();
-        }
-
-        public Media getMedia() {
-            return media;
-        }
-
-        public SimpleBooleanProperty cursorProperty() {
-            return cursorProperty;
-        }
-
-        public void setCursor(boolean cursor) {
-            cursorProperty.set(cursor);
-        }
-
-        public Boolean getExist() {
-            return Boolean.TRUE;
-        }
-
-        private String getTitle() {
-            return (String) media.getMetadata().get("title");
-        }
-
-        public StringProperty titleProperty() {
-            String title = getTitle();
-            final StringProperty ret = new SimpleStringProperty(title);
-            if (title == null) {
-                media.getMetadata().addListener(new MapChangeListener<String, Object>() {
-
-                    @Override
-                    public void onChanged(Change<? extends String, ? extends Object> change) {
-                        String title = getTitle();
-                        if (title != null) {
-                            ret.setValue(title);
-                        }
-                    }
-                });
-            }
-            return ret;
-        }
-
-        private String getArtist() {
-            return (String) media.getMetadata().get("artist");
-        }
-
-        public StringProperty artistProperty() {
-            String atrist = getArtist();
-            final StringProperty ret = new SimpleStringProperty(atrist);
-            if (atrist == null) {
-                media.getMetadata().addListener(new MapChangeListener<String, Object>() {
-
-                    @Override
-                    public void onChanged(Change<? extends String, ? extends Object> change) {
-                        String artist = getArtist();
-                        if (artist != null) {
-                            ret.setValue(artist);
-                        }
-                    }
-                });
-            }
-            return ret;
-        }
-
-        private Duration getDuration() {
-            if (duration != null) {
-                return duration;
-            }
-            Duration dur = (Duration) media.getMetadata().get("duration");
-            if (dur != null) {
-                duration = dur;
-            }
-            return duration;
-        }
-
-        public void setDuration(Duration duration) {
-            if (durationProperty != null) {
-                durationProperty.setValue(duration);
-            }
-            this.duration = duration;
-        }
-
-        public ObjectProperty<Duration> durationProperty() {
-            if (durationProperty == null) {
-                Duration duration = getDuration();
-                durationProperty = new SimpleObjectProperty<>(duration);
-                if (duration == null) {
-                    media.getMetadata().addListener(new MapChangeListener<String, Object>() {
-
-                        @Override
-                        public void onChanged(Change<? extends String, ? extends Object> change) {
-                            Duration duration = getDuration();
-                            if (duration != null) {
-                                durationProperty.setValue(duration);
-                            }
-                        }
-                    });
-                }
-            }
-            return durationProperty;
-        }
-
-        private Image getImage() {
-            return (Image) media.getMetadata().get("image");
-        }
-
-        public ObjectProperty<Image> imageProperty() {
-            if (imageProperty == null) {
-                Image image = getImage();
-                imageProperty = new SimpleObjectProperty<>(image);
-                if (image == null) {
-                    media.getMetadata().addListener(new MapChangeListener<String, Object>() {
-
-                        @Override
-                        public void onChanged(Change<? extends String, ? extends Object> change) {
-                            Image image = getImage();
-                            if (image != null) {
-                                imageProperty.setValue(image);
-                            }
-                        }
-                    });
-                }
-            }
-            return imageProperty;
-        }
-
-        @Override
-        public int hashCode() {
-            if (url == null) {
-                return -1;
-            }
-            return url.hashCode();
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (!(obj instanceof MediaInfo)) {
-                return false;
-            }
-            MediaInfo arg = (MediaInfo) obj;
-            if (url == arg.url) {
-                return true;
-            }
-            if ((url == null) || (arg.url == null)) {
-                return false;
-            }
-            return url.equals(arg.url);
         }
     }
 }

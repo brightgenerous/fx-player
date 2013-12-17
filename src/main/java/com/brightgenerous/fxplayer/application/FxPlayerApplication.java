@@ -20,6 +20,11 @@ public class FxPlayerApplication extends Application {
     public void start(Stage stage) throws Exception {
         String title = ResourceBundle.getBundle(getClass().getName(), Locale.getDefault())
                 .getString("title");
+        String version = ResourceBundle.getBundle(getClass().getName(), Locale.getDefault())
+                .getString("version");
+        if ((version != null) && !version.isEmpty()) {
+            title = title + " - " + version;
+        }
         StageBuilder.create().title(title)
                 .icons(new Image(getClass().getResourceAsStream("icon.png"))).applyTo(stage);
         Utils.move(stage, PlayList.class);

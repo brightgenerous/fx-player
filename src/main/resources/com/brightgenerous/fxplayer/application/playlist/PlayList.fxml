@@ -14,7 +14,9 @@
   <HBox id="control-pane">
     <Button text="%control.directory-chooser"
         onAction="#controlDirectoryChooser" mnemonicParsing="true" />
-    <TextField fx:id="directoryText" id="directory-text" editable="false" HBox.hgrow="ALWAYS" />
+    <Button text="%control.file-chooser"
+        onAction="#controlFileChooser" mnemonicParsing="true" />
+    <TextField fx:id="pathText" id="path-text" HBox.hgrow="ALWAYS" />
   </HBox>
   <TableView fx:id="mediaList" VBox.vgrow="ALWAYS"
       tableMenuButtonVisible="true">
@@ -33,6 +35,9 @@
       </TableColumn>
       <TableColumn fx:id="tableColumnDuration" text="%media.duration" prefWidth="80" sortable="false">
         <cellValueFactory><PropertyValueFactory property="duration" /></cellValueFactory>
+      </TableColumn>
+      <TableColumn text="%media.description" prefWidth="200" sortable="false">
+        <cellValueFactory><PropertyValueFactory property="description" /></cellValueFactory>
       </TableColumn>
     </columns>
   </TableView>
