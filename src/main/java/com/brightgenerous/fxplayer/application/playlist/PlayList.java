@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.ResourceBundle;
 import java.util.concurrent.locks.Lock;
@@ -282,10 +283,12 @@ public class PlayList implements Initializable {
                     }
                 }
 
-                String newTime = LabelUtils.milliSecToTime(newMillis);
                 String oldTime = LabelUtils.milliSecToTime(oldMillis);
+                String newTime = LabelUtils.milliSecToTime(newMillis);
 
-                log("Control Time   : old => " + oldTime + " , new => " + newTime);
+                if (!oldTime.equals(newTime)) {
+                    log("Control Time    : old => " + oldTime + " , new => " + newTime);
+                }
             }
         });
 
@@ -298,10 +301,12 @@ public class PlayList implements Initializable {
                     return;
                 }
 
-                int newVol = (int) (newValue.doubleValue() * 100);
                 int oldVol = (int) (oldValue.doubleValue() * 100);
+                int newVol = (int) (newValue.doubleValue() * 100);
 
-                log("Control Volume : old => " + oldVol + " , new => " + newVol);
+                if (oldVol != newVol) {
+                    log("Control Volume  : old => " + oldVol + " , new => " + newVol);
+                }
             }
         });
 
@@ -659,7 +664,7 @@ public class PlayList implements Initializable {
                 }
                 if (playing) {
 
-                    log("Control Pause  : " + current.getDescription());
+                    log("Control Pause   : " + current.getDescription());
 
                     player.pause();
 
@@ -673,7 +678,7 @@ public class PlayList implements Initializable {
                         }
                     }
 
-                    log("Control Resume : " + current.getDescription());
+                    log("Control Resume  : " + current.getDescription());
 
                     player.play();
 
@@ -724,6 +729,8 @@ public class PlayList implements Initializable {
                 targetInfo = items.get(index);
                 scrollTo = index;
             }
+
+            log("Control Request : " + targetInfo.getDescription());
 
             final MediaPlayer mp;
             try {
@@ -804,7 +811,7 @@ public class PlayList implements Initializable {
 
                     // play
                     {
-                        log("Control Play   : " + targetInfo.getDescription());
+                        log("Control Play    : " + targetInfo.getDescription());
 
                         mp.play();
                     }
@@ -827,14 +834,14 @@ public class PlayList implements Initializable {
                     @Override
                     public void changed(ObservableValue<? extends Number> observable,
                             Number oldValue, Number newValue) {
-                        int newVol = (int) (newValue.doubleValue() * 100);
-                        int oldVol = (int) (oldValue.doubleValue() * 100);
-                        if (newVol != oldVol) {
-                            volumeText.setText(String.format("%3d%%", Integer.valueOf(newVol)));
+                        String newVol = LabelUtils.toVolume(newValue.doubleValue());
+                        String oldVol = LabelUtils.toVolume(oldValue.doubleValue());
+                        if (!oldVol.equals(newVol)) {
+                            volumeText.setText(newVol);
                         }
                     }
                 });
-                volumeText.setText(String.format("%3d%%", Integer.valueOf((int) (volume * 100))));
+                volumeText.setText(LabelUtils.toVolume(volume));
             }
 
             {
@@ -872,7 +879,7 @@ public class PlayList implements Initializable {
                         totalDuration.addListener(new InvalidationListener() {
 
                             @Override
-                            public void invalidated(Observable arg0) {
+                            public void invalidated(Observable observable) {
                                 layoutTimer();
                             }
                         });
@@ -1041,6 +1048,6 @@ public class PlayList implements Initializable {
     }
 
     private void log(String str) {
-        logText.appendText(str + "\n");
+        logText.appendText(String.format("%1$tH:%1$tM:%1$tS:%1$tL - %2$s%n", new Date(), str));
     }
 }
