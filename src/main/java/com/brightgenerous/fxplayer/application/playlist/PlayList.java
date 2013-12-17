@@ -17,6 +17,7 @@ import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.beans.value.WeakChangeListener;
+import javafx.collections.MapChangeListener.Change;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import javafx.embed.swing.SwingFXUtils;
@@ -25,6 +26,9 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.SceneBuilder;
 import javafx.scene.control.Button;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.Slider;
@@ -32,25 +36,35 @@ import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextAreaBuilder;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
+import javafx.scene.layout.VBoxBuilder;
 import javafx.scene.media.AudioSpectrumListener;
+import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.MediaPlayer.Status;
 import javafx.scene.text.Text;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.StageBuilder;
+import javafx.stage.WindowEvent;
 import javafx.util.Callback;
 import javafx.util.Duration;
 
 import javax.imageio.ImageIO;
 
 import com.brightgenerous.fxplayer.application.Utils.Inject;
+import com.brightgenerous.fxplayer.application.playlist.MediaInfo.MetaChangeListener;
 
 public class PlayList implements Initializable {
 
@@ -65,9 +79,6 @@ public class PlayList implements Initializable {
 
     @FXML
     private TextField pathText;
-
-    @FXML
-    private Text infoText;
 
     @FXML
     private TableView<MediaInfo> mediaList;
@@ -97,16 +108,16 @@ public class PlayList implements Initializable {
     private Text volumeText;
 
     @FXML
-    private ProgressBar progressBar1;
+    private ProgressBar spectrumBar1;
 
     @FXML
-    private ProgressBar progressBar2;
+    private ProgressBar spectrumBar2;
 
     @FXML
-    private ProgressBar progressBar3;
+    private ProgressBar spectrumBar3;
 
     @FXML
-    private ProgressBar progressBar4;
+    private ProgressBar spectrumBar4;
 
     private final DirectoryChooser directoryChooser = new DirectoryChooser();
 
@@ -119,7 +130,7 @@ public class PlayList implements Initializable {
             String userHome = System.getProperty("user.home");
             if (userHome != null) {
                 File tmp = new File(userHome);
-                if (tmp.exists() && tmp.isDirectory()) {
+                if (tmp.exists() && tmp.isDirectory() && tmp.canRead()) {
                     home = tmp;
                 }
             }
@@ -141,6 +152,10 @@ public class PlayList implements Initializable {
     private long lastCreate = Long.MIN_VALUE;
 
     private static final double DEFAULT_VOLUME = 0.5d;
+
+    private Stage logWindow;
+
+    private TextArea logText;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -251,10 +266,42 @@ public class PlayList implements Initializable {
             @Override
             public void changed(ObservableValue<? extends Number> observable, Number oldValue,
                     Number newValue) {
-                MediaPlayer mp = player;
-                if ((mp != null) && (controlTime.isValueChanging())) {
-                    mp.seek(Duration.millis(newValue.doubleValue()));
+                if (!controlTime.isValueChanging()) {
+                    return;
                 }
+
+                double oldMillis = oldValue.doubleValue();
+                double newMillis = newValue.doubleValue();
+                {
+                    MediaPlayer mp = player;
+                    if (mp != null) {
+                        double cm = mp.getCurrentTime().toMillis();
+                        if (0.1 < Math.abs(cm - newMillis)) {
+                            mp.seek(Duration.millis(newValue.doubleValue()));
+                        }
+                    }
+                }
+
+                String newTime = LabelUtils.milliSecToTime(newMillis);
+                String oldTime = LabelUtils.milliSecToTime(oldMillis);
+
+                log("Control Time   : old => " + oldTime + " , new => " + newTime);
+            }
+        });
+
+        controlVolume.valueProperty().addListener(new ChangeListener<Number>() {
+
+            @Override
+            public void changed(ObservableValue<? extends Number> observable, Number oldValue,
+                    Number newValue) {
+                if (!controlVolume.isValueChanging()) {
+                    return;
+                }
+
+                int newVol = (int) (newValue.doubleValue() * 100);
+                int oldVol = (int) (oldValue.doubleValue() * 100);
+
+                log("Control Volume : old => " + oldVol + " , new => " + newVol);
             }
         });
 
@@ -262,18 +309,16 @@ public class PlayList implements Initializable {
 
             @Override
             public void handle(MouseEvent event) {
-                if (1 < event.getClickCount()) {
-                    if (saveService.isRunning()) {
-                        return;
-                    }
-                    Object source = event.getSource();
-                    if (source instanceof ImageView) {
-                        ImageView imageView = (ImageView) source;
-                        final Image image = imageView.getImage();
-                        if (image != null) {
-                            if (!saveService.isRunning()) {
-                                saveService.restart();
-                            }
+                if ((event.getClickCount() <= 1) || saveService.isRunning()) {
+                    return;
+                }
+                Object source = event.getSource();
+                if (source instanceof ImageView) {
+                    ImageView imageView = (ImageView) source;
+                    final Image image = imageView.getImage();
+                    if (image != null) {
+                        if (!saveService.isRunning()) {
+                            saveService.restart();
                         }
                     }
                 }
@@ -296,13 +341,31 @@ public class PlayList implements Initializable {
 
             @Override
             public void handle(KeyEvent event) {
-                if (event.getCode().equals(KeyCode.ENTER)) {
-                    if (!loadHttpService.isRunning()) {
-                        loadHttpService.restart();
-                    }
+                if (event.getCode().equals(KeyCode.ENTER) && !loadRunning()) {
+                    loadHttpService.restart();
                 }
             }
         });
+
+        {
+            logText = TextAreaBuilder.create().wrapText(true).editable(false).build();
+            VBox.setVgrow(logText, Priority.ALWAYS);
+            Parent parent = VBoxBuilder.create().children(logText).build();
+            Scene scene = SceneBuilder.create().root(parent).build();
+            logWindow = StageBuilder.create().width(640).height(360).scene(scene)
+                    .icons(owner.getIcons()).build();
+            logWindow.setTitle(bundle.getString("log.title"));
+            // logWindow.initOwner(owner);
+            logWindow.initModality(Modality.NONE);
+            owner.addEventHandler(WindowEvent.WINDOW_CLOSE_REQUEST,
+                    new EventHandler<WindowEvent>() {
+
+                        @Override
+                        public void handle(WindowEvent event) {
+                            logWindow.close();
+                        }
+                    });
+        }
     }
 
     private final Service<Boolean> saveService = new Service<Boolean>() {
@@ -369,7 +432,13 @@ public class PlayList implements Initializable {
                     }
                     try {
                         ImageIO.write(SwingFXUtils.fromFXImage(image, null), "png", out);
+
+                        log("Save File : " + out.getAbsolutePath());
+
                     } catch (IOException e) {
+
+                        log("Save File Failure : " + out.getAbsolutePath());
+
                     }
                     return Boolean.TRUE;
                 }
@@ -378,18 +447,52 @@ public class PlayList implements Initializable {
     };
 
     @FXML
+    protected void controlLog() {
+        if (logWindow.isShowing()) {
+            logWindow.close();
+        } else {
+            logWindow.show();
+        }
+    }
+
+    @FXML
     protected void controlDirectoryChooser() {
-        if (!loadDirectoryService.isRunning()) {
+        if (!loadRunning()) {
             loadDirectoryService.restart();
         }
     }
 
     @FXML
     protected void controlFileChooser() {
-        if (!loadFileService.isRunning()) {
+        if (!loadRunning()) {
             loadFileService.restart();
         }
     }
+
+    private boolean loadRunning() {
+        return loadDirectoryService.isRunning() || loadFileService.isRunning()
+                || loadHttpService.isRunning();
+    }
+
+    private final MetaChangeListener metaChangeListener = new MetaChangeListener() {
+
+        @Override
+        public void onChanged(Media media, Change<? extends String, ? extends Object> change) {
+            String key = change.getKey();
+
+            if (change.wasAdded()) {
+                log("Meta Add : key => " + key + " , value => " + change.getValueAdded());
+            } else {
+                log("Meta Del : key => " + key + " , value => " + change.getValueRemoved());
+            }
+
+            if (key.equals("raw metadata")) {
+                if (!loadMediaService.isRunning()) {
+                    loadMediaService.restart();
+                }
+            }
+        }
+    };
 
     private final Service<Boolean> loadDirectoryService = new Service<Boolean>() {
 
@@ -412,7 +515,14 @@ public class PlayList implements Initializable {
                         }
                     }
 
-                    List<MediaInfo> infos = PlayListReader.fromDirectory(dir, loadMediaService);
+                    List<MediaInfo> infos = PlayListReader.fromDirectory(dir, metaChangeListener);
+
+                    if (infos == null) {
+                        log("Load Directory Failure : " + dir.getAbsolutePath());
+                    } else {
+                        log("Load Directory : " + dir.getAbsolutePath());
+                    }
+
                     if (infos == null) {
                         return Boolean.FALSE;
                     }
@@ -446,7 +556,14 @@ public class PlayList implements Initializable {
                         }
                     }
 
-                    List<MediaInfo> infos = PlayListReader.fromFile(file, loadMediaService);
+                    List<MediaInfo> infos = PlayListReader.fromFile(file, metaChangeListener);
+
+                    if (infos == null) {
+                        log("Load File Failure : " + file.getAbsolutePath());
+                    } else {
+                        log("Load File : " + file.getAbsolutePath());
+                    }
+
                     if (infos == null) {
                         return Boolean.FALSE;
                     }
@@ -471,7 +588,14 @@ public class PlayList implements Initializable {
                 protected Boolean call() throws Exception {
                     String text = pathText.getText().trim();
 
-                    List<MediaInfo> infos = PlayListReader.fromURL(text, loadMediaService);
+                    List<MediaInfo> infos = PlayListReader.fromURL(text, metaChangeListener);
+
+                    if (infos == null) {
+                        log("Load URL Failure : " + text);
+                    } else {
+                        log("Load URL : " + text);
+                    }
+
                     if (infos == null) {
                         return Boolean.FALSE;
                     }
@@ -523,7 +647,9 @@ public class PlayList implements Initializable {
     }
 
     private void controlPlayer(Control control, MediaInfo info, boolean chain) {
+
         player_block: {
+
             if (control.equals(Control.PLAY)) {
                 boolean playing = false;
                 boolean paused = false;
@@ -532,7 +658,11 @@ public class PlayList implements Initializable {
                     paused = player.getStatus().equals(Status.PAUSED);
                 }
                 if (playing) {
+
+                    log("Control Pause  : " + current.getDescription());
+
                     player.pause();
+
                     break player_block;
                 } else if (paused) {
                     if (current != null) {
@@ -542,7 +672,11 @@ public class PlayList implements Initializable {
                             requestScroll(scrollTo);
                         }
                     }
+
+                    log("Control Resume : " + current.getDescription());
+
                     player.play();
+
                     break player_block;
                 }
             }
@@ -658,18 +792,20 @@ public class PlayList implements Initializable {
                         mp.setAudioSpectrumListener(new AudioSpectrumListener() {
 
                             @Override
-                            public void spectrumDataUpdate(double arg0, double arg1, float[] arg2,
-                                    float[] arg3) {
-                                progressBar1.setProgress((arg2[0] + 60) / 60);
-                                progressBar2.setProgress((arg2[1] + 60) / 60);
-                                progressBar3.setProgress(arg3[0] / Math.PI);
-                                progressBar4.setProgress(arg3[1] / Math.PI);
+                            public void spectrumDataUpdate(double timestamp, double duration,
+                                    float[] magnitudes, float[] phases) {
+                                spectrumBar1.setProgress((magnitudes[0] + 60) / 60);
+                                spectrumBar2.setProgress((magnitudes[1] + 60) / 60);
+                                spectrumBar3.setProgress(phases[0] / Math.PI);
+                                spectrumBar4.setProgress(phases[1] / Math.PI);
                             }
                         });
                     }
 
                     // play
                     {
+                        log("Control Play   : " + targetInfo.getDescription());
+
                         mp.play();
                     }
                 }
@@ -691,8 +827,11 @@ public class PlayList implements Initializable {
                     @Override
                     public void changed(ObservableValue<? extends Number> observable,
                             Number oldValue, Number newValue) {
-                        int vol = (int) (newValue.doubleValue() * 100);
-                        volumeText.setText(String.format("%3d%%", Integer.valueOf(vol)));
+                        int newVol = (int) (newValue.doubleValue() * 100);
+                        int oldVol = (int) (oldValue.doubleValue() * 100);
+                        if (newVol != oldVol) {
+                            volumeText.setText(String.format("%3d%%", Integer.valueOf(newVol)));
+                        }
                     }
                 });
                 volumeText.setText(String.format("%3d%%", Integer.valueOf((int) (volume * 100))));
@@ -748,12 +887,23 @@ public class PlayList implements Initializable {
                         @Override
                         public void changed(ObservableValue<? extends Duration> observable,
                                 Duration oldValue, Duration newValue) {
-                            if (!controlTime.isValueChanging()) {
-                                double millis = newValue.toMillis();
-                                controlTime.setValue(millis);
-                                int sec = (int) (millis / 1000);
-                                timeText.setText(String.format("%3d:%02d",
-                                        Integer.valueOf(sec / 60), Integer.valueOf(sec % 60)));
+                            if (controlTime.isValueChanging()) {
+                                return;
+                            }
+
+                            double newMillis = newValue.toMillis();
+                            double oldMillis = controlTime.getValue();
+                            if (newMillis == oldMillis) {
+                                return;
+                            }
+
+                            controlTime.setValue(newMillis);
+
+                            String newTime = LabelUtils.milliSecToTime(newMillis);
+                            String oldTime = timeText.getText();
+
+                            if (!newTime.equals(oldTime)) {
+                                timeText.setText(newTime);
                             }
                         }
                     });
@@ -811,11 +961,11 @@ public class PlayList implements Initializable {
         }
     }
 
-    private void updateItems(String text, List<MediaInfo> items) {
+    private void updateItems(String path, List<MediaInfo> items) {
         Lock lock = listLock.writeLock();
         try {
             lock.lock();
-            pathText.setText(text);
+            pathText.setText(path);
             mediaList.getItems().clear();
             mediaList.getItems().addAll(items);
         } finally {
@@ -868,24 +1018,29 @@ public class PlayList implements Initializable {
     }
 
     private void requestScroll(final int row) {
-        if (0 <= row) {
-            Platform.runLater(new Runnable() {
-
-                @Override
-                public void run() {
-                    Lock lLock = listLock.readLock();
-                    try {
-                        lLock.lock();
-                        int size = mediaList.getItems().size();
-                        if (row < size) {
-                            mediaList.getSelectionModel().select(row);
-                            mediaList.scrollTo(row);
-                        }
-                    } finally {
-                        lLock.unlock();
-                    }
-                }
-            });
+        if (row < 0) {
+            return;
         }
+        Platform.runLater(new Runnable() {
+
+            @Override
+            public void run() {
+                Lock lLock = listLock.readLock();
+                try {
+                    lLock.lock();
+                    int size = mediaList.getItems().size();
+                    if (row < size) {
+                        mediaList.getSelectionModel().select(row);
+                        mediaList.scrollTo(row);
+                    }
+                } finally {
+                    lLock.unlock();
+                }
+            }
+        });
+    }
+
+    private void log(String str) {
+        logText.appendText(str + "\n");
     }
 }

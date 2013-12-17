@@ -11,14 +11,14 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
 
-import javafx.concurrent.Service;
+import com.brightgenerous.fxplayer.application.playlist.MediaInfo.MetaChangeListener;
 
 class PlayListReader {
 
     private PlayListReader() {
     }
 
-    public static List<MediaInfo> fromDirectory(File dir, Service<?> onLoaded) {
+    public static List<MediaInfo> fromDirectory(File dir, MetaChangeListener metaChangeListener) {
         if ((dir == null) || !dir.exists() || !dir.isDirectory() || !dir.canRead()) {
             return null;
         }
@@ -31,14 +31,14 @@ class PlayListReader {
                 } catch (MalformedURLException e) {
                 }
                 if (path != null) {
-                    ret.add(new MediaInfo(new MediaSource(path, file.getName()), onLoaded));
+                    ret.add(new MediaInfo(new MediaSource(path, file.getName()), metaChangeListener));
                 }
             }
         }
         return ret;
     }
 
-    public static List<MediaInfo> fromFile(File file, Service<?> onLoaded) {
+    public static List<MediaInfo> fromFile(File file, MetaChangeListener metaChangeListener) {
         if ((file == null) || !file.exists() || !file.canRead()) {
             return null;
         }
@@ -98,7 +98,7 @@ class PlayListReader {
                 }
                 if (path != null) {
                     String desc = (strs[1] == null) ? strs[0] : strs[1];
-                    ret.add(new MediaInfo(new MediaSource(path, desc), onLoaded));
+                    ret.add(new MediaInfo(new MediaSource(path, desc), metaChangeListener));
                 }
             }
         } catch (IOException e) {
@@ -106,7 +106,7 @@ class PlayListReader {
         return ret;
     }
 
-    public static List<MediaInfo> fromURL(String str, Service<?> onLoaded) {
+    public static List<MediaInfo> fromURL(String str, MetaChangeListener metaChangeListener) {
         if ((str == null) || !str.startsWith("http://")) {
             return null;
         }
@@ -164,7 +164,7 @@ class PlayListReader {
                 }
                 if (path != null) {
                     String desc = (strs[1] == null) ? strs[0] : strs[1];
-                    ret.add(new MediaInfo(new MediaSource(path, desc), onLoaded));
+                    ret.add(new MediaInfo(new MediaSource(path, desc), metaChangeListener));
                 }
             }
         } catch (IOException e) {

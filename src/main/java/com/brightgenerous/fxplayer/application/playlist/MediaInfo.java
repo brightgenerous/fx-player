@@ -9,13 +9,18 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.beans.value.WritableValue;
 import javafx.collections.MapChangeListener;
-import javafx.concurrent.Service;
+import javafx.collections.MapChangeListener.Change;
 import javafx.scene.image.Image;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaException;
 import javafx.util.Duration;
 
 public class MediaInfo {
+
+    public static interface MetaChangeListener {
+
+        void onChanged(Media media, Change<? extends String, ? extends Object> change);
+    }
 
     private Media media;
 
@@ -33,11 +38,11 @@ public class MediaInfo {
 
     private boolean tryLoaded;
 
-    private final Service<?> loadNextService;
+    private final MetaChangeListener metaChangeListener;
 
-    public MediaInfo(IMediaSource source, Service<?> loadNextService) {
+    public MediaInfo(IMediaSource source, MetaChangeListener metaChangeListener) {
         this.source = source;
-        this.loadNextService = loadNextService;
+        this.metaChangeListener = metaChangeListener;
     }
 
     public boolean loaded() {
@@ -62,54 +67,55 @@ public class MediaInfo {
             } catch (IllegalArgumentException | MediaException e) {
                 throw new MediaLoadException(e);
             }
-            {
-                media.getMetadata().addListener(new MapChangeListener<String, Object>() {
+            media.getMetadata().addListener(new MapChangeListener<String, Object>() {
 
-                    @Override
-                    public void onChanged(Change<? extends String, ? extends Object> change) {
-                        {
-                            String title = (String) media.getMetadata().get("title");
-                            if (title != null) {
-                                titleProperty.setValue(title);
+                @Override
+                public void onChanged(Change<? extends String, ? extends Object> change) {
+                    if (change.wasAdded()) {
+                        String key = change.getKey();
+                        switch (key) {
+                            case "title": {
+                                String title = (String) change.getMap().get(key);
+                                if (title != null) {
+                                    titleProperty.setValue(title);
+                                }
+                                break;
+                            }
+                            case "artist": {
+                                String artist = (String) change.getMap().get(key);
+                                if (artist != null) {
+                                    artistProperty.setValue(artist);
+                                }
+                                break;
+                            }
+                            case "duration": {
+                                Duration duration = (Duration) change.getMap().get(key);
+                                if (duration != null) {
+                                    durationProperty.setValue(duration);
+                                }
+                                break;
+                            }
+                            case "image": {
+                                Image image = (Image) change.getMap().get(key);
+                                if (image != null) {
+                                    imageProperty.setValue(image);
+                                }
+                                break;
                             }
                         }
-                        {
-                            String artist = (String) media.getMetadata().get("artist");
-                            if (artist != null) {
-                                artistProperty.setValue(artist);
-                            }
-                        }
-                        {
-                            Duration duration = (Duration) media.getMetadata().get("duration");
-                            if (duration != null) {
-                                durationProperty.setValue(duration);
-                            }
-                        }
-                        {
-                            Image image = (Image) media.getMetadata().get("image");
-                            if (image != null) {
-                                imageProperty.setValue(image);
-                            }
-                        }
-
-                        // go to next loading
-                        loadNext();
-
                     }
-                });
-                titleProperty.setValue((String) media.getMetadata().get("title"));
-                artistProperty.setValue((String) media.getMetadata().get("artist"));
-                durationProperty.setValue((Duration) media.getMetadata().get("duration"));
-                imageProperty.setValue((Image) media.getMetadata().get("image"));
-            }
+                    if (metaChangeListener != null) {
+                        metaChangeListener.onChanged(media, change);
+                    }
+                }
+            });
+
+            titleProperty.setValue((String) media.getMetadata().get("title"));
+            artistProperty.setValue((String) media.getMetadata().get("artist"));
+            durationProperty.setValue((Duration) media.getMetadata().get("duration"));
+            imageProperty.setValue((Image) media.getMetadata().get("image"));
         }
         return media;
-    }
-
-    private void loadNext() {
-        if ((loadNextService != null) && !loadNextService.isRunning()) {
-            loadNextService.restart();
-        }
     }
 
     public Boolean getExist() {
