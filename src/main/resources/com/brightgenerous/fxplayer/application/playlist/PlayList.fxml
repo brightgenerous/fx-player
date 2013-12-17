@@ -25,10 +25,10 @@
       <TableColumn fx:id="tableColumnIndex" text="%media.index" prefWidth="40" sortable="false">
         <cellValueFactory><PropertyValueFactory property="exist" /></cellValueFactory>
       </TableColumn>
-      <TableColumn fx:id="tableColumnCursor" prefWidth="60" sortable="false">
+      <TableColumn fx:id="tableColumnCursor" prefWidth="70" sortable="false">
         <cellValueFactory><PropertyValueFactory property="cursor" /></cellValueFactory>
       </TableColumn>
-      <TableColumn text="%media.title" prefWidth="275" sortable="false">
+      <TableColumn text="%media.title" prefWidth="265" sortable="false">
         <cellValueFactory><PropertyValueFactory property="title" /></cellValueFactory>
       </TableColumn>
       <TableColumn text="%media.artist" prefWidth="170" sortable="false">

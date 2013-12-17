@@ -17,7 +17,6 @@ import javafx.beans.Observable;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
-import javafx.beans.value.WeakChangeListener;
 import javafx.collections.MapChangeListener.Change;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
@@ -141,7 +140,7 @@ public class PlayList implements Initializable {
             fileChooser.setInitialDirectory(home);
             saveChooser.setInitialDirectory(home);
         }
-        saveChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PNG", "*.png*"));
+        saveChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PNG", "*.png"));
     }
 
     private final ReadWriteLock listLock = new ReentrantReadWriteLock();
@@ -229,6 +228,7 @@ public class PlayList implements Initializable {
 
                                 if ((item != null) && item.booleanValue()) {
                                     setText(bundle.getString("media.crusor"));
+                                    setAlignment(Pos.CENTER);
                                 } else {
                                     setText(null);
                                 }
@@ -777,6 +777,7 @@ public class PlayList implements Initializable {
                     imageView.setImage(new Image(PlayList.class.getResourceAsStream("dame.png")));
                 }
             });
+
             mp.setOnReady(new Runnable() {
 
                 @Override
@@ -786,9 +787,109 @@ public class PlayList implements Initializable {
                         targetInfo.durationProperty().setValue(dur);
                     }
 
+                    // time max
+                    {
+                        final SimpleDoubleProperty totalDuration;
+                        {
+                            if ((dur == null) || dur.equals(Duration.UNKNOWN)) {
+                                dur = targetInfo.durationProperty().getValue();
+                            }
+                            if ((dur != null) && !dur.equals(Duration.UNKNOWN)) {
+                                totalDuration = new SimpleDoubleProperty(dur.toMillis());
+                            } else {
+                                totalDuration = new SimpleDoubleProperty();
+                                targetInfo.durationProperty().addListener(
+                                        new ChangeListener<Duration>() {
+
+                                            @Override
+                                            public void changed(
+                                                    ObservableValue<? extends Duration> observable,
+                                                    Duration oldValue, Duration newValue) {
+                                                totalDuration.set(newValue.toMillis());
+                                                targetInfo.durationProperty().removeListener(this);
+                                            }
+                                        });
+                            }
+                        }
+                        controlTime.maxProperty().unbind();
+                        Double v = totalDuration.getValue();
+                        if ((v != null) && (0 < v.doubleValue())) {
+                            controlTime.maxProperty().set(v.doubleValue());
+                        } else {
+                            // OMAJINAI!!!
+                            prepareLayoutTimer();
+                            totalDuration.addListener(new InvalidationListener() {
+
+                                @Override
+                                public void invalidated(Observable observable) {
+                                    layoutTimer();
+                                }
+                            });
+                        }
+                        controlTime.maxProperty().bind(totalDuration);
+                    }
+
+                    // time current
+                    {
+                        mp.currentTimeProperty().addListener(new ChangeListener<Duration>() {
+
+                            @Override
+                            public void changed(ObservableValue<? extends Duration> observable,
+                                    Duration oldValue, Duration newValue) {
+                                if (controlTime.isValueChanging()) {
+                                    return;
+                                }
+
+                                double newMillis = newValue.toMillis();
+                                double oldMillis = controlTime.getValue();
+                                if (newMillis == oldMillis) {
+                                    return;
+                                }
+
+                                controlTime.setValue(newMillis);
+
+                                String newTime = LabelUtils.milliSecToTime(newMillis);
+                                String oldTime = timeText.getText();
+
+                                if (!newTime.equals(oldTime)) {
+                                    timeText.setText(newTime);
+                                }
+                            }
+                        });
+                    }
+
+                    // image
+                    {
+                        targetInfo.imageProperty().addListener(new ChangeListener<Image>() {
+
+                            @Override
+                            public void changed(ObservableValue<? extends Image> observable,
+                                    Image oldValue, Image newValue) {
+                                imageView.setImage(newValue);
+                                requestScroll(scrollTo);
+                                targetInfo.imageProperty().removeListener(this);
+                            }
+                        });
+                        imageView.setImage(targetInfo.imageProperty().get());
+                        requestScroll(scrollTo);
+                    }
+
                     // volume
                     {
-                        mp.setVolume(volume);
+                        controlVolume.valueProperty().unbind();
+                        mp.volumeProperty().addListener(new ChangeListener<Number>() {
+
+                            @Override
+                            public void changed(ObservableValue<? extends Number> observable,
+                                    Number oldValue, Number newValue) {
+                                String newVol = LabelUtils.toVolume(newValue.doubleValue());
+                                String oldVol = LabelUtils.toVolume(oldValue.doubleValue());
+                                if (!oldVol.equals(newVol)) {
+                                    volumeText.setText(newVol);
+                                }
+                            }
+                        });
+                        volumeText.setText(LabelUtils.toVolume(volume));
                         controlVolume.valueProperty().bindBidirectional(mp.volumeProperty());
                     }
 
@@ -817,6 +918,7 @@ public class PlayList implements Initializable {
                     }
                 }
             });
+
             mp.setOnEndOfMedia(new Runnable() {
 
                 @Override
@@ -828,109 +930,7 @@ public class PlayList implements Initializable {
 
             // volume
             {
-                controlVolume.valueProperty().unbind();
-                mp.volumeProperty().addListener(new ChangeListener<Number>() {
-
-                    @Override
-                    public void changed(ObservableValue<? extends Number> observable,
-                            Number oldValue, Number newValue) {
-                        String newVol = LabelUtils.toVolume(newValue.doubleValue());
-                        String oldVol = LabelUtils.toVolume(oldValue.doubleValue());
-                        if (!oldVol.equals(newVol)) {
-                            volumeText.setText(newVol);
-                        }
-                    }
-                });
-                volumeText.setText(LabelUtils.toVolume(volume));
-            }
-
-            {
-                // time max
-                {
-                    final SimpleDoubleProperty totalDuration;
-                    {
-                        Duration dur = mp.getTotalDuration();
-                        if ((dur == null) || dur.equals(Duration.UNKNOWN)) {
-                            dur = targetInfo.durationProperty().getValue();
-                        }
-                        if ((dur != null) && !dur.equals(Duration.UNKNOWN)) {
-                            totalDuration = new SimpleDoubleProperty(dur.toMillis());
-                        } else {
-                            totalDuration = new SimpleDoubleProperty();
-                            targetInfo.durationProperty().addListener(
-                                    new WeakChangeListener<>(new ChangeListener<Duration>() {
-
-                                        @Override
-                                        public void changed(
-                                                ObservableValue<? extends Duration> observable,
-                                                Duration oldValue, Duration newValue) {
-                                            totalDuration.set(newValue.toMillis());
-                                        }
-                                    }));
-                        }
-                    }
-                    controlTime.maxProperty().unbind();
-                    Double v = totalDuration.getValue();
-                    if ((v != null) && (0 < v.doubleValue())) {
-                        controlTime.maxProperty().set(v.doubleValue());
-                    } else {
-                        // OMAJINAI!!!
-                        prepareLayoutTimer();
-                        totalDuration.addListener(new InvalidationListener() {
-
-                            @Override
-                            public void invalidated(Observable observable) {
-                                layoutTimer();
-                            }
-                        });
-                    }
-                    controlTime.maxProperty().bind(totalDuration);
-                }
-
-                // time current
-                {
-                    mp.currentTimeProperty().addListener(new ChangeListener<Duration>() {
-
-                        @Override
-                        public void changed(ObservableValue<? extends Duration> observable,
-                                Duration oldValue, Duration newValue) {
-                            if (controlTime.isValueChanging()) {
-                                return;
-                            }
-
-                            double newMillis = newValue.toMillis();
-                            double oldMillis = controlTime.getValue();
-                            if (newMillis == oldMillis) {
-                                return;
-                            }
-
-                            controlTime.setValue(newMillis);
-
-                            String newTime = LabelUtils.milliSecToTime(newMillis);
-                            String oldTime = timeText.getText();
-
-                            if (!newTime.equals(oldTime)) {
-                                timeText.setText(newTime);
-                            }
-                        }
-                    });
-                }
-            }
-
-            // image
-            {
-                targetInfo.imageProperty().addListener(
-                        new WeakChangeListener<>(new ChangeListener<Image>() {
-
-                            @Override
-                            public void changed(ObservableValue<? extends Image> observable,
-                                    Image oldValue, Image newValue) {
-                                imageView.setImage(newValue);
-                                requestScroll(scrollTo);
-                            }
-                        }));
-                imageView.setImage(targetInfo.imageProperty().get());
-                requestScroll(scrollTo);
+                mp.setVolume(volume);
             }
 
             // cursor
