@@ -21,4 +21,4 @@ http://****hogehoge.com/sample3.mp3
 
 
 # ファイルの後にタブで区切ってファイルの説明を書いてもおｋ。
-sample1.mp3				すごいBGM
+sample1.mp3		すごいBGM

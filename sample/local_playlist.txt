@@ -18,4 +18,4 @@ http://****hogehoge.com/sample3.mp3
 
 # ファイルの後にタブで区切ってファイルの説明を書いてもおｋ。
 # （リストの右側に表示されます
-D:\hoge\sample1.mp3				すごいBGM
+D:\hoge\sample1.mp3		すごいBGM

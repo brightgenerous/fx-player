@@ -8,7 +8,7 @@ JavaFXで書いたMP3 Playerです
 
 #### 最新版
 
-1.1.4
+1.2.0
 
 
 ------
@@ -42,7 +42,7 @@ JavaFXで書いたMP3 Playerです
 * たぶん、エンコードはUTF-8がいいとおもいます
 * 一行一ファイルに対応してます
 * ローカルファイルのプレイリストのサンプル - sample/local_playlist.txt
-* httpから取得したプレイリストのサンプル - sample/url_playlist.txt
+* httpから取得するプレイリストのサンプル - sample/url_playlist.txt
 
 
 

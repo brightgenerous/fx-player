@@ -58,7 +58,7 @@
         <Text fx:id="timeText" id="time-text" wrappingWidth="40" />
       </HBox>
       <HBox id="control-pane">
-        <Button fx:id="controlPlay" id="button-control" onAction="#controlPlay" text="%control.play" mnemonicParsing="true" />
+        <ToggleButton fx:id="controlPlay" id="button-control" onAction="#controlPlay" text="%control.play" mnemonicParsing="true" />
         <Button onAction="#controlPrev" id="button-control" text="%control.prev" mnemonicParsing="true"/>
         <Button onAction="#controlNext" id="button-control" text="%control.next" mnemonicParsing="true" />
         <Slider fx:id="controlVolume" min="0.0" max="1.0" value="0.5" HBox.hgrow="ALWAYS" />

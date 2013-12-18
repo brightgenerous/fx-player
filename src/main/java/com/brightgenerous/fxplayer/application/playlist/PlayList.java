@@ -1,7 +1,6 @@
 package com.brightgenerous.fxplayer.application.playlist;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Date;
@@ -20,7 +19,6 @@ import javafx.beans.value.ObservableValue;
 import javafx.collections.MapChangeListener.Change;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
-import javafx.embed.swing.SwingFXUtils;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -29,7 +27,6 @@ import javafx.scene.Cursor;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.SceneBuilder;
-import javafx.scene.control.Button;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.Slider;
 import javafx.scene.control.TableCell;
@@ -61,8 +58,6 @@ import javafx.stage.StageBuilder;
 import javafx.stage.WindowEvent;
 import javafx.util.Callback;
 import javafx.util.Duration;
-
-import javax.imageio.ImageIO;
 
 import com.brightgenerous.fxplayer.application.Utils.Inject;
 import com.brightgenerous.fxplayer.application.playlist.MediaInfo.MetaChangeListener;
@@ -97,7 +92,7 @@ public class PlayList implements Initializable {
     private TableColumn<MediaInfo, Duration> tableColumnDuration;
 
     @FXML
-    private Button controlPlay;
+    private ToggleButton controlPlay;
 
     @FXML
     private Slider controlTime;
@@ -144,7 +139,9 @@ public class PlayList implements Initializable {
             fileChooser.setInitialDirectory(home);
             saveChooser.setInitialDirectory(home);
         }
-        saveChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PNG", "*.png"));
+        saveChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter(ImageSaveUtils.getFileDescription(), ImageSaveUtils
+                        .getExtensions()));
     }
 
     private final ReadWriteLock listLock = new ReentrantReadWriteLock();
@@ -277,6 +274,9 @@ public class PlayList implements Initializable {
                 if (mp == null) {
                     return;
                 }
+                if (mp.getStatus().equals(Status.UNKNOWN)) {
+                    return;
+                }
                 double oldMillis = mp.getCurrentTime().toMillis();
                 double newMillis = newValue.doubleValue();
                 if (SEEK_TIME_DEF < Math.abs(oldMillis - newMillis)) {
@@ -397,57 +397,34 @@ public class PlayList implements Initializable {
                     File file;
                     {
                         String title = info.titleProperty().getValue();
-                        if (title == null) {
+                        if ((title == null) || title.isEmpty()) {
                             saveChooser.setInitialFileName("");
                         } else {
-                            saveChooser.setInitialFileName(title.replaceAll(
-                                    "[\\s\\\\/:*?\"<>\\|]{1}", "_") + ".png");
+                            saveChooser.setInitialFileName(ImageSaveUtils.escapeFileName(title
+                                    + ".png"));
                         }
                         file = saveChooser.showSaveDialog(owner);
-                        if (file == null) {
-                            return Boolean.FALSE;
-                        }
-                        {
-                            File parent = file.getParentFile();
-                            if ((parent != null) && parent.isDirectory()) {
-                                saveChooser.setInitialDirectory(parent);
-                            }
+                    }
+                    if (file == null) {
+                        return Boolean.FALSE;
+                    }
+                    {
+                        File parent = file.getParentFile();
+                        if ((parent != null) && parent.isDirectory()) {
+                            saveChooser.setInitialDirectory(parent);
                         }
                     }
 
-                    File out;
-                    out: {
-                        String base = file.getAbsolutePath();
-                        if (base.endsWith(".png")) {
-                            // here
-                            // when over write, must be confirmed.
-                            //   or create the file.
-                            out = file;
-                            break out;
-                        }
-                        base = base.replaceAll("\\.png$", "");
-                        String name;
-                        int index = 0;
-                        do {
-                            if (index == 0) {
-                                name = base;
-                            } else {
-                                name = base + "_" + index;
-                            }
-                            index++;
-                            out = new File(name + ".png");
-                        } while (out.exists());
+                    File out = ImageSaveUtils.save(file, image);
+                    if (out == null) {
+
+                        log("Save File Failure : " + file.getAbsolutePath());
+
+                        return Boolean.FALSE;
                     }
-                    try {
-                        ImageIO.write(SwingFXUtils.fromFXImage(image, null), "png", out);
 
-                        log("Save File : " + out.getAbsolutePath());
+                    log("Save File : " + out.getAbsolutePath());
 
-                    } catch (IOException e) {
-
-                        log("Save File Failure : " + out.getAbsolutePath());
-
-                    }
                     return Boolean.TRUE;
                 }
             };
@@ -669,8 +646,9 @@ public class PlayList implements Initializable {
                 boolean playing = false;
                 boolean paused = false;
                 if (player != null) {
-                    playing = player.getStatus().equals(Status.PLAYING);
-                    paused = player.getStatus().equals(Status.PAUSED);
+                    Status status = player.getStatus();
+                    playing = status.equals(Status.PLAYING);
+                    paused = status.equals(Status.PAUSED);
                 }
                 if (playing) {
 
@@ -784,18 +762,6 @@ public class PlayList implements Initializable {
                 player.dispose();
             }
 
-            mp.setOnError(new Runnable() {
-
-                @Override
-                public void run() {
-                    {
-                        // OMAJINAI!!!
-                        layoutTimer();
-                    }
-                    imageView.setImage(new Image(PlayList.class.getResourceAsStream("dame.png")));
-                }
-            });
-
             mp.setOnReady(new Runnable() {
 
                 @Override
@@ -815,6 +781,12 @@ public class PlayList implements Initializable {
                             mp.dispose();
                             return;
                         }
+                    }
+
+                    // reset seek 
+                    {
+                        // (should be before set max shorter)
+                        controlTime.setValue(0);
                     }
 
                     // time max
@@ -947,13 +919,40 @@ public class PlayList implements Initializable {
 
                     // play
                     {
-                        log("Control Play : " + targetInfo.getDescription());
-
-                        controlTime.setValue(0);
-                        mp.seek(Duration.millis(0));
-
                         mp.play();
+
+                        log("Control Play : " + targetInfo.getDescription());
                     }
+                }
+            });
+
+            mp.setOnError(new Runnable() {
+
+                @Override
+                public void run() {
+                    {
+                        // OMAJINAI!!!
+                        layoutTimer();
+                    }
+                    imageView.setImage(new Image(PlayList.class.getResourceAsStream("dame.png")));
+
+                    viewStop();
+                }
+            });
+
+            mp.setOnPlaying(new Runnable() {
+
+                @Override
+                public void run() {
+                    viewPlaying();
+                }
+            });
+
+            mp.setOnPaused(new Runnable() {
+
+                @Override
+                public void run() {
+                    viewStop();
                 }
             });
 
@@ -985,6 +984,14 @@ public class PlayList implements Initializable {
             current = targetInfo;
             player = mp;
         }
+    }
+
+    private void viewPlaying() {
+        controlPlay.setSelected(true);
+    }
+
+    private void viewStop() {
+        controlPlay.setSelected(false);
     }
 
     private void prepareLayoutTimer() {
