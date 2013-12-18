@@ -950,6 +950,7 @@ public class PlayList implements Initializable {
                         log("Control Play : " + targetInfo.getDescription());
 
                         controlTime.setValue(0);
+                        mp.seek(Duration.millis(0));
 
                         mp.play();
                     }
