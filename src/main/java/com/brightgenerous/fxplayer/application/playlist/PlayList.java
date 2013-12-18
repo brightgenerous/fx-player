@@ -291,6 +291,7 @@ public class PlayList implements Initializable {
             }
         });
 
+        controlVolume.setValue(DEFAULT_VOLUME);
         controlVolume.valueProperty().addListener(new ChangeListener<Number>() {
 
             @Override
@@ -773,10 +774,10 @@ public class PlayList implements Initializable {
 
             final double volume;
             if (player == null) {
-                volume = DEFAULT_VOLUME;
+                volume = controlVolume.getValue();
             } else {
                 if (player.getStatus().equals(Status.UNKNOWN)) {
-                    volume = DEFAULT_VOLUME;
+                    volume = controlVolume.getValue();
                 } else {
                     volume = player.getVolume();
                 }
@@ -947,6 +948,8 @@ public class PlayList implements Initializable {
                     // play
                     {
                         log("Control Play : " + targetInfo.getDescription());
+
+                        controlTime.setValue(0);
 
                         mp.play();
                     }
