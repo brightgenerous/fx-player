@@ -17,7 +17,7 @@
     <Button onAction="#controlFileChooser" id="button-chooser"
         text="%control.file-chooser" mnemonicParsing="true" />
     <TextField fx:id="pathText" id="path-text" HBox.hgrow="ALWAYS" />
-    <Button onAction="#controlLog"
+    <ToggleButton fx:id="controlLog" onAction="#controlLog"
         text="%control.log" mnemonicParsing="true" />
   </HBox>
   <TableView fx:id="mediaList" tableMenuButtonVisible="true" VBox.vgrow="ALWAYS">

@@ -39,6 +39,7 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextAreaBuilder;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
@@ -79,6 +80,9 @@ public class PlayList implements Initializable {
 
     @FXML
     private TextField pathText;
+
+    @FXML
+    private ToggleButton controlLog;
 
     @FXML
     private TableView<MediaInfo> mediaList;
@@ -156,6 +160,8 @@ public class PlayList implements Initializable {
     private Stage logWindow;
 
     private TextArea logText;
+
+    private static final double SEEK_TIME_DEF = 100; // milliseconds
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -267,27 +273,20 @@ public class PlayList implements Initializable {
             @Override
             public void changed(ObservableValue<? extends Number> observable, Number oldValue,
                     Number newValue) {
-                if (!controlTime.isValueChanging()) {
+                MediaPlayer mp = player;
+                if (mp == null) {
                     return;
                 }
-
-                double oldMillis = oldValue.doubleValue();
+                double oldMillis = mp.getCurrentTime().toMillis();
                 double newMillis = newValue.doubleValue();
-                {
-                    MediaPlayer mp = player;
-                    if (mp != null) {
-                        double cm = mp.getCurrentTime().toMillis();
-                        if (0.1 < Math.abs(cm - newMillis)) {
-                            mp.seek(Duration.millis(newValue.doubleValue()));
-                        }
+                if (SEEK_TIME_DEF < Math.abs(oldMillis - newMillis)) {
+                    mp.seek(Duration.millis(newMillis));
+
+                    String oldTime = LabelUtils.milliSecToTime(oldMillis);
+                    String newTime = LabelUtils.milliSecToTime(newMillis);
+                    if (!oldTime.equals(newTime)) {
+                        log("Control Time : old => " + oldTime + " , new => " + newTime);
                     }
-                }
-
-                String oldTime = LabelUtils.milliSecToTime(oldMillis);
-                String newTime = LabelUtils.milliSecToTime(newMillis);
-
-                if (!oldTime.equals(newTime)) {
-                    log("Control Time    : old => " + oldTime + " , new => " + newTime);
                 }
             }
         });
@@ -297,15 +296,10 @@ public class PlayList implements Initializable {
             @Override
             public void changed(ObservableValue<? extends Number> observable, Number oldValue,
                     Number newValue) {
-                if (!controlVolume.isValueChanging()) {
-                    return;
-                }
-
                 int oldVol = (int) (oldValue.doubleValue() * 100);
                 int newVol = (int) (newValue.doubleValue() * 100);
-
                 if (oldVol != newVol) {
-                    log("Control Volume  : old => " + oldVol + " , new => " + newVol);
+                    log("Control Volume : old => " + oldVol + " , new => " + newVol);
                 }
             }
         });
@@ -362,6 +356,14 @@ public class PlayList implements Initializable {
             logWindow.setTitle(bundle.getString("log.title"));
             // logWindow.initOwner(owner);
             logWindow.initModality(Modality.NONE);
+            logWindow.addEventHandler(WindowEvent.WINDOW_CLOSE_REQUEST,
+                    new EventHandler<WindowEvent>() {
+
+                        @Override
+                        public void handle(WindowEvent event) {
+                            controlLog();
+                        }
+                    });
             owner.addEventHandler(WindowEvent.WINDOW_CLOSE_REQUEST,
                     new EventHandler<WindowEvent>() {
 
@@ -455,8 +457,10 @@ public class PlayList implements Initializable {
     protected void controlLog() {
         if (logWindow.isShowing()) {
             logWindow.close();
+            controlLog.setSelected(false);
         } else {
             logWindow.show();
+            controlLog.setSelected(true);
         }
     }
 
@@ -488,13 +492,11 @@ public class PlayList implements Initializable {
             if (change.wasAdded()) {
                 log("Meta Add : key => " + key + " , value => " + change.getValueAdded());
             } else {
-                log("Meta Del : key => " + key + " , value => " + change.getValueRemoved());
+                log("Meta Remove : key => " + key + " , value => " + change.getValueRemoved());
             }
 
             if (key.equals("raw metadata")) {
-                if (!loadMediaService.isRunning()) {
-                    loadMediaService.restart();
-                }
+                loadMedia();
             }
         }
     };
@@ -534,7 +536,7 @@ public class PlayList implements Initializable {
 
                     updateItems(dir.toString(), infos);
 
-                    loadMediaLater();
+                    loadMedia();
 
                     return Boolean.TRUE;
                 }
@@ -575,7 +577,7 @@ public class PlayList implements Initializable {
 
                     updateItems(file.toString(), infos);
 
-                    loadMediaLater();
+                    loadMedia();
 
                     return Boolean.TRUE;
                 }
@@ -607,7 +609,7 @@ public class PlayList implements Initializable {
 
                     updateItems(text, infos);
 
-                    loadMediaLater();
+                    loadMedia();
 
                     return Boolean.TRUE;
                 }
@@ -615,17 +617,24 @@ public class PlayList implements Initializable {
         }
     };
 
-    private void loadMediaLater() {
-        Platform.runLater(new Runnable() {
-
-            @Override
-            public void run() {
-                if (loadMediaService.isRunning()) {
-                    loadMediaService.cancel();
-                }
-                loadMediaService.restart();
+    private void loadMedia() {
+        if (Platform.isFxApplicationThread()) {
+            if (loadMediaService.isRunning()) {
+                loadMediaService.cancel();
             }
-        });
+            loadMediaService.restart();
+        } else {
+            Platform.runLater(new Runnable() {
+
+                @Override
+                public void run() {
+                    if (loadMediaService.isRunning()) {
+                        loadMediaService.cancel();
+                    }
+                    loadMediaService.restart();
+                }
+            });
+        }
     }
 
     @FXML
@@ -664,21 +673,29 @@ public class PlayList implements Initializable {
                 }
                 if (playing) {
 
-                    log("Control Pause   : " + current.getDescription());
+                    log("Control Pause : " + current.getDescription());
 
                     player.pause();
 
                     break player_block;
                 } else if (paused) {
-                    if (current != null) {
-                        List<MediaInfo> items = getItemsSnapshot();
-                        int scrollTo = items.indexOf(current);
-                        if (scrollTo != -1) {
-                            requestScroll(scrollTo);
-                        }
+                    if (current == null) {
+
+                        // when paused is true, means player is not null.
+                        //   then current would not be null.
+
+                        log("WARNING!!! : current is null");
+
+                        break player_block;
                     }
 
-                    log("Control Resume  : " + current.getDescription());
+                    List<MediaInfo> items = getItemsSnapshot();
+                    int scrollTo = items.indexOf(current);
+                    if (scrollTo != -1) {
+                        requestScroll(scrollTo);
+                    }
+
+                    log("Control Resume : " + current.getDescription());
 
                     player.play();
 
@@ -787,6 +804,18 @@ public class PlayList implements Initializable {
                         targetInfo.durationProperty().setValue(dur);
                     }
 
+                    {
+                        // this callback would run on main thread.
+                        //   so here, (targetInfo == current) is Deterministic ?
+                        if (targetInfo != current) {
+
+                            log("WARNING!!! : targetInfo != current");
+
+                            mp.dispose();
+                            return;
+                        }
+                    }
+
                     // time max
                     {
                         final SimpleDoubleProperty totalDuration;
@@ -847,23 +876,37 @@ public class PlayList implements Initializable {
                                 if (controlTime.isValueChanging()) {
                                     return;
                                 }
-
                                 double newMillis = newValue.toMillis();
-                                double oldMillis = controlTime.getValue();
-                                if (newMillis == oldMillis) {
-                                    return;
+                                if (SEEK_TIME_DEF < Math.abs(controlTime.getValue() - newMillis)) {
+                                    controlTime.setValue(newMillis);
                                 }
-
-                                controlTime.setValue(newMillis);
-
                                 String newTime = LabelUtils.milliSecToTime(newMillis);
-                                String oldTime = timeText.getText();
-
-                                if (!newTime.equals(oldTime)) {
+                                if (!newTime.equals(timeText.getText())) {
                                     timeText.setText(newTime);
                                 }
                             }
                         });
+                    }
+
+                    // volume
+                    {
+                        controlVolume.valueProperty().unbind();
+                        mp.volumeProperty().addListener(new ChangeListener<Number>() {
+
+                            @Override
+                            public void changed(ObservableValue<? extends Number> observable,
+                                    Number oldValue, Number newValue) {
+                                if (targetInfo != current) {
+                                    return;
+                                }
+                                String newVol = LabelUtils.toVolume(newValue.doubleValue());
+                                if (!newVol.equals(volumeText.getText())) {
+                                    volumeText.setText(newVol);
+                                }
+                            }
+                        });
+                        volumeText.setText(LabelUtils.toVolume(volume));
+                        controlVolume.valueProperty().bindBidirectional(mp.volumeProperty());
                     }
 
                     // image
@@ -882,28 +925,6 @@ public class PlayList implements Initializable {
                         });
                         imageView.setImage(targetInfo.imageProperty().get());
                         requestScroll(scrollTo);
-                    }
-
-                    // volume
-                    {
-                        controlVolume.valueProperty().unbind();
-                        mp.volumeProperty().addListener(new ChangeListener<Number>() {
-
-                            @Override
-                            public void changed(ObservableValue<? extends Number> observable,
-                                    Number oldValue, Number newValue) {
-                                if (targetInfo != current) {
-                                    return;
-                                }
-                                String newVol = LabelUtils.toVolume(newValue.doubleValue());
-                                String oldVol = LabelUtils.toVolume(oldValue.doubleValue());
-                                if (!oldVol.equals(newVol)) {
-                                    volumeText.setText(newVol);
-                                }
-                            }
-                        });
-                        volumeText.setText(LabelUtils.toVolume(volume));
-                        controlVolume.valueProperty().bindBidirectional(mp.volumeProperty());
                     }
 
                     // something
@@ -925,7 +946,7 @@ public class PlayList implements Initializable {
 
                     // play
                     {
-                        log("Control Play    : " + targetInfo.getDescription());
+                        log("Control Play : " + targetInfo.getDescription());
 
                         mp.play();
                     }
@@ -936,15 +957,13 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void run() {
+
+                    log("End of Media : " + targetInfo.getDescription());
+
                     // no fear, would be called on main thread.
                     controlPlayer(Control.NEXT, null);
                 }
             });
-
-            // volume
-            {
-                mp.setVolume(volume);
-            }
 
             // cursor
             {
@@ -952,6 +971,11 @@ public class PlayList implements Initializable {
                     current.cursorProperty().setValue(Boolean.FALSE);
                 }
                 targetInfo.cursorProperty().setValue(Boolean.TRUE);
+            }
+
+            // volume
+            {
+                mp.setVolume(volume);
             }
 
             current = targetInfo;
@@ -1008,7 +1032,10 @@ public class PlayList implements Initializable {
                         if (!info.loaded()) {
                             if (!isCancelled()) {
                                 if (info.load()) {
-                                    // expect chain loading
+
+                                    // expect chain loading.
+                                    //   would be called from meta data loaded callback.
+
                                     break;
                                 }
                                 onErrorLoadMedia(info);
@@ -1060,7 +1087,31 @@ public class PlayList implements Initializable {
         });
     }
 
+    //----------------------------------------------------------------------------------
+    // About log type.
+    //
+    // i will implement this, i will do...
+    //   however, in this time, 
+    //   it has not been designated that the specified version and commit is what.
+    //
+    // watashi ga sonoki ni nareba,
+    //   jissou ha 10 nengo 20 nengo to iukoto mo kanou ...
+    //-------------------------
+
+    // @formatter:off
+    private enum LogType {
+        Log, Warn,
+        Load,
+        Control_Time, Control_Volume,
+        Control_Request, Control_Play, Control_Pause, Control_Resume
+    }
+    // @formatter:on
+
     private void log(String str) {
+        log(LogType.Log, str);
+    }
+
+    private void log(LogType type, String str) {
         logText.appendText(String.format("%1$tH:%1$tM:%1$tS:%1$tL - %2$s%n", new Date(), str));
     }
 }
