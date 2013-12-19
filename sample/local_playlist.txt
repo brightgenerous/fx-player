@@ -1,3 +1,7 @@
+###################
+## ローカルのプレイリストファイルのサンプル
+#########
+
 # コメント
 
 # 一行一ファイルに対応してます
@@ -23,3 +27,21 @@ http://****hogehoge.com/sample3.mp3
 # ファイルの後にタブで区切ってファイルの説明を書いてもおｋ。
 # （リストの右側に表示されます
 D:\hoge\sample1.mp3		すごいBGMの説明
+
+
+
+###################
+## 以下、記述例
+#########
+
+D:\hoge\sample1.mp3		すごいBGMその１
+
+# 無視
+# sample02.mp3	すごいBGMその２
+sample2.mp3	すごいBGMその２
+
+http://***foobar.com/sample3.mp3	すごいBGMその３
+http://***fuzzbizz.com/sanpuru1.mp3
+http://***fuzzbizz.com/sanpuru2.mp3
+
+
