@@ -234,19 +234,27 @@ public class PlayList implements Initializable {
                                     tooltip.setGraphic(imageView);
                                     tooltip.setStyle("-fx-background-color:linear-gradient(cyan,deepskyblue);-fx-padding: 5 15 5 5;");
                                 }
-                                info.visibleProperty().addListener(new ChangeListener<Boolean>() {
+                                setTooltip(tooltip);
+                                if (info.visibleProperty().getValue().booleanValue()) {
+                                    tooltip.setOpacity(0.9);
+                                } else {
+                                    tooltip.setOpacity(0);
+                                    info.visibleProperty().addListener(
+                                            new ChangeListener<Boolean>() {
 
-                                    @Override
-                                    public void changed(
-                                            ObservableValue<? extends Boolean> observable,
-                                            Boolean oldValue, Boolean newValue) {
-                                        if (newValue.booleanValue()) {
-                                            setTooltip(tooltip);
-                                        } else {
-                                            setTooltip(null);
-                                        }
-                                    }
-                                });
+                                                @Override
+                                                public void changed(
+                                                        ObservableValue<? extends Boolean> observable,
+                                                        Boolean oldValue, Boolean newValue) {
+                                                    if (newValue.booleanValue()) {
+                                                        tooltip.setOpacity(0.9);
+                                                    } else {
+                                                        tooltip.setOpacity(0);
+                                                    }
+                                                    info.visibleProperty().removeListener(this);
+                                                }
+                                            });
+                                }
                             }
                         }
                     };
