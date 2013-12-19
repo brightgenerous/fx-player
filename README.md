@@ -1,17 +1,17 @@
-# brigen fx-player 「MP3 Player」
+brigen fx-player 「MP3 Player」
+=============
 
-======
 
 JavaFX（ジャバえふえっくす）で書いたMP3 Playerです
 
 ムシャクシャして作った。公開はしている
 
 
-#### 最新版
+最新版
+-------
 
 1.3.0
 
-------
 
 #### 機能
 
@@ -25,9 +25,8 @@ JavaFX（ジャバえふえっくす）で書いたMP3 Playerです
 * ログウィンドウでログも見れます。気になる場合は使ってください
 
 
-------
-
-### 使い方
+使い方
+-------
 
 * build/fx-player.jar - このファイルがそのまま実行可能です（要：なるだけ最新JRE 7）
 
@@ -38,7 +37,7 @@ JavaFX（ジャバえふえっくす）で書いたMP3 Playerです
 5. 「再生／停止」を非ダボォクリックしてみよう
 6. (ﾟ∀ﾟ)b ゆっくりきいてってね！！！
 
-#### ＊１
+#### プレイリストを読み込み（＊１）
 
 * フォルダから
 
@@ -59,10 +58,20 @@ JavaFX（ジャバえふえっくす）で書いたMP3 Playerです
 * httpから取得するプレイリストファイルのサンプル - sample/url_playlist.txt
 
 
-------
 
-### ビルド
+ビルド
+-------
 
-pom.xmlファイルの59行目あたりを書き換えてください
+環境に合わせて pom.xml ファイルの59行目あたりを書き換えてください
 
       <systemPath>C:\Program Files\Java\jre7\lib\jfxrt.jar</systemPath>
+
+
+contributors
+-------
+
+* BrightGenerous - [twitter][1]
+
+
+
+[1]: https://twitter.com/BrightGenerous
