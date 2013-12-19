@@ -1,5 +1,6 @@
 package com.brightgenerous.fxplayer.application.playlist;
 
+import javafx.beans.binding.Bindings;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ReadOnlyProperty;
@@ -28,13 +29,24 @@ public class MediaInfo {
 
     private final BooleanProperty cursorProperty = new SimpleBooleanProperty();
 
-    private final StringProperty titleProperty = new SimpleStringProperty();
+    private final StringProperty titleProperty = new SimpleStringProperty("");
 
-    private final StringProperty artistProperty = new SimpleStringProperty();
+    private final StringProperty titleDescProperty = new SimpleStringProperty();
+
+    private final StringProperty artistProperty = new SimpleStringProperty("");
+
+    private final StringProperty albumProperty = new SimpleStringProperty("");
 
     private ObjectProperty<Duration> durationProperty = new SimpleObjectProperty<>();
 
     private ObjectProperty<Image> imageProperty = new SimpleObjectProperty<>();
+
+    private final StringProperty tooltipProperty = new SimpleStringProperty("");
+    {
+        tooltipProperty.bind(Bindings.concat("title : ").concat(titleProperty)
+                .concat("\nartist : ").concat(artistProperty).concat("\nalbum : ")
+                .concat(albumProperty));
+    }
 
     private boolean tryLoaded;
 
@@ -43,6 +55,7 @@ public class MediaInfo {
     public MediaInfo(IMediaSource source, MetaChangeListener metaChangeListener) {
         this.source = source;
         this.metaChangeListener = metaChangeListener;
+        titleDescProperty.set(source.getDescription());
     }
 
     public boolean loaded() {
@@ -78,6 +91,10 @@ public class MediaInfo {
                                 String title = (String) change.getMap().get(key);
                                 if (title != null) {
                                     titleProperty.setValue(title);
+                                    title = title.trim();
+                                    if (!title.isEmpty()) {
+                                        titleDescProperty.setValue(title);
+                                    }
                                 }
                                 break;
                             }
@@ -85,6 +102,13 @@ public class MediaInfo {
                                 String artist = (String) change.getMap().get(key);
                                 if (artist != null) {
                                     artistProperty.setValue(artist);
+                                }
+                                break;
+                            }
+                            case "album": {
+                                String album = (String) change.getMap().get(key);
+                                if (album != null) {
+                                    albumProperty.setValue(album);
                                 }
                                 break;
                             }
@@ -110,10 +134,32 @@ public class MediaInfo {
                 }
             });
 
-            titleProperty.setValue((String) media.getMetadata().get("title"));
-            artistProperty.setValue((String) media.getMetadata().get("artist"));
-            durationProperty.setValue((Duration) media.getMetadata().get("duration"));
-            imageProperty.setValue((Image) media.getMetadata().get("image"));
+            {
+                {
+                    String title = (String) media.getMetadata().get("title");
+                    if (title != null) {
+                        titleProperty.setValue(title);
+                        title = title.trim();
+                        if (!title.isEmpty()) {
+                            titleDescProperty.setValue(title);
+                        }
+                    }
+                }
+                {
+                    String artist = (String) media.getMetadata().get("artist");
+                    if (artist != null) {
+                        artistProperty.setValue(artist);
+                    }
+                }
+                {
+                    String album = (String) media.getMetadata().get("album");
+                    if (album != null) {
+                        albumProperty.setValue(album);
+                    }
+                }
+                durationProperty.setValue((Duration) media.getMetadata().get("duration"));
+                imageProperty.setValue((Image) media.getMetadata().get("image"));
+            }
         }
         return media;
     }
@@ -138,8 +184,16 @@ public class MediaInfo {
         return titleProperty;
     }
 
+    public ReadOnlyProperty<String> titleDescProperty() {
+        return titleDescProperty;
+    }
+
     public ReadOnlyProperty<String> artistProperty() {
         return artistProperty;
+    }
+
+    public ReadOnlyProperty<String> albumProperty() {
+        return albumProperty;
     }
 
     public ObjectProperty<Duration> durationProperty() {
@@ -148,6 +202,10 @@ public class MediaInfo {
 
     public ObjectProperty<Image> imageProperty() {
         return imageProperty;
+    }
+
+    public ReadOnlyProperty<String> tooltipProperty() {
+        return tooltipProperty;
     }
 
     @Override

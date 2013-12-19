@@ -1,24 +1,28 @@
 # コメント
 
+# 一行一ファイルに対応してます
+
 # 空行は無視
+
 
 
 # プレイリストファイルとの相対パスで決定
 # ※この場合のみ、URLエンコーディングされます
 sample1.mp3
-# プレイリストのファイル（play-list.txt） が http://***hogehoge.com/list/play-list.txt の場合
+# プレイリストのファイル（url_playlist.txt） が http://***hogehoge.com/list/url_playlist.txt の場合
 # http://***hogehoge.com/list/sample1.mp3 になります
 
 
 # 「/」から始まる場合は、サーバのパスからなので注意
 /sample2.mp3
-# プレイリストのファイル（play-list.txt） が http://***hogehoge.com/list/play-list.txt の場合
+# プレイリストのファイル（url_playlist.txt） が http://***hogehoge.com/list/url_playlist.txt の場合
 # http://***hogehoge.com/sample2.mp3 になります
 
 
-# そのままURLの指定も可能
-http://****hogehoge.com/sample3.mp3
+# 別のサーバのURLの指定も可能
+http://***foobar.com/sample3.mp3
 
 
 # ファイルの後にタブで区切ってファイルの説明を書いてもおｋ。
-sample1.mp3		すごいBGM
+# （リストの右側に表示されます
+sample1.mp3		すごいBGMの説明

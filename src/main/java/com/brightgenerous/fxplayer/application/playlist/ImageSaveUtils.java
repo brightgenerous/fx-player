@@ -3,18 +3,22 @@ package com.brightgenerous.fxplayer.application.playlist;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageOutputStream;
 
 class ImageSaveUtils {
 
     public static enum Type {
 
-        PNG("png", ".png"), JPG("jpg", ".jpg"), GIF("gif", ".gif");
+        PNG("png", ".png"), JPG("jpg", ".jpg"), GIF("gif", ".gif"), BMP("bmp", ".bmp");
 
         private final String formatName;
 
@@ -50,6 +54,16 @@ class ImageSaveUtils {
             }
             return useful.booleanValue();
         }
+
+        public static Type[] usefuls() {
+            List<Type> ret = new ArrayList<>();
+            for (Type type : Type.values()) {
+                if (type.useful()) {
+                    ret.add(type);
+                }
+            }
+            return ret.toArray(new Type[ret.size()]);
+        }
     }
 
     private ImageSaveUtils() {
@@ -57,13 +71,11 @@ class ImageSaveUtils {
 
     public static String getFileDescription() {
         StringBuilder sb = new StringBuilder();
-        for (Type type : Type.values()) {
-            if (type.useful()) {
-                if (0 < sb.length()) {
-                    sb.append("/");
-                }
-                sb.append(type.formatName);
+        for (Type type : Type.usefuls()) {
+            if (0 < sb.length()) {
+                sb.append("/");
             }
+            sb.append(type.formatName);
         }
         sb.insert(0, "Image(");
         sb.append(")");
@@ -72,30 +84,44 @@ class ImageSaveUtils {
 
     public static String[] getExtensions() {
         List<String> ret = new ArrayList<>();
-        for (Type type : Type.values()) {
-            if (type.useful()) {
-                ret.add("*" + type.extension);
-            }
+        for (Type type : Type.usefuls()) {
+            ret.add("*" + type.extension);
         }
         return ret.toArray(new String[ret.size()]);
     }
 
-    private static Type guess(File file) {
+    public static Type suggestType() {
+        Type ret = Type.PNG;
+        loop: {
+            Type[] types = Type.usefuls();
+            if ((types != null) && (0 < types.length)) {
+                for (Type type : types) {
+                    if (type.equals(ret)) {
+                        break loop;
+                    }
+                }
+                ret = types[0];
+            }
+        }
+        return ret;
+    }
+
+    private static Type guessType(File file) {
         if (file == null) {
             return null;
         }
-        Type ret = Type.PNG;
+        Type ret = null;
         {
             String name = file.getName().toLowerCase();
-            for (Type type : Type.values()) {
+            for (Type type : Type.usefuls()) {
                 if (name.endsWith(type.extension)) {
                     ret = type;
                     break;
                 }
             }
         }
-        if (!ret.useful()) {
-            ret = Type.PNG;
+        if (ret == null) {
+            ret = suggestType();
         }
         return ret;
     }
@@ -106,7 +132,8 @@ class ImageSaveUtils {
 
     public static File save(File file, Image image) {
 
-        Type type = guess(file);
+        Type type = guessType(file);
+
         File out;
         out: {
             String base = file.getAbsolutePath();
@@ -133,11 +160,29 @@ class ImageSaveUtils {
         boolean ret = false;
 
         try {
-            BufferedImage bi = SwingFXUtils.fromFXImage(image, null);
-            if (type.equals(Type.JPG)) {
-                bi = convertToRGB(bi);
+            BufferedImage bufferedImage = SwingFXUtils.fromFXImage(image, null);
+            ImageWriter writer = null;
+            if (type.equals(Type.JPG) || type.equals(Type.BMP)) {
+                bufferedImage = convertToRGB(bufferedImage);
+                Iterator<ImageWriter> iws = ImageIO.getImageWritersByFormatName(type
+                        .getFormatName());
+                if ((iws != null) && iws.hasNext()) {
+                    writer = iws.next();
+                    ImageWriteParam param = writer.getDefaultWriteParam();
+                    param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+                    if (type.equals(Type.JPG)) {
+                        param.setCompressionQuality(1.0f);
+                    }
+                }
             }
-            ImageIO.write(bi, type.getFormatName(), out);
+            if (writer == null) {
+                ImageIO.write(bufferedImage, type.getFormatName(), out);
+            } else {
+                try (ImageOutputStream stream = ImageIO.createImageOutputStream(out)) {
+                    writer.setOutput(stream);
+                    writer.write(bufferedImage);
+                }
+            }
             ret = true;
         } catch (Exception e) {
             e.printStackTrace();

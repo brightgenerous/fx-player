@@ -27,6 +27,8 @@ import javafx.scene.Cursor;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.SceneBuilder;
+import javafx.scene.control.Label;
+import javafx.scene.control.LabelBuilder;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.Slider;
 import javafx.scene.control.TableCell;
@@ -37,6 +39,7 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextAreaBuilder;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
+import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
@@ -60,6 +63,7 @@ import javafx.util.Callback;
 import javafx.util.Duration;
 
 import com.brightgenerous.fxplayer.application.Utils.Inject;
+import com.brightgenerous.fxplayer.application.playlist.ImageSaveUtils.Type;
 import com.brightgenerous.fxplayer.application.playlist.MediaInfo.MetaChangeListener;
 
 public class PlayList implements Initializable {
@@ -152,7 +156,7 @@ public class PlayList implements Initializable {
 
     private long lastCreate = Long.MIN_VALUE;
 
-    private static final double DEFAULT_VOLUME = 0.5d;
+    private static final double DEFAULT_VOLUME = 0.25d;
 
     private Stage logWindow;
 
@@ -163,8 +167,6 @@ public class PlayList implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         {
-            final Callback<TableView<MediaInfo>, TableRow<MediaInfo>> deleg = mediaList
-                    .getRowFactory();
             final EventHandler<MouseEvent> clickListener = new EventHandler<MouseEvent>() {
 
                 @Override
@@ -185,12 +187,43 @@ public class PlayList implements Initializable {
 
                 @Override
                 public TableRow<MediaInfo> call(TableView<MediaInfo> param) {
-                    TableRow<MediaInfo> ret;
-                    if (deleg == null) {
-                        ret = new TableRow<>();
-                    } else {
-                        ret = deleg.call(param);
-                    }
+                    TableRow<MediaInfo> ret = new TableRow<MediaInfo>() {
+
+                        @Override
+                        protected void updateItem(MediaInfo item, boolean empty) {
+                            super.updateItem(item, empty);
+
+                            if (!empty) {
+                                MediaInfo info = getTableView().getItems().get(getIndex());
+                                Tooltip tooltip = new Tooltip();
+                                tooltip.textProperty().bind(info.tooltipProperty());
+                                final ImageView imageView = new ImageView();
+                                imageView.setPreserveRatio(true);
+                                imageView.setSmooth(true);
+                                imageView.setFitWidth(0);
+                                imageView.setFitHeight(0);
+                                imageView.imageProperty().addListener(new ChangeListener<Image>() {
+
+                                    @Override
+                                    public void changed(
+                                            ObservableValue<? extends Image> observable,
+                                            Image oldValue, Image newValue) {
+                                        if (newValue == null) {
+                                            imageView.setFitWidth(0);
+                                            imageView.setFitHeight(0);
+                                        } else {
+                                            imageView.setFitWidth(50);
+                                            imageView.setFitHeight(50);
+                                        }
+                                    }
+                                });
+                                imageView.imageProperty().bind(info.imageProperty());
+                                tooltip.setGraphic(imageView);
+                                tooltip.setStyle("-fx-background-color:linear-gradient(cyan,deepskyblue);-fx-padding: 5 15 5 5;");
+                                setTooltip(tooltip);
+                            }
+                        }
+                    };
                     ret.addEventFilter(MouseEvent.MOUSE_CLICKED, clickListener);
                     return ret;
                 }
@@ -348,9 +381,15 @@ public class PlayList implements Initializable {
         });
 
         {
+            Label label = LabelBuilder
+                    .create()
+                    .prefWidth(1000)
+                    .alignment(Pos.CENTER_RIGHT)
+                    .text("brigen fx-player 「MP3 Player」, Copyright(c) 2013 BrightGenerous, All Rights Reserved.")
+                    .build();
             logText = TextAreaBuilder.create().wrapText(true).editable(false).build();
             VBox.setVgrow(logText, Priority.ALWAYS);
-            Parent parent = VBoxBuilder.create().children(logText).build();
+            Parent parent = VBoxBuilder.create().children(logText, label).build();
             Scene scene = SceneBuilder.create().root(parent).build();
             logWindow = StageBuilder.create().width(640).height(360).scene(scene)
                     .icons(owner.getIcons()).build();
@@ -374,6 +413,8 @@ public class PlayList implements Initializable {
                         }
                     });
         }
+
+        log("Wake up !!");
     }
 
     private final Service<Boolean> saveService = new Service<Boolean>() {
@@ -400,8 +441,9 @@ public class PlayList implements Initializable {
                         if ((title == null) || title.isEmpty()) {
                             saveChooser.setInitialFileName("");
                         } else {
+                            Type type = ImageSaveUtils.suggestType();
                             saveChooser.setInitialFileName(ImageSaveUtils.escapeFileName(title
-                                    + ".png"));
+                                    + type.getExtension()));
                         }
                         file = saveChooser.showSaveDialog(owner);
                     }
@@ -468,14 +510,20 @@ public class PlayList implements Initializable {
             String key = change.getKey();
 
             if (change.wasAdded()) {
-                log("Meta Add : key => " + key + " , value => " + change.getValueAdded());
+                Object value = isOmit(key) ? "...omit..." : change.getValueAdded();
+                log("Meta Add : key => " + key + " , value => " + value);
             } else {
-                log("Meta Remove : key => " + key + " , value => " + change.getValueRemoved());
+                Object value = isOmit(key) ? "...omit..." : change.getValueRemoved();
+                log("Meta Remove : key => " + key + " , value => " + value);
             }
 
             if (key.equals("raw metadata")) {
                 loadMedia();
             }
+        }
+
+        private boolean isOmit(String key) {
+            return key.equals("raw metadata") || key.equals("image");
         }
     };
 

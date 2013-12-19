@@ -5,9 +5,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.nio.CharBuffer;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -107,23 +110,30 @@ class PlayListReader {
     }
 
     public static List<MediaInfo> fromURL(String str, MetaChangeListener metaChangeListener) {
-        if ((str == null) || !str.startsWith("http://")) {
+        if (str == null) {
             return null;
         }
 
-        URL url = null;
-        try {
-            url = new URL(str);
-        } catch (MalformedURLException e) {
+        boolean isHttp = str.startsWith("http://");
+        boolean isHttps = str.startsWith("https://");
+        if (!isHttp && !isHttps) {
+            return null;
         }
-        if (url == null) {
+
+        if (isHttps) {
+            // unsupported...
             return null;
         }
 
         String serverPath;
         String dirPath;
         {
-            int idx = str.indexOf("/", "http://".length());
+            int idx;
+            if (isHttp) {
+                idx = str.indexOf("/", "http://".length());
+            } else {
+                idx = str.indexOf("/", "https://".length());
+            }
             if (idx == -1) {
                 serverPath = str;
                 dirPath = str;
@@ -136,9 +146,13 @@ class PlayListReader {
             }
         }
 
+        String text = execGet(str, Charset.forName("UTF-8"));
+        if (text == null) {
+            return null;
+        }
+
         List<MediaInfo> ret = new ArrayList<>();
-        try (BufferedReader br = new BufferedReader(
-                new InputStreamReader(url.openStream(), "UTF-8"))) {
+        try (BufferedReader br = new BufferedReader(new StringReader(text))) {
             String line;
             while ((line = br.readLine()) != null) {
                 line = line.trim();
@@ -152,7 +166,7 @@ class PlayListReader {
                 String path = null;
                 {
                     String tmp = strs[0];
-                    if (!tmp.startsWith("http://")) {
+                    if (!tmp.startsWith("http://") && !tmp.startsWith("https://")) {
                         if (tmp.startsWith("/")) {
                             path = serverPath + tmp;
                         } else {
@@ -191,5 +205,28 @@ class PlayListReader {
             }
         }
         return ret;
+    }
+
+    private static String execGet(String uri, Charset encode) {
+        URL url = null;
+        try {
+            url = new URL(uri);
+        } catch (MalformedURLException e) {
+        }
+        if (url == null) {
+            return null;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(url.openStream(), encode))) {
+            CharBuffer cb = CharBuffer.allocate(100);
+            while (0 <= br.read(cb)) {
+                sb.append(cb.flip());
+                cb.clear();
+            }
+        } catch (IOException e) {
+        }
+
+        return sb.toString();
     }
 }

@@ -1,6 +1,9 @@
 # コメント
 
+# 一行一ファイルに対応してます
+
 # 空行は無視
+
 
 
 # 絶対パスでファイルが見つかれば決定
@@ -9,8 +12,9 @@ D:\hoge\sample1.mp3
 
 # 絶対パスでファイルが見つからなくてこのプレイリストファイルとの相対パスで見つかれば決定
 sample2.mp3
-# プレイリストのファイル（play-list.txt） が D:\hoge\list\play-list.txt の場合
+# プレイリストのファイル（local_playlist.txt） が D:\hoge\list\local_playlist.txt の場合
 # D:\hoge\list\sample2.mp3 になります
+
 
 # URLの指定も可能
 http://****hogehoge.com/sample3.mp3
@@ -18,4 +22,4 @@ http://****hogehoge.com/sample3.mp3
 
 # ファイルの後にタブで区切ってファイルの説明を書いてもおｋ。
 # （リストの右側に表示されます
-D:\hoge\sample1.mp3		すごいBGM
+D:\hoge\sample1.mp3		すごいBGMの説明
