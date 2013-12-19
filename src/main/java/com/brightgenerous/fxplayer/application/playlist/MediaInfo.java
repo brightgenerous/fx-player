@@ -37,11 +37,17 @@ public class MediaInfo {
 
     private final StringProperty albumProperty = new SimpleStringProperty("");
 
-    private ObjectProperty<Duration> durationProperty = new SimpleObjectProperty<>();
+    private final ObjectProperty<Duration> durationProperty = new SimpleObjectProperty<>();
 
-    private ObjectProperty<Image> imageProperty = new SimpleObjectProperty<>();
+    private final ObjectProperty<Image> imageProperty = new SimpleObjectProperty<>();
 
-    private final StringProperty tooltipProperty = new SimpleStringProperty("");
+    private final BooleanProperty visibleProperty = new SimpleBooleanProperty();
+    {
+        visibleProperty.bind(titleProperty.isNotEqualTo("").or(artistProperty.isNotEqualTo(""))
+                .or(albumProperty.isNotEqualTo("")).or(imageProperty.isNotNull()));
+    }
+
+    private final StringProperty tooltipProperty = new SimpleStringProperty();
     {
         tooltipProperty.bind(Bindings.concat("title : ").concat(titleProperty)
                 .concat("\nartist : ").concat(artistProperty).concat("\nalbum : ")
@@ -56,6 +62,10 @@ public class MediaInfo {
         this.source = source;
         this.metaChangeListener = metaChangeListener;
         titleDescProperty.set(source.getDescription());
+    }
+
+    public IMediaSource getSource() {
+        return source;
     }
 
     public boolean loaded() {
@@ -202,6 +212,10 @@ public class MediaInfo {
 
     public ObjectProperty<Image> imageProperty() {
         return imageProperty;
+    }
+
+    public ReadOnlyProperty<Boolean> visibleProperty() {
+        return visibleProperty;
     }
 
     public ReadOnlyProperty<String> tooltipProperty() {

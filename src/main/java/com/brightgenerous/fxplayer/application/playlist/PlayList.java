@@ -31,6 +31,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.LabelBuilder;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.Slider;
+import javafx.scene.control.Tab;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
@@ -45,6 +46,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.VBoxBuilder;
@@ -52,6 +54,7 @@ import javafx.scene.media.AudioSpectrumListener;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.MediaPlayer.Status;
+import javafx.scene.media.MediaView;
 import javafx.scene.text.Text;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
@@ -94,6 +97,12 @@ public class PlayList implements Initializable {
 
     @FXML
     private TableColumn<MediaInfo, Duration> tableColumnDuration;
+
+    @FXML
+    private Tab mediaContainer;
+
+    @FXML
+    private Pane mediaPane;
 
     @FXML
     private ToggleButton controlPlay;
@@ -194,33 +203,50 @@ public class PlayList implements Initializable {
                             super.updateItem(item, empty);
 
                             if (!empty) {
-                                MediaInfo info = getTableView().getItems().get(getIndex());
-                                Tooltip tooltip = new Tooltip();
-                                tooltip.textProperty().bind(info.tooltipProperty());
-                                final ImageView imageView = new ImageView();
-                                imageView.setPreserveRatio(true);
-                                imageView.setSmooth(true);
-                                imageView.setFitWidth(0);
-                                imageView.setFitHeight(0);
-                                imageView.imageProperty().addListener(new ChangeListener<Image>() {
+                                final MediaInfo info = getTableView().getItems().get(getIndex());
+                                final Tooltip tooltip = new Tooltip();
+                                {
+                                    tooltip.textProperty().bind(info.tooltipProperty());
+                                    final ImageView imageView = new ImageView();
+                                    {
+                                        imageView.setPreserveRatio(true);
+                                        imageView.setSmooth(true);
+                                        imageView.setFitWidth(0);
+                                        imageView.setFitHeight(0);
+                                        imageView.imageProperty().addListener(
+                                                new ChangeListener<Image>() {
+
+                                                    @Override
+                                                    public void changed(
+                                                            ObservableValue<? extends Image> observable,
+                                                            Image oldValue, Image newValue) {
+                                                        if (newValue == null) {
+                                                            imageView.setFitWidth(0);
+                                                            imageView.setFitHeight(0);
+                                                        } else {
+                                                            imageView.setFitWidth(50);
+                                                            imageView.setFitHeight(50);
+                                                        }
+                                                    }
+                                                });
+                                        imageView.imageProperty().bind(info.imageProperty());
+                                    }
+                                    tooltip.setGraphic(imageView);
+                                    tooltip.setStyle("-fx-background-color:linear-gradient(cyan,deepskyblue);-fx-padding: 5 15 5 5;");
+                                }
+                                info.visibleProperty().addListener(new ChangeListener<Boolean>() {
 
                                     @Override
                                     public void changed(
-                                            ObservableValue<? extends Image> observable,
-                                            Image oldValue, Image newValue) {
-                                        if (newValue == null) {
-                                            imageView.setFitWidth(0);
-                                            imageView.setFitHeight(0);
+                                            ObservableValue<? extends Boolean> observable,
+                                            Boolean oldValue, Boolean newValue) {
+                                        if (newValue.booleanValue()) {
+                                            setTooltip(tooltip);
                                         } else {
-                                            imageView.setFitWidth(50);
-                                            imageView.setFitHeight(50);
+                                            setTooltip(null);
                                         }
                                     }
                                 });
-                                imageView.imageProperty().bind(info.imageProperty());
-                                tooltip.setGraphic(imageView);
-                                tooltip.setStyle("-fx-background-color:linear-gradient(cyan,deepskyblue);-fx-padding: 5 15 5 5;");
-                                setTooltip(tooltip);
                             }
                         }
                     };
@@ -385,7 +411,7 @@ public class PlayList implements Initializable {
                     .create()
                     .prefWidth(1000)
                     .alignment(Pos.CENTER_RIGHT)
-                    .text("brigen fx-player 「MP3 Player」, Copyright(c) 2013 BrightGenerous, All Rights Reserved.")
+                    .text("brigen fx-player 「Narudake Player」, Copyright(c) 2013 BrightGenerous, All Rights Reserved.")
                     .build();
             logText = TextAreaBuilder.create().wrapText(true).editable(false).build();
             VBox.setVgrow(logText, Priority.ALWAYS);
@@ -1031,6 +1057,17 @@ public class PlayList implements Initializable {
 
             current = targetInfo;
             player = mp;
+
+            {
+                MediaView mediaView = new MediaView(mp);
+                mediaView.setSmooth(true);
+                mediaView.setPreserveRatio(true);
+                mediaView.fitWidthProperty().bind(mediaContainer.getTabPane().widthProperty());
+                mediaView.fitHeightProperty().bind(
+                        mediaContainer.getTabPane().heightProperty().subtract(32)); // tab height 32 ... fix value... ('A')akan...
+                mediaPane.getChildren().clear();
+                mediaPane.getChildren().add(mediaView);
+            }
         }
     }
 

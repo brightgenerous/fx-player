@@ -6,6 +6,8 @@
 <?import javafx.scene.control.Slider?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.Region?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.layout.VBox?>
 <VBox xmlns:fx="http://javafx.com/fxml"
     fx:controller="com.brightgenerous.fxplayer.application.playlist.PlayList"
     stylesheets="com/brightgenerous/fxplayer/application/FxPlayer.css,
@@ -20,31 +22,48 @@
     <ToggleButton fx:id="controlLog" onAction="#controlLog"
         text="%control.log" mnemonicParsing="true" />
   </HBox>
-  <TableView fx:id="mediaList" tableMenuButtonVisible="true" VBox.vgrow="ALWAYS">
-    <columns>
-      <TableColumn fx:id="tableColumnIndex" text="%media.index" prefWidth="40" sortable="false">
-        <cellValueFactory><PropertyValueFactory property="exist" /></cellValueFactory>
-      </TableColumn>
-      <TableColumn fx:id="tableColumnCursor" prefWidth="70" sortable="false">
-        <cellValueFactory><PropertyValueFactory property="cursor" /></cellValueFactory>
-      </TableColumn>
-      <TableColumn text="%media.titleDesc" prefWidth="265" sortable="false">
-        <cellValueFactory><PropertyValueFactory property="titleDesc" /></cellValueFactory>
-      </TableColumn>
-      <TableColumn text="%media.artist" prefWidth="170" sortable="false">
-        <cellValueFactory><PropertyValueFactory property="artist" /></cellValueFactory>
-      </TableColumn>
-      <TableColumn fx:id="tableColumnDuration" text="%media.duration" prefWidth="80" sortable="false">
-        <cellValueFactory><PropertyValueFactory property="duration" /></cellValueFactory>
-      </TableColumn>
-      <TableColumn text="%media.album" prefWidth="170" sortable="false">
-        <cellValueFactory><PropertyValueFactory property="album" /></cellValueFactory>
-      </TableColumn>
-      <TableColumn text="%media.description" prefWidth="200" sortable="false">
-        <cellValueFactory><PropertyValueFactory property="description" /></cellValueFactory>
-      </TableColumn>
-    </columns>
-  </TableView>
+  <TabPane VBox.vgrow="ALWAYS" side="BOTTOM">
+    <tabs>
+      <Tab text="%tab.list" closable="false">
+        <content>
+          <TableView fx:id="mediaList" tableMenuButtonVisible="true">
+            <columns>
+              <TableColumn fx:id="tableColumnIndex" text="%media.index" prefWidth="40" sortable="false">
+                <cellValueFactory><PropertyValueFactory property="exist" /></cellValueFactory>
+              </TableColumn>
+              <TableColumn fx:id="tableColumnCursor" prefWidth="70" sortable="false">
+                <cellValueFactory><PropertyValueFactory property="cursor" /></cellValueFactory>
+              </TableColumn>
+              <TableColumn text="%media.titleDesc" prefWidth="265" sortable="false">
+                <cellValueFactory><PropertyValueFactory property="titleDesc" /></cellValueFactory>
+              </TableColumn>
+              <TableColumn text="%media.artist" prefWidth="170" sortable="false">
+                <cellValueFactory><PropertyValueFactory property="artist" /></cellValueFactory>
+              </TableColumn>
+              <TableColumn fx:id="tableColumnDuration" text="%media.duration" prefWidth="80" sortable="false">
+                <cellValueFactory><PropertyValueFactory property="duration" /></cellValueFactory>
+              </TableColumn>
+              <TableColumn text="%media.album" prefWidth="170" sortable="false">
+                <cellValueFactory><PropertyValueFactory property="album" /></cellValueFactory>
+              </TableColumn>
+              <TableColumn text="%media.description" prefWidth="200" sortable="false">
+                <cellValueFactory><PropertyValueFactory property="description" /></cellValueFactory>
+              </TableColumn>
+            </columns>
+          </TableView>
+        </content>
+      </Tab>
+      <Tab fx:id="mediaContainer" text="%tab.video" closable="false">
+        <content>
+          <HBox style="-fx-background-color:linear-gradient(to bottom,#333,#444);" alignment="CENTER">
+            <VBox alignment="CENTER">
+              <HBox fx:id="mediaPane"></HBox>
+            </VBox>
+          </HBox>
+        </content>
+      </Tab>
+    </tabs>
+  </TabPane>
   <HBox id="control-pane">
     <VBox HBox.hgrow="ALWAYS">
       <Region prefHeight="-1.0" prefWidth="-1.0" minHeight="5" VBox.vgrow="ALWAYS" />
@@ -58,14 +77,15 @@
       </HBox>
       <HBox id="control-pane">
         <Slider fx:id="controlTime" min="0" max="0" HBox.hgrow="ALWAYS" />
-        <Text fx:id="timeText" id="time-text" wrappingWidth="40" />
+        <Text fx:id="timeText" id="time-text" wrappingWidth="60" />
       </HBox>
       <HBox id="control-pane">
-        <ToggleButton fx:id="controlPlay" id="button-control" onAction="#controlPlay" text="%control.play" mnemonicParsing="true" />
+        <ToggleButton fx:id="controlPlay" id="button-control" onAction="#controlPlay"
+            text="%control.play" mnemonicParsing="true" />
         <Button onAction="#controlPrev" id="button-control" text="%control.prev" mnemonicParsing="true"/>
         <Button onAction="#controlNext" id="button-control" text="%control.next" mnemonicParsing="true" />
         <Slider fx:id="controlVolume" min="0.0" max="1.0" value="0.5" HBox.hgrow="ALWAYS" />
-        <Text fx:id="volumeText" id="volume-text" wrappingWidth="40" />
+        <Text fx:id="volumeText" id="volume-text" wrappingWidth="60" />
       </HBox>
     </VBox>
     <ImageView fx:id="imageView" fitWidth="100" preserveRatio="true" smooth="true"

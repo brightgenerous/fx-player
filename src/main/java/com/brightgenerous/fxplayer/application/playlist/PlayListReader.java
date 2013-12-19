@@ -12,6 +12,8 @@ import java.net.URLEncoder;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import com.brightgenerous.fxplayer.application.playlist.MediaInfo.MetaChangeListener;
@@ -38,6 +40,13 @@ class PlayListReader {
                 }
             }
         }
+        Collections.sort(ret, new Comparator<MediaInfo>() {
+
+            @Override
+            public int compare(MediaInfo o1, MediaInfo o2) {
+                return o1.getSource().getUrl().compareTo(o2.getSource().getUrl());
+            }
+        });
         return ret;
     }
 
