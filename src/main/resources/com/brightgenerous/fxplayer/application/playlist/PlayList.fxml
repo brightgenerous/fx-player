@@ -70,10 +70,11 @@
     </tabs>
   </TabPane>
   <HBox id="control-pane">
+    <Region minWidth="15" maxWidth="15" />
     <VBox HBox.hgrow="ALWAYS">
       <Region prefHeight="-1.0" prefWidth="-1.0" VBox.vgrow="ALWAYS" />
-      <HBox fx:id="spectrumsWrap" id="control-line">
-        <HBox fx:id="spectrums" id="control-pane">
+      <HBox fx:id="spectrumsWrap">
+        <HBox fx:id="spectrums" id="control-line">
           <ProgressBar fx:id="spectrumBar1" progress="0" prefWidth="1000" style="-fx-accent:mediumseagreen" opacity="0.7" />
           <ProgressBar fx:id="spectrumBar2" progress="0" prefWidth="1000" style="-fx-accent:mediumseagreen" opacity="0.7" />
           <ProgressBar fx:id="spectrumBar3" progress="0" prefWidth="1000" style="-fx-accent:blueviolet;" opacity="0.7" />
