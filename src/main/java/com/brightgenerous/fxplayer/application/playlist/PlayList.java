@@ -353,10 +353,18 @@ public class PlayList implements Initializable {
             @Override
             public void changed(ObservableValue<? extends Number> observable, Number oldValue,
                     Number newValue) {
-                int oldVol = (int) (oldValue.doubleValue() * 100);
-                int newVol = (int) (newValue.doubleValue() * 100);
-                if (oldVol != newVol) {
-                    log("Control Volume : old => " + oldVol + " , new => " + newVol);
+                {
+                    int oldVol = (int) (oldValue.doubleValue() * 100);
+                    int newVol = (int) (newValue.doubleValue() * 100);
+                    if (oldVol != newVol) {
+                        log("Control Volume : old => " + oldVol + " , new => " + newVol);
+                    }
+                }
+                {
+                    String newVol = LabelUtils.toVolume(newValue.doubleValue());
+                    if (!newVol.equals(volumeText.getText())) {
+                        volumeText.setText(newVol);
+                    }
                 }
             }
         });
@@ -971,21 +979,6 @@ public class PlayList implements Initializable {
                     // volume
                     {
                         controlVolume.valueProperty().unbind();
-                        mp.volumeProperty().addListener(new ChangeListener<Number>() {
-
-                            @Override
-                            public void changed(ObservableValue<? extends Number> observable,
-                                    Number oldValue, Number newValue) {
-                                if (targetInfo != current) {
-                                    return;
-                                }
-                                String newVol = LabelUtils.toVolume(newValue.doubleValue());
-                                if (!newVol.equals(volumeText.getText())) {
-                                    volumeText.setText(newVol);
-                                }
-                            }
-                        });
-                        volumeText.setText(LabelUtils.toVolume(volume));
                         controlVolume.valueProperty().bindBidirectional(mp.volumeProperty());
                     }
 

@@ -17,9 +17,9 @@
     maxWidth="640" minHeight="240" prefHeight="360">
   <HBox id="control-pane">
     <Button onAction="#controlDirectoryChooser" id="button-chooser"
-        text="%control.directory-chooser" mnemonicParsing="true" />
+        text="%control.directory-chooser" minWidth="70" mnemonicParsing="true" />
     <Button onAction="#controlFileChooser" id="button-chooser"
-        text="%control.file-chooser" mnemonicParsing="true" />
+        text="%control.file-chooser" minWidth="70" mnemonicParsing="true" />
     <TextField fx:id="pathText" id="path-text" HBox.hgrow="ALWAYS" />
     <ToggleButton fx:id="controlLog" onAction="#controlLog"
         text="%control.log" mnemonicParsing="true" />
@@ -86,16 +86,18 @@
           <ProgressBar fx:id="progressBuffer" progress="0" prefWidth="2000" opacity="0.3" />
           <Slider fx:id="controlTime" id="control-time" min="0" max="0" prefWidth="2000" />
         </StackPane>
-        <Label fx:id="timeText" id="time-text" minWidth="190"/>
+        <Label fx:id="timeText" id="time-text" minWidth="190" alignment="CENTER_RIGHT" />
       </HBox>
       <HBox id="control-line">
         <Region HBox.hgrow="ALWAYS" />
         <ToggleButton fx:id="controlPlay" id="button-control" onAction="#controlPlay"
-            text="%control.play" mnemonicParsing="true" />
-        <Button onAction="#controlPrev" id="button-control" text="%control.prev" mnemonicParsing="true"/>
-        <Button onAction="#controlNext" id="button-control" text="%control.next" mnemonicParsing="true" />
-        <Slider fx:id="controlVolume" min="0.0" max="1.0" value="0.5" minWidth="150" />
-        <Label fx:id="volumeText" id="volume-text" />
+            text="%control.play" minWidth="70" mnemonicParsing="true" />
+        <Button onAction="#controlPrev" id="button-control"
+            text="%control.prev" minWidth="60" mnemonicParsing="true"/>
+        <Button onAction="#controlNext" id="button-control"
+            text="%control.next" minWidth="60" mnemonicParsing="true" />
+        <Slider fx:id="controlVolume" min="0.0" max="1.0" value="0.5" prefWidth="2000" />
+        <Label fx:id="volumeText" id="volume-text" minWidth="40" alignment="CENTER_RIGHT" />
         <Region HBox.hgrow="ALWAYS" />
       </HBox>
     </VBox>
