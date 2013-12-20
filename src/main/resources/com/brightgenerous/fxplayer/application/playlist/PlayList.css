@@ -32,7 +32,10 @@
 }
 
 #row-cursor {
-  -fx-background-color: linear-gradient(to bottom, #cceeff, #99ccff);
+  -fx-background-color: linear-gradient(to bottom, #70b6f2 0%, #54a3ee 50%, #3690f0 51%, #1a62db 100%);
+}
+#row-cursor .table-cell {
+  -fx-text-fill: #fff;
 }
 
 .tab {
@@ -48,7 +51,7 @@
 }
 
 #path-text {
-  -fx-alignment: center-right;
+/*  -fx-alignment: center-right; */
 }
 
 #control-pane {

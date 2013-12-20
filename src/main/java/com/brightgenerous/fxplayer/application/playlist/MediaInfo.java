@@ -304,6 +304,14 @@ public class MediaInfo {
         return imageProperty;
     }
 
+    public int getWidth() {
+        return widthProperty.get();
+    }
+
+    public int getHeight() {
+        return heightProperty.get();
+    }
+
     public ReadOnlyProperty<Boolean> visibleTooltipProperty() {
         return visibleTooltipProperty;
     }

@@ -17,12 +17,14 @@
     maxWidth="640" minHeight="240" prefHeight="360">
   <HBox id="control-pane">
     <Button onAction="#controlDirectoryChooser" id="button-chooser"
-        text="%control.directory-chooser" minWidth="70" mnemonicParsing="true" />
+        text="%control.directory-chooser" ellipsisString="%control.directory-chooser.ellipsis" mnemonicParsing="true"
+        prefWidth="85" />
     <Button onAction="#controlFileChooser" id="button-chooser"
-        text="%control.file-chooser" minWidth="70" mnemonicParsing="true" />
+        text="%control.file-chooser" ellipsisString="%control.file-chooser.ellipsis" mnemonicParsing="true"
+        prefWidth="85" />
     <TextField fx:id="pathText" id="path-text" HBox.hgrow="ALWAYS" />
     <ToggleButton fx:id="controlLog" onAction="#controlLog"
-        text="%control.log" mnemonicParsing="true" />
+        text="%control.log" ellipsisString="%control.log.ellipsis" mnemonicParsing="true" />
   </HBox>
   <TabPane VBox.vgrow="ALWAYS" side="BOTTOM">
     <tabs>
@@ -30,28 +32,28 @@
         <content>
           <TableView fx:id="mediaList" tableMenuButtonVisible="true">
             <columns>
-              <TableColumn fx:id="tableColumnIndex" text="%media.index" prefWidth="40" sortable="false">
+              <TableColumn fx:id="tableColumnIndex" sortable="false" text="%media.index" prefWidth="40">
                 <cellValueFactory><PropertyValueFactory property="exist" /></cellValueFactory>
               </TableColumn>
-              <TableColumn fx:id="tableColumnCursor" prefWidth="70" sortable="false">
+              <TableColumn fx:id="tableColumnCursor" sortable="false" prefWidth="70">
                 <cellValueFactory><PropertyValueFactory property="cursor" /></cellValueFactory>
               </TableColumn>
-              <TableColumn text="%media.titleDesc" prefWidth="265" sortable="false">
+              <TableColumn text="%media.titleDesc" sortable="false" prefWidth="265">
                 <cellValueFactory><PropertyValueFactory property="titleDesc" /></cellValueFactory>
               </TableColumn>
-              <TableColumn text="%media.artist" prefWidth="170" sortable="false">
+              <TableColumn text="%media.artist" sortable="false" prefWidth="170">
                 <cellValueFactory><PropertyValueFactory property="artist" /></cellValueFactory>
               </TableColumn>
-              <TableColumn fx:id="tableColumnDuration" text="%media.duration" prefWidth="80" sortable="false">
+              <TableColumn fx:id="tableColumnDuration" text="%media.duration" sortable="false" prefWidth="80">
                 <cellValueFactory><PropertyValueFactory property="duration" /></cellValueFactory>
               </TableColumn>
-              <TableColumn text="%media.album" prefWidth="170" sortable="false">
+              <TableColumn text="%media.album" sortable="false" prefWidth="170">
                 <cellValueFactory><PropertyValueFactory property="album" /></cellValueFactory>
               </TableColumn>
-              <TableColumn text="%media.description" prefWidth="200" sortable="false">
+              <TableColumn text="%media.description" sortable="false" prefWidth="200">
                 <cellValueFactory><PropertyValueFactory property="description" /></cellValueFactory>
               </TableColumn>
-              <TableColumn text="%media.info" prefWidth="400" sortable="false">
+              <TableColumn text="%media.info" sortable="false" prefWidth="400">
                 <cellValueFactory><PropertyValueFactory property="info" /></cellValueFactory>
               </TableColumn>
             </columns>
@@ -60,10 +62,14 @@
       </Tab>
       <Tab fx:id="mediaContainer" text="%tab.video" closable="false">
         <content>
-          <HBox style="-fx-background-color:linear-gradient(to bottom,#333,#444);" alignment="CENTER">
-            <VBox alignment="CENTER">
-              <HBox fx:id="mediaPane"></HBox>
+          <HBox style="-fx-background-color:linear-gradient(to bottom,#333,#444);">
+            <Region HBox.hgrow="ALWAYS" />
+            <VBox>
+              <Region VBox.vgrow="ALWAYS" />
+              <Pane fx:id="mediaPane" />
+              <Region VBox.vgrow="ALWAYS" />
             </VBox>
+            <Region HBox.hgrow="ALWAYS" />
           </HBox>
         </content>
       </Tab>
@@ -72,31 +78,34 @@
   <HBox id="control-pane">
     <Region minWidth="15" maxWidth="15" />
     <VBox HBox.hgrow="ALWAYS">
-      <Region prefHeight="-1.0" prefWidth="-1.0" VBox.vgrow="ALWAYS" />
+      <Region VBox.vgrow="ALWAYS" />
       <HBox fx:id="spectrumsWrap">
         <HBox fx:id="spectrums" id="control-line">
-          <ProgressBar fx:id="spectrumBar1" progress="0" prefWidth="1000" style="-fx-accent:mediumseagreen" opacity="0.7" />
-          <ProgressBar fx:id="spectrumBar2" progress="0" prefWidth="1000" style="-fx-accent:mediumseagreen" opacity="0.7" />
-          <ProgressBar fx:id="spectrumBar3" progress="0" prefWidth="1000" style="-fx-accent:blueviolet;" opacity="0.7" />
-          <ProgressBar fx:id="spectrumBar4" progress="0" prefWidth="1000" style="-fx-accent:blueviolet" opacity="0.7" />
+          <ProgressBar fx:id="spectrumBar1" progress="0" prefWidth="9999" style="-fx-accent:mediumseagreen" opacity="0.7" />
+          <ProgressBar fx:id="spectrumBar2" progress="0" prefWidth="9999" style="-fx-accent:mediumseagreen" opacity="0.7" />
+          <ProgressBar fx:id="spectrumBar3" progress="0" prefWidth="9999" style="-fx-accent:blueviolet;" opacity="0.7" />
+          <ProgressBar fx:id="spectrumBar4" progress="0" prefWidth="9999" style="-fx-accent:blueviolet" opacity="0.7" />
         </HBox>
       </HBox>
       <HBox id="control-line">
         <StackPane HBox.hgrow="ALWAYS">
-          <ProgressBar fx:id="progressCurrent" progress="0" prefWidth="2000" />
-          <ProgressBar fx:id="progressBuffer" progress="0" prefWidth="2000" opacity="0.3" />
-          <Slider fx:id="controlTime" id="control-time" min="0" max="0" prefWidth="2000" />
+          <ProgressBar fx:id="progressCurrent" progress="0" prefWidth="9999" />
+          <ProgressBar fx:id="progressBuffer" progress="0" prefWidth="9999" opacity="0.3" />
+          <Slider fx:id="controlTime" id="control-time" min="0" max="0" prefWidth="9999" />
         </StackPane>
         <Label fx:id="timeText" id="time-text" minWidth="190" alignment="CENTER_RIGHT" />
       </HBox>
       <HBox id="control-line">
         <Region HBox.hgrow="ALWAYS" />
         <ToggleButton fx:id="controlPlay" id="button-control" onAction="#controlPlay"
-            text="%control.play" minWidth="70" mnemonicParsing="true" />
+            text="%control.play" ellipsisString="%control.play.ellipsis" mnemonicParsing="true"
+            prefWidth="75" />
         <Button onAction="#controlPrev" id="button-control"
-            text="%control.prev" minWidth="60" mnemonicParsing="true"/>
+            text="%control.prev" ellipsisString="%control.prev.ellipsis" mnemonicParsing="true"
+            prefWidth="75" />
         <Button onAction="#controlNext" id="button-control"
-            text="%control.next" minWidth="60" mnemonicParsing="true" />
+            text="%control.next" ellipsisString="%control.next.ellipsis" mnemonicParsing="true"
+            prefWidth="75" />
         <Region minWidth="5" maxWidth="5" />
         <Slider fx:id="controlVolume" min="0.0" max="1.0" value="0.5" maxWidth="200" />
         <Label fx:id="volumeText" id="volume-text" minWidth="40" alignment="CENTER_RIGHT" />

@@ -140,7 +140,6 @@ public class HttpUtils {
 
                 @Override
                 public String handleResponse(HttpResponse response) throws IOException {
-                    System.out.println(response.getStatusLine().getStatusCode());
                     switch (response.getStatusLine().getStatusCode()) {
                         case HttpStatus.SC_OK:
                             HttpEntity entity = response.getEntity();
