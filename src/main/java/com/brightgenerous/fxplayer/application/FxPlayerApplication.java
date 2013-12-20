@@ -27,7 +27,7 @@ public class FxPlayerApplication extends Application {
         }
         StageBuilder.create().title(title)
                 .icons(new Image(getClass().getResourceAsStream("icon.png"))).applyTo(stage);
-        Utils.move(stage, PlayList.class);
+        FxUtils.move(stage, PlayList.class);
         stage.show();
     }
 }

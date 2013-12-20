@@ -1,10 +1,13 @@
 package com.brightgenerous.fxplayer.application.playlist;
 
 import javafx.beans.binding.Bindings;
+import javafx.beans.binding.BooleanExpression;
+import javafx.beans.binding.StringBinding;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.Property;
 import javafx.beans.property.ReadOnlyProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleDoubleProperty;
@@ -12,6 +15,8 @@ import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
+import javafx.beans.value.ObservableBooleanValue;
+import javafx.beans.value.ObservableStringValue;
 import javafx.beans.value.WritableValue;
 import javafx.collections.MapChangeListener;
 import javafx.collections.MapChangeListener.Change;
@@ -45,7 +50,7 @@ public class MediaInfo {
 
     private final ObjectProperty<Duration> durationProperty = new SimpleObjectProperty<>();
 
-    private final StringProperty durationTextProperty = new SimpleStringProperty("");
+    private final WritableValue<String> durationTextProperty = new SimpleStringProperty("");
 
     private final ObjectProperty<Image> imageProperty = new SimpleObjectProperty<>();
 
@@ -61,56 +66,50 @@ public class MediaInfo {
 
     private final BooleanProperty visibleTooltipProperty = new SimpleBooleanProperty();
 
-    private final StringProperty tooltipProperty = new SimpleStringProperty();
+    private final Property<String> tooltipProperty = new SimpleStringProperty();
 
-    private final StringProperty infoProperty = new SimpleStringProperty();
+    private final Property<String> infoProperty = new SimpleStringProperty();
 
     {
-        BooleanProperty visibleVideoInfoProperty;
+        ObservableBooleanValue visibleVideoInfo;
         {
-            BooleanProperty visibleAudioInfoProperty = new SimpleBooleanProperty();
-            visibleAudioInfoProperty.bind(titleProperty.isNotEqualTo("")
+            BooleanExpression visibleAudioInfo = titleProperty.isNotEqualTo("")
                     .or(artistProperty.isNotEqualTo("")).or(albumProperty.isNotEqualTo(""))
-                    .or(imageProperty.isNotNull()));
-            visibleVideoInfoProperty = new SimpleBooleanProperty();
-            visibleVideoInfoProperty.bind(videoCodecProperty.isNotEqualTo("")
+                    .or(imageProperty.isNotNull());
+            visibleVideoInfo = videoCodecProperty.isNotEqualTo("")
                     .or(audioCodecProperty.isNotEqualTo("")).or(widthProperty.greaterThan(0))
-                    .or(heightProperty.greaterThan(0)).or(framerateProperty.greaterThan(0)));
-            visibleTooltipProperty.bind(visibleAudioInfoProperty.or(visibleVideoInfoProperty));
+                    .or(heightProperty.greaterThan(0)).or(framerateProperty.greaterThan(0));
+
+            visibleTooltipProperty.bind(visibleAudioInfo.or(visibleVideoInfo));
         }
         {
-            StringProperty audioTooltipProperty = new SimpleStringProperty();
-            audioTooltipProperty.bind(Bindings.concat("Title : ").concat(titleProperty)
+            ObservableStringValue audioTooltip = Bindings.concat("Title : ").concat(titleProperty)
                     .concat("\nArtist : ").concat(artistProperty).concat("\nAlbum : ")
-                    .concat(albumProperty).concat("\nDuration : ").concat(durationTextProperty));
-            StringProperty videoTooltipProperty = new SimpleStringProperty();
-            videoTooltipProperty.bind(Bindings.concat("Video Codec : ").concat(videoCodecProperty)
-                    .concat("\nAudio Codec : ").concat(audioCodecProperty).concat("\nWidth : ")
-                    .concat(widthProperty).concat("\nHeight : ").concat(heightProperty)
-                    .concat("\nFramerate : ").concat(framerateProperty).concat("\nDuration : ")
-                    .concat(durationTextProperty));
+                    .concat(albumProperty).concat("\nDuration : ").concat(durationTextProperty);
+            ObservableStringValue videoTooltip = Bindings.concat("Video Codec : ")
+                    .concat(videoCodecProperty).concat("\nAudio Codec : ")
+                    .concat(audioCodecProperty).concat("\nWidth : ").concat(widthProperty)
+                    .concat("\nHeight : ").concat(heightProperty).concat("\nFramerate : ")
+                    .concat(framerateProperty).concat("\nDuration : ").concat(durationTextProperty);
 
-            SimpleStringProperty tmp = new SimpleStringProperty();
-            tmp.bind(Bindings.when(visibleVideoInfoProperty).then(videoTooltipProperty)
-                    .otherwise(audioTooltipProperty));
-            tooltipProperty.bind(Bindings.when(visibleTooltipProperty).then(tmp).otherwise(""));
+            ObservableStringValue tooltip = Bindings.when(visibleVideoInfo).then(videoTooltip)
+                    .otherwise(audioTooltip);
+            tooltipProperty.bind(Bindings.when(visibleTooltipProperty).then(tooltip).otherwise(""));
         }
         {
-            StringProperty audioInfoProperty = new SimpleStringProperty();
-            audioInfoProperty.bind(Bindings.concat("Title : ").concat(titleProperty)
+            ObservableStringValue audioInfo = Bindings.concat("Title : ").concat(titleProperty)
                     .concat(" , Artist : ").concat(artistProperty).concat(" , Album : ")
-                    .concat(albumProperty).concat(" , Duration : ").concat(durationTextProperty));
-            StringProperty videoInfoProperty = new SimpleStringProperty();
-            videoInfoProperty.bind(Bindings.concat("Video Codec : ").concat(videoCodecProperty)
-                    .concat(" , Audio Codec : ").concat(audioCodecProperty).concat(" , Width : ")
-                    .concat(widthProperty).concat(" , Height : ").concat(heightProperty)
-                    .concat(" , Framerate : ").concat(framerateProperty).concat(" , Duration : ")
-                    .concat(durationTextProperty));
+                    .concat(albumProperty).concat(" , Duration : ").concat(durationTextProperty);
+            ObservableStringValue videoInfo = Bindings.concat("Video Codec : ")
+                    .concat(videoCodecProperty).concat(" , Audio Codec : ")
+                    .concat(audioCodecProperty).concat(" , Width : ").concat(widthProperty)
+                    .concat(" , Height : ").concat(heightProperty).concat(" , Framerate : ")
+                    .concat(framerateProperty).concat(" , Duration : ")
+                    .concat(durationTextProperty);
 
-            SimpleStringProperty tmp = new SimpleStringProperty();
-            tmp.bind(Bindings.when(visibleVideoInfoProperty).then(videoInfoProperty)
-                    .otherwise(audioInfoProperty));
-            infoProperty.bind(Bindings.when(visibleTooltipProperty).then(tmp).otherwise(""));
+            StringBinding info = Bindings.when(visibleVideoInfo).then(videoInfo)
+                    .otherwise(audioInfo);
+            infoProperty.bind(Bindings.when(visibleTooltipProperty).then(info).otherwise(""));
         }
     }
 
@@ -300,7 +299,7 @@ public class MediaInfo {
         return infoProperty;
     }
 
-    public ObjectProperty<Image> imageProperty() {
+    public Property<Image> imageProperty() {
         return imageProperty;
     }
 

@@ -16,7 +16,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import com.brightgenerous.fxplayer.application.playlist.MediaInfo.MetaChangeListener;
-import com.brightgenerous.fxplayer.http.HttpUtils;
+import com.brightgenerous.fxplayer.util.HttpUtils;
 
 class PlayListReader {
 

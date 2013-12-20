@@ -31,11 +31,7 @@ import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
 import javafx.geometry.Side;
 import javafx.scene.Node;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
-import javafx.scene.SceneBuilder;
 import javafx.scene.control.Label;
-import javafx.scene.control.LabelBuilder;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.Slider;
 import javafx.scene.control.Tab;
@@ -44,8 +40,6 @@ import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TextAreaBuilder;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.Tooltip;
@@ -55,9 +49,6 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.VBox;
-import javafx.scene.layout.VBoxBuilder;
 import javafx.scene.media.AudioSpectrumListener;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaException;
@@ -66,16 +57,16 @@ import javafx.scene.media.MediaPlayer.Status;
 import javafx.scene.media.MediaView;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
-import javafx.stage.StageBuilder;
 import javafx.stage.WindowEvent;
 import javafx.util.Callback;
 import javafx.util.Duration;
 
-import com.brightgenerous.fxplayer.application.Utils.Inject;
-import com.brightgenerous.fxplayer.application.playlist.ImageSaveUtils.Type;
+import com.brightgenerous.fxplayer.application.FxUtils.Inject;
 import com.brightgenerous.fxplayer.application.playlist.MediaInfo.MetaChangeListener;
+import com.brightgenerous.fxplayer.util.ImageSaveUtils;
+import com.brightgenerous.fxplayer.util.ImageSaveUtils.Type;
+import com.brightgenerous.fxplayer.util.Utils;
 
 public class PlayList implements Initializable {
 
@@ -94,9 +85,7 @@ public class PlayList implements Initializable {
     @FXML
     private ToggleButton controlLog;
 
-    private Stage logWindow;
-
-    private TextArea logText;
+    private LogStage logWindow;
 
     // tab - media list
 
@@ -179,16 +168,7 @@ public class PlayList implements Initializable {
 
     private final FileChooser saveChooser = new FileChooser();
     {
-        File home = null;
-        {
-            String userHome = System.getProperty("user.home");
-            if (userHome != null) {
-                File tmp = new File(userHome);
-                if (tmp.exists() && tmp.isDirectory() && tmp.canRead()) {
-                    home = tmp;
-                }
-            }
-        }
+        File home = Utils.getHomeDirectory();
         if (home != null) {
             directoryChooser.setInitialDirectory(home);
             fileChooser.setInitialDirectory(home);
@@ -231,16 +211,16 @@ public class PlayList implements Initializable {
                 public void handle(MouseEvent event) {
                     int count = event.getClickCount();
                     if ((1 < count) && ((count % 2) == 0)) {
-                        TabPane tabPen = mediaContainer.getTabPane();
-                        switch (tabPen.getSide()) {
+                        TabPane tabPane = mediaContainer.getTabPane();
+                        switch (tabPane.getSide()) {
                             case LEFT:
                             case RIGHT:
-                                tabPen.setSide(Side.BOTTOM);
+                                tabPane.setSide(Side.BOTTOM);
                                 break;
                             case TOP:
                             case BOTTOM:
                             default:
-                                tabPen.setSide(Side.LEFT);
+                                tabPane.setSide(Side.LEFT);
                                 break;
                         }
                     }
@@ -477,21 +457,7 @@ public class PlayList implements Initializable {
         });
 
         {
-            Label label = LabelBuilder
-                    .create()
-                    .prefWidth(1000)
-                    .alignment(Pos.CENTER_RIGHT)
-                    .text("brigen fx-player 「Narudake Player」, Copyright(c) 2013 BrightGenerous, All Rights Reserved.")
-                    .build();
-            logText = TextAreaBuilder.create().wrapText(true).editable(false).build();
-            VBox.setVgrow(logText, Priority.ALWAYS);
-            Parent parent = VBoxBuilder.create().children(logText, label).build();
-            Scene scene = SceneBuilder.create().root(parent).build();
-            logWindow = StageBuilder.create().width(640).height(360).scene(scene)
-                    .icons(owner.getIcons()).build();
-            logWindow.setTitle(bundle.getString("log.title"));
-            // logWindow.initOwner(owner);
-            logWindow.initModality(Modality.NONE);
+            logWindow = new LogStage(bundle.getString("log.title"), owner.getIcons());
             logWindow.addEventHandler(WindowEvent.WINDOW_CLOSE_REQUEST,
                     new EventHandler<WindowEvent>() {
 
@@ -516,73 +482,6 @@ public class PlayList implements Initializable {
         log("Wake up !!");
     }
 
-    private final Service<Boolean> saveService = new Service<Boolean>() {
-
-        @Override
-        protected Task<Boolean> createTask() {
-            return new Task<Boolean>() {
-
-                @Override
-                protected Boolean call() throws Exception {
-                    MediaInfo info = current;
-                    if (info == null) {
-                        return Boolean.FALSE;
-                    }
-
-                    Image image = info.imageProperty().getValue();
-                    if (image == null) {
-                        return Boolean.FALSE;
-                    }
-
-                    File file;
-                    {
-                        String title = info.titleProperty().getValue();
-                        if ((title == null) || title.isEmpty()) {
-                            saveChooser.setInitialFileName("");
-                        } else {
-                            Type type = ImageSaveUtils.suggestType();
-                            saveChooser.setInitialFileName(ImageSaveUtils.escapeFileName(title
-                                    + type.getExtension()));
-                        }
-                        file = saveChooser.showSaveDialog(owner);
-                    }
-                    if (file == null) {
-                        return Boolean.FALSE;
-                    }
-                    {
-                        File parent = file.getParentFile();
-                        if ((parent != null) && parent.isDirectory()) {
-                            saveChooser.setInitialDirectory(parent);
-                        }
-                    }
-
-                    File out = ImageSaveUtils.save(file, image);
-                    if (out == null) {
-
-                        log("Save File Failure : " + file.getAbsolutePath());
-
-                        return Boolean.FALSE;
-                    }
-
-                    log("Save File : " + out.getAbsolutePath());
-
-                    return Boolean.TRUE;
-                }
-            };
-        }
-    };
-
-    @FXML
-    protected void controlLog() {
-        if (logWindow.isShowing()) {
-            logWindow.close();
-            controlLog.setSelected(false);
-        } else {
-            logWindow.show();
-            controlLog.setSelected(true);
-        }
-    }
-
     @FXML
     protected void controlDirectoryChooser() {
         if (!loadRunning()) {
@@ -597,171 +496,14 @@ public class PlayList implements Initializable {
         }
     }
 
-    private boolean loadRunning() {
-        return loadDirectoryService.isRunning() || loadFileService.isRunning()
-                || loadHttpService.isRunning();
-    }
-
-    private final MetaChangeListener metaChangeListener = new MetaChangeListener() {
-
-        @Override
-        public void onChanged(MediaInfo info, Media media,
-                Change<? extends String, ? extends Object> change) {
-            String key = change.getKey();
-
-            if (change.wasAdded()) {
-                Object value = isOmit(key) ? "...omit..." : change.getValueAdded();
-                log("Meta : source => " + info.getDescription() + " , key => " + key
-                        + " , value => " + value);
-            } else {
-                Object value = isOmit(key) ? "...omit..." : change.getValueRemoved();
-                log("Meta Remove : source => " + info.getDescription() + " , key => " + key
-                        + " , value => " + value);
-            }
-
-            if (key.equals("raw metadata")) {
-                loadMedia();
-            }
-        }
-
-        private boolean isOmit(String key) {
-            return key.equals("raw metadata") || key.equals("image");
-        }
-    };
-
-    private final Service<Boolean> loadDirectoryService = new Service<Boolean>() {
-
-        @Override
-        protected Task<Boolean> createTask() {
-            return new Task<Boolean>() {
-
-                @Override
-                protected Boolean call() throws Exception {
-                    File dir = directoryChooser.showDialog(owner);
-                    if (dir == null) {
-                        return Boolean.FALSE;
-                    }
-                    {
-                        File parent = dir.getParentFile();
-                        if ((parent != null) && parent.isDirectory()) {
-                            directoryChooser.setInitialDirectory(parent);
-                        } else {
-                            directoryChooser.setInitialDirectory(dir);
-                        }
-                    }
-
-                    List<MediaInfo> infos = PlayListReader.fromDirectory(dir, metaChangeListener);
-
-                    if (infos == null) {
-                        log("Load Directory Failure : " + dir.getAbsolutePath());
-                    } else {
-                        log("Load Directory : " + dir.getAbsolutePath());
-                    }
-
-                    if (infos == null) {
-                        return Boolean.FALSE;
-                    }
-
-                    updateItems(dir.toString(), infos);
-
-                    loadMedia();
-
-                    return Boolean.TRUE;
-                }
-            };
-        }
-    };
-
-    private final Service<Boolean> loadFileService = new Service<Boolean>() {
-
-        @Override
-        protected Task<Boolean> createTask() {
-            return new Task<Boolean>() {
-
-                @Override
-                protected Boolean call() throws Exception {
-                    File file = fileChooser.showOpenDialog(owner);
-                    if (file == null) {
-                        return Boolean.FALSE;
-                    }
-                    {
-                        File parent = file.getParentFile();
-                        if ((parent != null) && parent.isDirectory()) {
-                            fileChooser.setInitialDirectory(parent);
-                        }
-                    }
-
-                    List<MediaInfo> infos = PlayListReader.fromFile(file, metaChangeListener);
-
-                    if (infos == null) {
-                        log("Load File Failure : " + file.getAbsolutePath());
-                    } else {
-                        log("Load File : " + file.getAbsolutePath());
-                    }
-
-                    if (infos == null) {
-                        return Boolean.FALSE;
-                    }
-
-                    updateItems(file.toString(), infos);
-
-                    loadMedia();
-
-                    return Boolean.TRUE;
-                }
-            };
-        }
-    };
-
-    private final Service<Boolean> loadHttpService = new Service<Boolean>() {
-
-        @Override
-        protected Task<Boolean> createTask() {
-            return new Task<Boolean>() {
-
-                @Override
-                protected Boolean call() throws Exception {
-                    String text = pathText.getText().trim();
-
-                    List<MediaInfo> infos = PlayListReader.fromURL(text, metaChangeListener);
-
-                    if (infos == null) {
-                        log("Load URL Failure : " + text);
-                    } else {
-                        log("Load URL : " + text);
-                    }
-
-                    if (infos == null) {
-                        return Boolean.FALSE;
-                    }
-
-                    updateItems(text, infos);
-
-                    loadMedia();
-
-                    return Boolean.TRUE;
-                }
-            };
-        }
-    };
-
-    private void loadMedia() {
-        if (Platform.isFxApplicationThread()) {
-            if (loadMediaService.isRunning()) {
-                loadMediaService.cancel();
-            }
-            loadMediaService.restart();
+    @FXML
+    protected void controlLog() {
+        if (logWindow.isShowing()) {
+            logWindow.close();
+            controlLog.setSelected(false);
         } else {
-            Platform.runLater(new Runnable() {
-
-                @Override
-                public void run() {
-                    if (loadMediaService.isRunning()) {
-                        loadMediaService.cancel();
-                    }
-                    loadMediaService.restart();
-                }
-            });
+            logWindow.show();
+            controlLog.setSelected(true);
         }
     }
 
@@ -1077,7 +819,7 @@ public class PlayList implements Initializable {
                                 targetInfo.imageProperty().removeListener(this);
                             }
                         });
-                        imageView.setImage(targetInfo.imageProperty().get());
+                        imageView.setImage(targetInfo.imageProperty().getValue());
                         requestScroll(scrollTo);
                     }
 
@@ -1236,42 +978,6 @@ public class PlayList implements Initializable {
         }
     }
 
-    private final Service<Boolean> loadMediaService = new Service<Boolean>() {
-
-        @Override
-        protected Task<Boolean> createTask() {
-            return new Task<Boolean>() {
-
-                @Override
-                protected Boolean call() throws Exception {
-
-                    Thread.yield();
-
-                    List<MediaInfo> items = getItemsSnapshot();
-                    int i = 0;
-                    for (; i < items.size(); i++) {
-                        MediaInfo info = items.get(i);
-                        if (!info.loaded()) {
-                            if (!isCancelled()) {
-                                if (info.load()) {
-
-                                    // expect chain loading.
-                                    //   would be called from meta data loaded callback.
-
-                                    break;
-                                }
-                                onErrorLoadMedia(info);
-
-                                Thread.yield();
-                            }
-                        }
-                    }
-                    return Boolean.TRUE;
-                }
-            };
-        }
-    };
-
     private List<MediaInfo> getItemsSnapshot() {
         List<MediaInfo> ret;
         Lock lLock = listLock.readLock();
@@ -1420,6 +1126,266 @@ public class PlayList implements Initializable {
         }
     }
 
+    private final MetaChangeListener metaChangeListener = new MetaChangeListener() {
+
+        @Override
+        public void onChanged(MediaInfo info, Media media,
+                Change<? extends String, ? extends Object> change) {
+            String key = change.getKey();
+
+            if (change.wasAdded()) {
+                Object value = isOmit(key) ? "...omit..." : change.getValueAdded();
+                log("Meta : source => " + info.getDescription() + " , key => " + key
+                        + " , value => " + value);
+            } else {
+                Object value = isOmit(key) ? "...omit..." : change.getValueRemoved();
+                log("Meta Remove : source => " + info.getDescription() + " , key => " + key
+                        + " , value => " + value);
+            }
+
+            if (key.equals("raw metadata")) {
+                loadMedia();
+            }
+        }
+
+        private boolean isOmit(String key) {
+            return key.equals("raw metadata") || key.equals("image");
+        }
+    };
+
+    private boolean loadRunning() {
+        return loadDirectoryService.isRunning() || loadFileService.isRunning()
+                || loadHttpService.isRunning();
+    }
+
+    private final Service<Boolean> loadDirectoryService = new Service<Boolean>() {
+
+        @Override
+        protected Task<Boolean> createTask() {
+            return new Task<Boolean>() {
+
+                @Override
+                protected Boolean call() throws Exception {
+                    File dir = directoryChooser.showDialog(owner);
+                    if (dir == null) {
+                        return Boolean.FALSE;
+                    }
+                    {
+                        File parent = dir.getParentFile();
+                        if ((parent != null) && parent.isDirectory()) {
+                            directoryChooser.setInitialDirectory(parent);
+                        } else {
+                            directoryChooser.setInitialDirectory(dir);
+                        }
+                    }
+
+                    List<MediaInfo> infos = PlayListReader.fromDirectory(dir, metaChangeListener);
+
+                    if (infos == null) {
+                        log("Load Directory Failure : " + dir.getAbsolutePath());
+                    } else {
+                        log("Load Directory : " + dir.getAbsolutePath());
+                    }
+
+                    if (infos == null) {
+                        return Boolean.FALSE;
+                    }
+
+                    updateItems(dir.toString(), infos);
+
+                    loadMedia();
+
+                    return Boolean.TRUE;
+                }
+            };
+        }
+    };
+
+    private final Service<Boolean> loadFileService = new Service<Boolean>() {
+
+        @Override
+        protected Task<Boolean> createTask() {
+            return new Task<Boolean>() {
+
+                @Override
+                protected Boolean call() throws Exception {
+                    File file = fileChooser.showOpenDialog(owner);
+                    if (file == null) {
+                        return Boolean.FALSE;
+                    }
+                    {
+                        File parent = file.getParentFile();
+                        if ((parent != null) && parent.isDirectory()) {
+                            fileChooser.setInitialDirectory(parent);
+                        }
+                    }
+
+                    List<MediaInfo> infos = PlayListReader.fromFile(file, metaChangeListener);
+
+                    if (infos == null) {
+                        log("Load File Failure : " + file.getAbsolutePath());
+                    } else {
+                        log("Load File : " + file.getAbsolutePath());
+                    }
+
+                    if (infos == null) {
+                        return Boolean.FALSE;
+                    }
+
+                    updateItems(file.toString(), infos);
+
+                    loadMedia();
+
+                    return Boolean.TRUE;
+                }
+            };
+        }
+    };
+
+    private final Service<Boolean> loadHttpService = new Service<Boolean>() {
+
+        @Override
+        protected Task<Boolean> createTask() {
+            return new Task<Boolean>() {
+
+                @Override
+                protected Boolean call() throws Exception {
+                    String text = pathText.getText().trim();
+
+                    List<MediaInfo> infos = PlayListReader.fromURL(text, metaChangeListener);
+
+                    if (infos == null) {
+                        log("Load URL Failure : " + text);
+                    } else {
+                        log("Load URL : " + text);
+                    }
+
+                    if (infos == null) {
+                        return Boolean.FALSE;
+                    }
+
+                    updateItems(text, infos);
+
+                    loadMedia();
+
+                    return Boolean.TRUE;
+                }
+            };
+        }
+    };
+
+    private void loadMedia() {
+        if (Platform.isFxApplicationThread()) {
+            if (loadMediaService.isRunning()) {
+                loadMediaService.cancel();
+            }
+            loadMediaService.restart();
+        } else {
+            Platform.runLater(new Runnable() {
+
+                @Override
+                public void run() {
+                    if (loadMediaService.isRunning()) {
+                        loadMediaService.cancel();
+                    }
+                    loadMediaService.restart();
+                }
+            });
+        }
+    }
+
+    private final Service<Boolean> loadMediaService = new Service<Boolean>() {
+
+        @Override
+        protected Task<Boolean> createTask() {
+            return new Task<Boolean>() {
+
+                @Override
+                protected Boolean call() throws Exception {
+
+                    Thread.yield();
+
+                    List<MediaInfo> items = getItemsSnapshot();
+                    int i = 0;
+                    for (; i < items.size(); i++) {
+                        MediaInfo info = items.get(i);
+                        if (!info.loaded()) {
+                            if (!isCancelled()) {
+                                if (info.load()) {
+
+                                    // expect chain loading.
+                                    //   would be called from meta data loaded callback.
+
+                                    break;
+                                }
+                                onErrorLoadMedia(info);
+
+                                Thread.yield();
+                            }
+                        }
+                    }
+                    return Boolean.TRUE;
+                }
+            };
+        }
+    };
+
+    private final Service<Boolean> saveService = new Service<Boolean>() {
+
+        @Override
+        protected Task<Boolean> createTask() {
+            return new Task<Boolean>() {
+
+                @Override
+                protected Boolean call() throws Exception {
+                    MediaInfo info = current;
+                    if (info == null) {
+                        return Boolean.FALSE;
+                    }
+
+                    Image image = info.imageProperty().getValue();
+                    if (image == null) {
+                        return Boolean.FALSE;
+                    }
+
+                    File file;
+                    {
+                        String title = info.titleProperty().getValue();
+                        if ((title == null) || title.isEmpty()) {
+                            saveChooser.setInitialFileName("");
+                        } else {
+                            Type type = ImageSaveUtils.suggestType();
+                            saveChooser.setInitialFileName(ImageSaveUtils.escapeFileName(title
+                                    + type.getExtension()));
+                        }
+                        file = saveChooser.showSaveDialog(owner);
+                    }
+                    if (file == null) {
+                        return Boolean.FALSE;
+                    }
+                    {
+                        File parent = file.getParentFile();
+                        if ((parent != null) && parent.isDirectory()) {
+                            saveChooser.setInitialDirectory(parent);
+                        }
+                    }
+
+                    File out = ImageSaveUtils.save(file, image);
+                    if (out == null) {
+
+                        log("Save File Failure : " + file.getAbsolutePath());
+
+                        return Boolean.FALSE;
+                    }
+
+                    log("Save File : " + out.getAbsolutePath());
+
+                    return Boolean.TRUE;
+                }
+            };
+        }
+    };
+
     //----------------------------------------------------------------------------------
     // About log type.
     //
@@ -1445,6 +1411,6 @@ public class PlayList implements Initializable {
     }
 
     private void log(LogType type, String str) {
-        logText.appendText(String.format("%1$tH:%1$tM:%1$tS:%1$tL - %2$s%n", new Date(), str));
+        logWindow.appendLog(String.format("%1$tH:%1$tM:%1$tS:%1$tL - %2$s%n", new Date(), str));
     }
 }
