@@ -96,7 +96,8 @@
             text="%control.prev" minWidth="60" mnemonicParsing="true"/>
         <Button onAction="#controlNext" id="button-control"
             text="%control.next" minWidth="60" mnemonicParsing="true" />
-        <Slider fx:id="controlVolume" min="0.0" max="1.0" value="0.5" prefWidth="2000" />
+        <Region minWidth="5" maxWidth="5" />
+        <Slider fx:id="controlVolume" min="0.0" max="1.0" value="0.5" maxWidth="200" />
         <Label fx:id="volumeText" id="volume-text" minWidth="40" alignment="CENTER_RIGHT" />
         <Region HBox.hgrow="ALWAYS" />
       </HBox>
