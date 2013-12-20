@@ -69,7 +69,7 @@ Supported Media Codecs - [Oracleのサイト][1]
 ビルド
 -------
 
-環境に合わせて pom.xml ファイルの59行目あたりを書き換えてください
+環境に合わせて pom.xml ファイルの65行目あたりを書き換えてください
 
       <systemPath>C:\Program Files\Java\jre7\lib\jfxrt.jar</systemPath>
 
