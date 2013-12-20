@@ -10,12 +10,16 @@ JavaFX（ジャバえふえっくす）で書いた動画や音声をなるだ�
 最新版
 -------
 
-2.0.0
+2.1.0
 
 
 #### 機能
 
 * それなりに動画も再生できるようになりました（動画タブで切り替え）
+
+Supported Media Codecs - [Oracleのサイト][1]
+
+[1]: http://docs.oracle.com/javafx/2/media/overview.htm
 
 
 * プレイリストのファイルを順に再生します。停止、スキップ、ジャンプ（操作：リストの項目をダボォクリック!）もできます
@@ -73,8 +77,8 @@ JavaFX（ジャバえふえっくす）で書いた動画や音声をなるだ�
 contributors
 -------
 
-* BrightGenerous - [twitter][1]
+* BrightGenerous - [twitter][2]
 
 
 
-[1]: https://twitter.com/BrightGenerous
+[2]: https://twitter.com/BrightGenerous

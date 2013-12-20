@@ -9,7 +9,6 @@ import java.io.StringReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -17,6 +16,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import com.brightgenerous.fxplayer.application.playlist.MediaInfo.MetaChangeListener;
+import com.brightgenerous.fxplayer.http.HttpUtils;
 
 class PlayListReader {
 
@@ -155,7 +155,11 @@ class PlayListReader {
             }
         }
 
-        String text = execGet(str, Charset.forName("UTF-8"));
+        String text = null;
+        try {
+            text = HttpUtils.execGet(str, Charset.forName("UTF-8"));
+        } catch (IOException e) {
+        }
         if (text == null) {
             return null;
         }
@@ -214,28 +218,5 @@ class PlayListReader {
             }
         }
         return ret;
-    }
-
-    private static String execGet(String uri, Charset encode) {
-        URL url = null;
-        try {
-            url = new URL(uri);
-        } catch (MalformedURLException e) {
-        }
-        if (url == null) {
-            return null;
-        }
-
-        StringBuilder sb = new StringBuilder();
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(url.openStream(), encode))) {
-            CharBuffer cb = CharBuffer.allocate(100);
-            while (0 <= br.read(cb)) {
-                sb.append(cb.flip());
-                cb.clear();
-            }
-        } catch (IOException e) {
-        }
-
-        return sb.toString();
     }
 }

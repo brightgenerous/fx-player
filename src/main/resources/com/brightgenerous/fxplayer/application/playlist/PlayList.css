@@ -1,29 +1,51 @@
 
-.table-view {
-  -fx-base: rgb(224, 224, 240);
-}
-
-.slider {
-  -fx-base: rgb(132, 145, 47);
-}
-
-.button {
+.button,
+.toggle-button {
   -fx-margin: 0;
   -fx-padding: 3px 10px;
   -fx-font-size: 12px;
 }
 
+.button:hover,
+.toggle-button:hover {
+	-fx-color: #33ccff;
+}
+
 #button-chooser {
   -fx-color: #666666;
+}
+#button-chooser:hover {
+  -fx-color: #33ccff;
 }
 #button-control {
   -fx-color: #333333;
 }
-
-.button:hover {
-  -fx-color: #00aaff;
+#button-control:selected {
+  -fx-color: #cccccc;
+}
+#button-control:hover {
+  -fx-color: #33ccff;
 }
 
+.table-view {
+  -fx-base: rgb(224, 224, 240);
+}
+
+#row-cursor {
+  -fx-background-color: linear-gradient(to bottom, #cceeff, #99ccff);
+}
+
+.tab {
+  -fx-base: rgb(224, 224, 240);
+}
+
+.tab:selected {
+  -fx-background-color: linear-gradient(to bottom, #99ccff, #cceeff);
+}
+
+.tab:selected .tab-label { 
+/*  -fx-font-weight: bold; */
+}
 
 #path-text {
   -fx-alignment: center-right;
@@ -35,9 +57,27 @@
   -fx-alignment: center-left;
 }
 
+#control-line {
+  -fx-spacing: 5;
+  -fx-padding: 3 5 3 5;
+  -fx-alignment: center-left;
+}
+
 #time-text,
 #volume-text {
   -fx-fill: #333;
-  -fx-font-size: 14px;
+  -fx-font: 15 Consolas;
   -fx-text-alignment: right;
+  -fx-padding: 5 0 0 0;
+}
+
+.slider {
+  -fx-base: #33ccff;
+}
+
+#control-time .track {
+  -fx-background-color:null;  /* Hide the track */
+  -fx-background-insets: 1 0 -1 0, 0, 1;
+  -fx-background-radius: 2.5, 2.5, 1.5;
+  -fx-padding: 0.208333em; /* 2.5 */
 }

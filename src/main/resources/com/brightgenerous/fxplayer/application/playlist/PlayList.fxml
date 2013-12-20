@@ -8,6 +8,8 @@
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.control.ProgressBar?>
 <VBox xmlns:fx="http://javafx.com/fxml"
     fx:controller="com.brightgenerous.fxplayer.application.playlist.PlayList"
     stylesheets="com/brightgenerous/fxplayer/application/FxPlayer.css,
@@ -49,6 +51,9 @@
               <TableColumn text="%media.description" prefWidth="200" sortable="false">
                 <cellValueFactory><PropertyValueFactory property="description" /></cellValueFactory>
               </TableColumn>
+              <TableColumn text="%media.info" prefWidth="400" sortable="false">
+                <cellValueFactory><PropertyValueFactory property="info" /></cellValueFactory>
+              </TableColumn>
             </columns>
           </TableView>
         </content>
@@ -66,26 +71,32 @@
   </TabPane>
   <HBox id="control-pane">
     <VBox HBox.hgrow="ALWAYS">
-      <Region prefHeight="-1.0" prefWidth="-1.0" minHeight="5" VBox.vgrow="ALWAYS" />
-      <HBox id="control-pane">
-        <Region prefWidth="5" />
-        <ProgressBar fx:id="spectrumBar1" prefWidth="1000" />
-        <ProgressBar fx:id="spectrumBar2" prefWidth="1000" />
-        <ProgressBar fx:id="spectrumBar3" prefWidth="1000" />
-        <ProgressBar fx:id="spectrumBar4" prefWidth="1000" />
-        <Region prefWidth="10" />
+      <Region prefHeight="-1.0" prefWidth="-1.0" VBox.vgrow="ALWAYS" />
+      <HBox fx:id="spectrumsWrap" id="control-line">
+        <HBox fx:id="spectrums" id="control-pane">
+          <ProgressBar fx:id="spectrumBar1" progress="0" prefWidth="1000" style="-fx-accent:mediumseagreen" opacity="0.7" />
+          <ProgressBar fx:id="spectrumBar2" progress="0" prefWidth="1000" style="-fx-accent:mediumseagreen" opacity="0.7" />
+          <ProgressBar fx:id="spectrumBar3" progress="0" prefWidth="1000" style="-fx-accent:blueviolet;" opacity="0.7" />
+          <ProgressBar fx:id="spectrumBar4" progress="0" prefWidth="1000" style="-fx-accent:blueviolet" opacity="0.7" />
+        </HBox>
       </HBox>
-      <HBox id="control-pane">
-        <Slider fx:id="controlTime" min="0" max="0" HBox.hgrow="ALWAYS" />
-        <Text fx:id="timeText" id="time-text" wrappingWidth="60" />
+      <HBox id="control-line">
+        <StackPane HBox.hgrow="ALWAYS">
+          <ProgressBar fx:id="progressCurrent" progress="0" prefWidth="2000" />
+          <ProgressBar fx:id="progressBuffer" progress="0" prefWidth="2000" opacity="0.3" />
+          <Slider fx:id="controlTime" id="control-time" min="0" max="0" prefWidth="2000" />
+        </StackPane>
+        <Label fx:id="timeText" id="time-text" minWidth="190"/>
       </HBox>
-      <HBox id="control-pane">
+      <HBox id="control-line">
+        <Region HBox.hgrow="ALWAYS" />
         <ToggleButton fx:id="controlPlay" id="button-control" onAction="#controlPlay"
             text="%control.play" mnemonicParsing="true" />
         <Button onAction="#controlPrev" id="button-control" text="%control.prev" mnemonicParsing="true"/>
         <Button onAction="#controlNext" id="button-control" text="%control.next" mnemonicParsing="true" />
-        <Slider fx:id="controlVolume" min="0.0" max="1.0" value="0.5" HBox.hgrow="ALWAYS" />
-        <Text fx:id="volumeText" id="volume-text" wrappingWidth="60" />
+        <Slider fx:id="controlVolume" min="0.0" max="1.0" value="0.5" minWidth="150" />
+        <Label fx:id="volumeText" id="volume-text" />
+        <Region HBox.hgrow="ALWAYS" />
       </HBox>
     </VBox>
     <ImageView fx:id="imageView" fitWidth="100" preserveRatio="true" smooth="true"

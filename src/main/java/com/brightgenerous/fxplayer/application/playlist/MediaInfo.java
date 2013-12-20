@@ -2,15 +2,20 @@ package com.brightgenerous.fxplayer.application.playlist;
 
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.DoubleProperty;
+import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ReadOnlyProperty;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.beans.value.WritableValue;
 import javafx.collections.MapChangeListener;
 import javafx.collections.MapChangeListener.Change;
+import javafx.collections.ObservableMap;
 import javafx.scene.image.Image;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaException;
@@ -20,10 +25,11 @@ public class MediaInfo {
 
     public static interface MetaChangeListener {
 
-        void onChanged(Media media, Change<? extends String, ? extends Object> change);
+        void onChanged(MediaInfo info, Media media,
+                Change<? extends String, ? extends Object> change);
     }
 
-    private Media media;
+    private volatile Media media;
 
     private final IMediaSource source;
 
@@ -39,22 +45,76 @@ public class MediaInfo {
 
     private final ObjectProperty<Duration> durationProperty = new SimpleObjectProperty<>();
 
+    private final StringProperty durationTextProperty = new SimpleStringProperty("");
+
     private final ObjectProperty<Image> imageProperty = new SimpleObjectProperty<>();
 
-    private final BooleanProperty visibleProperty = new SimpleBooleanProperty();
-    {
-        visibleProperty.bind(titleProperty.isNotEqualTo("").or(artistProperty.isNotEqualTo(""))
-                .or(albumProperty.isNotEqualTo("")).or(imageProperty.isNotNull()));
-    }
+    private final StringProperty audioCodecProperty = new SimpleStringProperty("");
+
+    private final StringProperty videoCodecProperty = new SimpleStringProperty("");
+
+    private final IntegerProperty widthProperty = new SimpleIntegerProperty();
+
+    private final IntegerProperty heightProperty = new SimpleIntegerProperty();
+
+    private final DoubleProperty framerateProperty = new SimpleDoubleProperty();
+
+    private final BooleanProperty visibleTooltipProperty = new SimpleBooleanProperty();
 
     private final StringProperty tooltipProperty = new SimpleStringProperty();
+
+    private final StringProperty infoProperty = new SimpleStringProperty();
+
     {
-        tooltipProperty.bind(Bindings.concat("title : ").concat(titleProperty)
-                .concat("\nartist : ").concat(artistProperty).concat("\nalbum : ")
-                .concat(albumProperty));
+        BooleanProperty visibleVideoInfoProperty;
+        {
+            BooleanProperty visibleAudioInfoProperty = new SimpleBooleanProperty();
+            visibleAudioInfoProperty.bind(titleProperty.isNotEqualTo("")
+                    .or(artistProperty.isNotEqualTo("")).or(albumProperty.isNotEqualTo(""))
+                    .or(imageProperty.isNotNull()));
+            visibleVideoInfoProperty = new SimpleBooleanProperty();
+            visibleVideoInfoProperty.bind(videoCodecProperty.isNotEqualTo("")
+                    .or(audioCodecProperty.isNotEqualTo("")).or(widthProperty.greaterThan(0))
+                    .or(heightProperty.greaterThan(0)).or(framerateProperty.greaterThan(0)));
+            visibleTooltipProperty.bind(visibleAudioInfoProperty.or(visibleVideoInfoProperty));
+        }
+        {
+            StringProperty audioTooltipProperty = new SimpleStringProperty();
+            audioTooltipProperty.bind(Bindings.concat("Title : ").concat(titleProperty)
+                    .concat("\nArtist : ").concat(artistProperty).concat("\nAlbum : ")
+                    .concat(albumProperty).concat("\nDuration : ").concat(durationTextProperty));
+            StringProperty videoTooltipProperty = new SimpleStringProperty();
+            videoTooltipProperty.bind(Bindings.concat("Video Codec : ").concat(videoCodecProperty)
+                    .concat("\nAudio Codec : ").concat(audioCodecProperty).concat("\nWidth : ")
+                    .concat(widthProperty).concat("\nHeight : ").concat(heightProperty)
+                    .concat("\nFramerate : ").concat(framerateProperty).concat("\nDuration : ")
+                    .concat(durationTextProperty));
+
+            SimpleStringProperty tmp = new SimpleStringProperty();
+            tmp.bind(Bindings.when(visibleVideoInfoProperty).then(videoTooltipProperty)
+                    .otherwise(audioTooltipProperty));
+            tooltipProperty.bind(Bindings.when(visibleTooltipProperty).then(tmp).otherwise(""));
+        }
+        {
+            StringProperty audioInfoProperty = new SimpleStringProperty();
+            audioInfoProperty.bind(Bindings.concat("Title : ").concat(titleProperty)
+                    .concat(" , Artist : ").concat(artistProperty).concat(" , Album : ")
+                    .concat(albumProperty).concat(" , Duration : ").concat(durationTextProperty));
+            StringProperty videoInfoProperty = new SimpleStringProperty();
+            videoInfoProperty.bind(Bindings.concat("Video Codec : ").concat(videoCodecProperty)
+                    .concat(" , Audio Codec : ").concat(audioCodecProperty).concat(" , Width : ")
+                    .concat(widthProperty).concat(" , Height : ").concat(heightProperty)
+                    .concat(" , Framerate : ").concat(framerateProperty).concat(" , Duration : ")
+                    .concat(durationTextProperty));
+
+            SimpleStringProperty tmp = new SimpleStringProperty();
+            tmp.bind(Bindings.when(visibleVideoInfoProperty).then(videoInfoProperty)
+                    .otherwise(audioInfoProperty));
+            infoProperty.bind(Bindings.when(visibleTooltipProperty).then(tmp).otherwise(""));
+        }
     }
 
-    private boolean tryLoaded;
+    private volatile boolean tryLoaded;
 
     private final MetaChangeListener metaChangeListener;
 
@@ -84,13 +144,25 @@ public class MediaInfo {
 
     public Media getMedia() throws MediaLoadException {
         if (media == null) {
+            synchronized (this) {
+                if (media == null) {
+                    media = createMedia();
+                }
+            }
+        }
+        return media;
+    }
+
+    private Media createMedia() throws MediaLoadException {
+        final Media ret;
+        {
             try {
                 tryLoaded = true;
-                media = new Media(source.getUrl());
+                ret = new Media(source.getUrl());
             } catch (IllegalArgumentException | MediaException e) {
                 throw new MediaLoadException(e);
             }
-            media.getMetadata().addListener(new MapChangeListener<String, Object>() {
+            ret.getMetadata().addListener(new MapChangeListener<String, Object>() {
 
                 @Override
                 public void onChanged(Change<? extends String, ? extends Object> change) {
@@ -98,80 +170,94 @@ public class MediaInfo {
                         String key = change.getKey();
                         switch (key) {
                             case "title": {
-                                String title = (String) change.getMap().get(key);
-                                if (title != null) {
-                                    titleProperty.setValue(title);
-                                    title = title.trim();
-                                    if (!title.isEmpty()) {
-                                        titleDescProperty.setValue(title);
-                                    }
-                                }
+                                setIfUpdate(change.getMap(), key, titleProperty, titleDescProperty);
                                 break;
                             }
-                            case "artist": {
-                                String artist = (String) change.getMap().get(key);
-                                if (artist != null) {
-                                    artistProperty.setValue(artist);
-                                }
+                            case "artist":
+                            case "album artist": {
+                                setIfUpdate(change.getMap(), key, artistProperty);
                                 break;
                             }
                             case "album": {
-                                String album = (String) change.getMap().get(key);
-                                if (album != null) {
-                                    albumProperty.setValue(album);
-                                }
+                                setIfUpdate(change.getMap(), key, albumProperty);
                                 break;
                             }
                             case "duration": {
-                                Duration duration = (Duration) change.getMap().get(key);
-                                if (duration != null) {
-                                    durationProperty.setValue(duration);
+                                Duration newValue = setIfUpdate(change.getMap(), key,
+                                        durationProperty);
+                                if (newValue != null) {
+                                    durationTextProperty.setValue(LabelUtils
+                                            .milliSecToTime(newValue.toMillis()));
                                 }
                                 break;
                             }
                             case "image": {
-                                Image image = (Image) change.getMap().get(key);
-                                if (image != null) {
-                                    imageProperty.setValue(image);
-                                }
+                                setIfUpdate(change.getMap(), key, imageProperty);
+                                break;
+                            }
+                            case "audio codec": {
+                                setIfUpdate(change.getMap(), key, audioCodecProperty);
+                                break;
+                            }
+                            case "video codec": {
+                                setIfUpdate(change.getMap(), key, videoCodecProperty);
+                                break;
+                            }
+                            case "width": {
+                                setIfUpdate(change.getMap(), key, widthProperty);
+                                break;
+                            }
+                            case "height": {
+                                setIfUpdate(change.getMap(), key, heightProperty);
+                                break;
+                            }
+                            case "framerate": {
+                                setIfUpdate(change.getMap(), key, framerateProperty);
                                 break;
                             }
                         }
                     }
                     if (metaChangeListener != null) {
-                        metaChangeListener.onChanged(media, change);
+                        metaChangeListener.onChanged(MediaInfo.this, ret, change);
                     }
                 }
             });
 
-            {
-                {
-                    String title = (String) media.getMetadata().get("title");
-                    if (title != null) {
-                        titleProperty.setValue(title);
-                        title = title.trim();
-                        if (!title.isEmpty()) {
-                            titleDescProperty.setValue(title);
-                        }
+            setIfUpdate(ret.getMetadata(), "title", titleProperty, titleDescProperty);
+            setIfUpdate(ret.getMetadata(), "artist", artistProperty);
+            setIfUpdate(ret.getMetadata(), "album artist", artistProperty);
+            setIfUpdate(ret.getMetadata(), "album", albumProperty);
+            setIfUpdate(ret.getMetadata(), "duration", durationProperty);
+            setIfUpdate(ret.getMetadata(), "image", imageProperty);
+            setIfUpdate(ret.getMetadata(), "audio codec", audioCodecProperty);
+            setIfUpdate(ret.getMetadata(), "video codec", videoCodecProperty);
+            setIfUpdate(ret.getMetadata(), "width", widthProperty);
+            setIfUpdate(ret.getMetadata(), "height", heightProperty);
+            setIfUpdate(ret.getMetadata(), "framerate", framerateProperty);
+        }
+        return ret;
+    }
+
+    private static <T> T setIfUpdate(ObservableMap<? extends String, ? extends Object> map,
+            String key, WritableValue<T>... props) {
+        T newValue = (T) map.get(key);
+        if (newValue != null) {
+            boolean stringEmpty = false;
+            if (newValue instanceof String) {
+                String newStr = (String) newValue;
+                stringEmpty = newStr.isEmpty();
+            }
+            for (WritableValue<T> prop : props) {
+                if (stringEmpty) {
+                    if (prop.getValue() == null) {
+                        prop.setValue(newValue);
                     }
+                } else {
+                    prop.setValue(newValue);
                 }
-                {
-                    String artist = (String) media.getMetadata().get("artist");
-                    if (artist != null) {
-                        artistProperty.setValue(artist);
-                    }
-                }
-                {
-                    String album = (String) media.getMetadata().get("album");
-                    if (album != null) {
-                        albumProperty.setValue(album);
-                    }
-                }
-                durationProperty.setValue((Duration) media.getMetadata().get("duration"));
-                imageProperty.setValue((Image) media.getMetadata().get("image"));
             }
         }
-        return media;
+        return newValue;
     }
 
     public Boolean getExist() {
@@ -186,7 +272,7 @@ public class MediaInfo {
         return ret;
     }
 
-    public WritableValue<Boolean> cursorProperty() {
+    public BooleanProperty cursorProperty() {
         return cursorProperty;
     }
 
@@ -210,12 +296,16 @@ public class MediaInfo {
         return durationProperty;
     }
 
+    public ReadOnlyProperty<String> infoProperty() {
+        return infoProperty;
+    }
+
     public ObjectProperty<Image> imageProperty() {
         return imageProperty;
     }
 
-    public ReadOnlyProperty<Boolean> visibleProperty() {
-        return visibleProperty;
+    public ReadOnlyProperty<Boolean> visibleTooltipProperty() {
+        return visibleTooltipProperty;
     }
 
     public ReadOnlyProperty<String> tooltipProperty() {
