@@ -18,10 +18,10 @@
   <HBox id="control-pane">
     <Button onAction="#controlDirectoryChooser" id="button-chooser"
         text="%control.directory-chooser" ellipsisString="%control.directory-chooser.ellipsis" mnemonicParsing="true"
-        prefWidth="85" />
+        prefWidth="100" />
     <Button onAction="#controlFileChooser" id="button-chooser"
         text="%control.file-chooser" ellipsisString="%control.file-chooser.ellipsis" mnemonicParsing="true"
-        prefWidth="85" />
+        prefWidth="90" />
     <TextField fx:id="pathText" id="path-text" HBox.hgrow="ALWAYS" />
     <ToggleButton fx:id="controlLog" onAction="#controlLog"
         text="%control.log" ellipsisString="%control.log.ellipsis" mnemonicParsing="true" />

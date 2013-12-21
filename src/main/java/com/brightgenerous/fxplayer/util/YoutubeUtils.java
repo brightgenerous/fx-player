@@ -13,11 +13,6 @@ import java.util.regex.Pattern;
 
 class YoutubeUtils {
 
-    public static interface ExceptionHandler {
-
-        void onException(Exception e);
-    }
-
     private YoutubeUtils() {
     }
 
@@ -25,13 +20,13 @@ class YoutubeUtils {
         return extractUrl(url, null);
     }
 
-    public static String extractUrl(String url, ExceptionHandler handler) {
+    public static String extractUrl(String url, ExceptionHandler<Exception> handler) {
         String ret = null;
         try {
             ret = extractUrl(url);
         } catch (IOException e) {
             if (handler != null) {
-                handler.onException(e);
+                handler.handle(e);
             }
         }
         return ret;

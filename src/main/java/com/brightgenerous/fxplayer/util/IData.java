@@ -1,8 +1,8 @@
 package com.brightgenerous.fxplayer.util;
 
-public interface StringData {
+public interface IData<T> {
 
-    String get();
+    T get();
 
     void request(boolean force);
 

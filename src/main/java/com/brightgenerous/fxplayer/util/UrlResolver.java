@@ -12,6 +12,8 @@ public class UrlResolver {
 
     private final ExecutorService youtubeES = Executors.newFixedThreadPool(1);
 
+    private final ExecutorService xvideosES = Executors.newFixedThreadPool(1);
+
     private UrlResolver() {
     }
 
@@ -19,19 +21,21 @@ public class UrlResolver {
         return instance;
     }
 
-    public StringData getFileUrl(String url) {
-        StringData ret = null;
+    public IData<String> getFileUrl(String url) {
+        IData<String> ret = null;
         if (url == null) {
             ret = new DirectUrl(url);
         } else if (url.indexOf("youtube.com") != -1) {
             ret = new YoutubeUrl(url);
+        } else if (url.indexOf("xvideos.com") != -1) {
+            ret = new XvideosUrl(url);
         } else {
             ret = new DirectUrl(url);
         }
         return ret;
     }
 
-    private class DirectUrl implements StringData {
+    private class DirectUrl implements IData<String> {
 
         private final String url;
 
@@ -53,7 +57,7 @@ public class UrlResolver {
         }
     }
 
-    private class YoutubeUrl implements StringData {
+    private class YoutubeUrl implements IData<String> {
 
         private final String url;
 
@@ -82,6 +86,9 @@ public class UrlResolver {
                 if (!force && (future != null)) {
                     return;
                 }
+                if ((future != null) && !future.isDone()) {
+                    future.cancel(true);
+                }
                 FutureTask<String> ftr = new FutureTask<>(new Callable<String>() {
 
                     @Override
@@ -90,6 +97,56 @@ public class UrlResolver {
                     }
                 });
                 youtubeES.execute(ftr);
+                future = ftr;
+            }
+        }
+
+        @Override
+        public void cancel() {
+            future.cancel(true);
+        }
+    }
+
+    private class XvideosUrl implements IData<String> {
+
+        private final String url;
+
+        private volatile FutureTask<String> future;
+
+        XvideosUrl(String url) {
+            this.url = url;
+            request(true);
+        }
+
+        @Override
+        public String get() {
+            try {
+                return future.get();
+            } catch (InterruptedException | ExecutionException e) {
+            }
+            return null;
+        }
+
+        @Override
+        public void request(boolean force) {
+            if (!force && (future != null)) {
+                return;
+            }
+            synchronized (this) {
+                if (!force && (future != null)) {
+                    return;
+                }
+                if ((future != null) && !future.isDone()) {
+                    future.cancel(true);
+                }
+                FutureTask<String> ftr = new FutureTask<>(new Callable<String>() {
+
+                    @Override
+                    public String call() throws Exception {
+                        return XvideosUtils.extractUrl(url);
+                    }
+                });
+                xvideosES.execute(ftr);
                 future = ftr;
             }
         }

@@ -2,7 +2,7 @@ package com.brightgenerous.fxplayer.media;
 
 import java.io.Serializable;
 
-import com.brightgenerous.fxplayer.util.StringData;
+import com.brightgenerous.fxplayer.util.IData;
 
 class MediaSource implements IMediaSource, Serializable {
 
@@ -10,11 +10,11 @@ class MediaSource implements IMediaSource, Serializable {
 
     private final String url;
 
-    private final StringData fileUrl;
+    private final IData<String> fileUrl;
 
     private final String description;
 
-    MediaSource(String url, StringData fileUrl, String description) {
+    MediaSource(String url, IData<String> fileUrl, String description) {
         this.url = url;
         this.fileUrl = fileUrl;
         this.description = description;
