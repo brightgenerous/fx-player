@@ -4,9 +4,12 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 
 import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.event.EventHandler;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
 import javafx.stage.StageBuilder;
+import javafx.stage.WindowEvent;
 
 import com.brightgenerous.fxplayer.application.playlist.PlayList;
 
@@ -27,6 +30,16 @@ public class FxPlayerApplication extends Application {
         }
         StageBuilder.create().title(title)
                 .icons(new Image(getClass().getResourceAsStream("icon.png"))).applyTo(stage);
+
+        stage.setOnCloseRequest(new EventHandler<WindowEvent>() {
+
+            @Override
+            public void handle(WindowEvent event) {
+                Platform.exit();
+                System.exit(0);
+            }
+        });
+
         FxUtils.move(stage, PlayList.class);
         stage.show();
     }

@@ -24,6 +24,37 @@ class LabelUtils {
     }
 
     public static String toTabLabel(String str) {
-        return str;
+        if (str == null) {
+            return null;
+        }
+        String ret = cutoff(str, 45);
+        if ((ret != null) && !ret.equals(str)) {
+            ret += "…";
+        }
+        return ret;
+    }
+
+    private static String cutoff(String str, int width) {
+        if (str == null) {
+            return null;
+        }
+        if ((width < 1) || str.isEmpty()) {
+            return "";
+        }
+        int length = str.codePointCount(0, str.length());
+        if (length <= width) {
+            return str;
+        }
+        StringBuilder sb = new StringBuilder();
+        int count = 0;
+        for (int i = 0; (count < width) && (i < str.length()); i++) {
+            char c = str.charAt(i);
+            sb.append(c);
+            if (((i + 1) < str.length()) && Character.isSurrogatePair(c, str.charAt(i + 1))) {
+                sb.append(str.charAt(++i));
+            }
+            count++;
+        }
+        return sb.toString();
     }
 }

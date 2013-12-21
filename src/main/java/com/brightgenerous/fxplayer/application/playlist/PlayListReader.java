@@ -15,10 +15,15 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import com.brightgenerous.fxplayer.application.playlist.MediaInfo.MetaChangeListener;
+import com.brightgenerous.fxplayer.media.MediaInfo;
+import com.brightgenerous.fxplayer.media.MediaInfo.MetaChangeListener;
+import com.brightgenerous.fxplayer.media.MediaInfoFactory;
 import com.brightgenerous.fxplayer.util.HttpUtils;
+import com.brightgenerous.fxplayer.util.UrlResolver;
 
 class PlayListReader {
+
+    private static final MediaInfoFactory factory = new MediaInfoFactory(UrlResolver.get());
 
     private PlayListReader() {
     }
@@ -36,7 +41,7 @@ class PlayListReader {
                 } catch (MalformedURLException e) {
                 }
                 if (path != null) {
-                    ret.add(new MediaInfo(new MediaSource(path, file.getName()), metaChangeListener));
+                    ret.add(factory.create(path, file.getName(), metaChangeListener));
                 }
             }
         }
@@ -110,7 +115,7 @@ class PlayListReader {
                 }
                 if (path != null) {
                     String desc = (strs[1] == null) ? strs[0] : strs[1];
-                    ret.add(new MediaInfo(new MediaSource(path, desc), metaChangeListener));
+                    ret.add(factory.create(path, desc, metaChangeListener));
                 }
             }
         } catch (IOException e) {
@@ -191,7 +196,7 @@ class PlayListReader {
                 }
                 if (path != null) {
                     String desc = (strs[1] == null) ? strs[0] : strs[1];
-                    ret.add(new MediaInfo(new MediaSource(path, desc), metaChangeListener));
+                    ret.add(factory.create(path, desc, metaChangeListener));
                 }
             }
         } catch (IOException e) {

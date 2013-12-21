@@ -66,12 +66,18 @@
   -fx-alignment: center-left;
 }
 
-#time-text,
+#time-text {
+  -fx-fill: #333;
+  -fx-font: 15 Consolas;
+  -fx-text-alignment: right;
+  -fx-padding: 6 0 0 0;
+}
+
 #volume-text {
   -fx-fill: #333;
   -fx-font: 15 Consolas;
   -fx-text-alignment: right;
-  -fx-padding: 5 0 0 0;
+  -fx-padding: 3 0 0 0;
 }
 
 .slider {

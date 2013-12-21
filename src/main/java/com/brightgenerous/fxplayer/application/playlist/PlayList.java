@@ -63,7 +63,10 @@ import javafx.util.Callback;
 import javafx.util.Duration;
 
 import com.brightgenerous.fxplayer.application.FxUtils.Inject;
-import com.brightgenerous.fxplayer.application.playlist.MediaInfo.MetaChangeListener;
+import com.brightgenerous.fxplayer.media.MediaInfo;
+import com.brightgenerous.fxplayer.media.MediaInfo.MetaChangeListener;
+import com.brightgenerous.fxplayer.media.MediaLoadException;
+import com.brightgenerous.fxplayer.media.MediaStatus;
 import com.brightgenerous.fxplayer.util.ImageSaveUtils;
 import com.brightgenerous.fxplayer.util.ImageSaveUtils.Type;
 import com.brightgenerous.fxplayer.util.Utils;
@@ -97,6 +100,9 @@ public class PlayList implements Initializable {
 
     @FXML
     private TableColumn<MediaInfo, Boolean> tableColumnCursor;
+
+    @FXML
+    private TableColumn<MediaInfo, MediaStatus> tableColumnMediaStatus;
 
     @FXML
     private TableColumn<MediaInfo, Duration> tableColumnDuration;
@@ -238,7 +244,7 @@ public class PlayList implements Initializable {
                             TableRow<?> row = (TableRow<?>) source;
                             Object obj = row.getItem();
                             if (obj instanceof MediaInfo) {
-                                controlPlayer(Control.SPECIFY, (MediaInfo) obj);
+                                controlPlayer(Control.SPECIFY, (MediaInfo) obj, true);
                             }
                         }
                     }
@@ -309,6 +315,37 @@ public class PlayList implements Initializable {
                                 } else {
                                     setText(bundle.getString("media.crusor"));
                                     setAlignment(Pos.CENTER);
+                                }
+                            }
+                        };
+                    }
+                });
+        tableColumnMediaStatus
+                .setCellFactory(new Callback<TableColumn<MediaInfo, MediaStatus>, TableCell<MediaInfo, MediaStatus>>() {
+
+                    @Override
+                    public TableCell<MediaInfo, MediaStatus> call(
+                            TableColumn<MediaInfo, MediaStatus> param) {
+                        return new TableCell<MediaInfo, MediaStatus>() {
+
+                            @Override
+                            protected void updateItem(MediaStatus item, boolean empty) {
+                                super.updateItem(item, empty);
+
+                                if (item == null) {
+                                    setText(null);
+                                } else {
+                                    switch (item) {
+                                        case MEDIA_YET:
+                                        case MEDIA_SUCCESS:
+                                        case MEDIA_ERROR:
+                                        case PLAYER_LOADING:
+                                        case PLAYER_READY:
+                                        case PLAYER_PLAYING:
+                                        case PLAYER_PAUSE:
+                                        case PLAYER_END:
+                                            setText(item.name());
+                                    }
                                 }
                             }
                         };
@@ -477,7 +514,7 @@ public class PlayList implements Initializable {
         }
 
         timeText.setText(LabelUtils.milliSecsToTime(0, 0, 0));
-        volumeText.setText(LabelUtils.toVolume(DEFAULT_VOLUME));
+        volumeText.setText(LabelUtils.toVolume(controlVolume.getValue()));
 
         log("Wake up !!");
     }
@@ -533,7 +570,7 @@ public class PlayList implements Initializable {
         PLAY, PREV, NEXT, SPECIFY;
     }
 
-    private boolean controlPlayer(Control control, MediaInfo info, boolean chain) {
+    private boolean controlPlayer(Control control, MediaInfo info, boolean forceResolve) {
 
         // if too fast to be called repeatedly,
         //   returns false.
@@ -581,7 +618,7 @@ public class PlayList implements Initializable {
                 }
             }
 
-            if (!chain) {
+            {
                 // OMAJINAI!!!
                 long currentTime = System.currentTimeMillis();
                 if (currentTime < (lastCreate + 500)) {
@@ -651,27 +688,30 @@ public class PlayList implements Initializable {
 
             final MediaPlayer mp;
             try {
-                mp = new MediaPlayer(targetInfo.getMedia());
-            } catch (MediaLoadException e) {
-                onErrorLoadMedia(targetInfo);
-                if (!chain) {
-                    final Control ctrl = control;
-                    Platform.runLater(new Runnable() {
-
-                        @Override
-                        public void run() {
-                            if (ctrl.equals(Control.PREV)) {
-                                controlPlayer(Control.PREV, targetInfo, true);
-                            } else {
-                                controlPlayer(Control.NEXT, targetInfo, true);
-                            }
-                        }
-                    });
+                Media media = targetInfo.getMedia();
+                if ((media == null) && forceResolve) {
+                    targetInfo.resetIfYet(true);
+                    media = targetInfo.getMedia();
                 }
+                if (media == null) {
+                    throw new MediaLoadException("Media is null");
+                }
+                mp = new MediaPlayer(media);
+            } catch (MediaLoadException e) {
+
+                viewStop();
+
+                onMediaLoadError(e, targetInfo);
+
                 break player_block;
             }
 
             if (player != null) {
+
+                if (player.getError() == null) {
+                    current.mediaStatusProperty().setValue(MediaStatus.MEDIA_SUCCESS);
+                }
+
                 player.dispose();
             }
 
@@ -861,6 +901,8 @@ public class PlayList implements Initializable {
                         mediaContainer.setText(bundle.getString("tab.video"));
                     }
 
+                    targetInfo.mediaStatusProperty().setValue(MediaStatus.PLAYER_READY);
+
                     // play
                     {
                         mp.play();
@@ -874,6 +916,7 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void run() {
+
                     {
                         // OMAJINAI!!!
                         layoutTimer();
@@ -881,22 +924,8 @@ public class PlayList implements Initializable {
                     imageView.setImage(new Image(PlayList.class.getResourceAsStream("dame.png")));
 
                     viewStop();
-                }
-            });
 
-            mp.setOnPlaying(new Runnable() {
-
-                @Override
-                public void run() {
-                    viewPlaying();
-                }
-            });
-
-            mp.setOnPaused(new Runnable() {
-
-                @Override
-                public void run() {
-                    viewStop();
+                    onMediaPlayerError(mp.getError(), targetInfo);
                 }
             });
 
@@ -907,8 +936,30 @@ public class PlayList implements Initializable {
 
                     log("End of Media : " + targetInfo.getDescription());
 
+                    targetInfo.mediaStatusProperty().setValue(MediaStatus.PLAYER_END);
+
                     // no fear, would be called on main thread.
                     controlPlayer(Control.NEXT, null);
+                }
+            });
+
+            mp.setOnPlaying(new Runnable() {
+
+                @Override
+                public void run() {
+                    viewPlaying();
+
+                    targetInfo.mediaStatusProperty().setValue(MediaStatus.PLAYER_PLAYING);
+                }
+            });
+
+            mp.setOnPaused(new Runnable() {
+
+                @Override
+                public void run() {
+                    viewStop();
+
+                    targetInfo.mediaStatusProperty().setValue(MediaStatus.PLAYER_PAUSE);
                 }
             });
 
@@ -928,6 +979,8 @@ public class PlayList implements Initializable {
                     mediaContainer.setText(bundle.getString("tab.video"));
                 }
             }
+
+            targetInfo.mediaStatusProperty().setValue(MediaStatus.PLAYER_LOADING);
 
             current = targetInfo;
             player = mp;
@@ -990,7 +1043,20 @@ public class PlayList implements Initializable {
         return ret;
     }
 
-    private void onErrorLoadMedia(MediaInfo info) {
+    private void onMediaLoadError(MediaLoadException ex, MediaInfo info) {
+        log("Load Error : " + info.getDescription());
+        if (ex != null) {
+            log("Error Message : " + ex.getLocalizedMessage());
+        }
+        info.mediaStatusProperty().setValue(MediaStatus.MEDIA_ERROR);
+    }
+
+    private void onMediaPlayerError(MediaException ex, MediaInfo info) {
+        log("Reading Error : " + info.getDescription());
+        if (ex != null) {
+            log("Error Message : " + ex.getLocalizedMessage());
+        }
+        info.mediaStatusProperty().setValue(MediaStatus.MEDIA_ERROR);
     }
 
     private void requestScroll(final int row) {
@@ -1141,10 +1207,6 @@ public class PlayList implements Initializable {
                 Object value = isOmit(key) ? "...omit..." : change.getValueRemoved();
                 log("Meta Remove : source => " + info.getDescription() + " , key => " + key
                         + " , value => " + value);
-            }
-
-            if (key.equals("raw metadata")) {
-                loadMedia();
             }
         }
 
@@ -1302,28 +1364,32 @@ public class PlayList implements Initializable {
 
                 @Override
                 protected Boolean call() throws Exception {
-
-                    Thread.yield();
-
-                    List<MediaInfo> items = getItemsSnapshot();
-                    int i = 0;
-                    for (; i < items.size(); i++) {
-                        MediaInfo info = items.get(i);
-                        if (!info.loaded()) {
-                            if (!isCancelled()) {
+                    outer: for (int times = 2; 0 < times; times--) {
+                        List<MediaInfo> items = getItemsSnapshot();
+                        for (int i = 0; i < items.size(); i++) {
+                            MediaInfo info = items.get(i);
+                            if (info.loaded()) {
+                                continue;
+                            }
+                            try {
                                 if (info.load()) {
-
-                                    // expect chain loading.
-                                    //   would be called from meta data loaded callback.
-
+                                    if (isCancelled()) {
+                                        break outer;
+                                    }
+                                    try {
+                                        Thread.sleep(100);
+                                        //Thread.yield();
+                                    } catch (InterruptedException e) {
+                                    }
+                                    times++;
                                     break;
                                 }
-                                onErrorLoadMedia(info);
-
-                                Thread.yield();
+                            } catch (MediaLoadException e) {
+                                onMediaLoadError(e, info);
                             }
                         }
                     }
+
                     return Boolean.TRUE;
                 }
             };

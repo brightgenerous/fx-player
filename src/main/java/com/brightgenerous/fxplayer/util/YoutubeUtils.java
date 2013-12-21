@@ -11,7 +11,78 @@ import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class YoutubeUtils {
+class YoutubeUtils {
+
+    public static interface ExceptionHandler {
+
+        void onException(Exception e);
+    }
+
+    private YoutubeUtils() {
+    }
+
+    public static String extractUrlSafely(String url) {
+        return extractUrl(url, null);
+    }
+
+    public static String extractUrl(String url, ExceptionHandler handler) {
+        String ret = null;
+        try {
+            ret = extractUrl(url);
+        } catch (IOException e) {
+            if (handler != null) {
+                handler.onException(e);
+            }
+        }
+        return ret;
+    }
+
+    public static String extractUrl(String url) throws IOException {
+        String ret = null;
+
+        List<Video> videos = getStreamingUrisFromYouTubePage(url);
+        if ((videos != null) && !videos.isEmpty()) {
+            String retUrl = null;
+            for (Video video : videos) {
+                if (video.ext.toLowerCase().contains("mp4")
+                        && video.type.toLowerCase().contains("medium")) {
+                    retUrl = video.url;
+                    break;
+                }
+            }
+            if (retUrl == null) {
+                for (Video video : videos) {
+                    if (video.ext.toLowerCase().contains("3gp")
+                            && video.type.toLowerCase().contains("medium")) {
+                        retUrl = video.url;
+                        break;
+                    }
+                }
+            }
+            if (retUrl == null) {
+                for (Video video : videos) {
+                    if (video.ext.toLowerCase().contains("mp4")
+                            && video.type.toLowerCase().contains("low")) {
+                        retUrl = video.url;
+                        break;
+                    }
+                }
+            }
+            if (retUrl == null) {
+                for (Video video : videos) {
+                    if (video.ext.toLowerCase().contains("3gp")
+                            && video.type.toLowerCase().contains("low")) {
+                        retUrl = video.url;
+                        break;
+                    }
+                }
+            }
+
+            ret = retUrl;
+        }
+
+        return ret;
+    }
 
     private static final Map<String, Meta> typeMap = new HashMap<>();
     static {
@@ -31,60 +102,92 @@ public class YoutubeUtils {
         typeMap.put("33", new Meta("38", "MP4", "High Quality - 4096x230"));
     }
 
-    private YoutubeUtils() {
-    }
+    private static final Pattern patternStreamMap = Pattern.compile("stream_map\": \"(.*?)?\"");
 
-    public static String resolveFileUrl(String url) {
-        String ret = null;
-        try {
-            List<Video> videos = getStreamingUrisFromYouTubePage(url);
-            if ((videos != null) && !videos.isEmpty()) {
-                String retVidUrl = null;
-                for (Video video : videos) {
-                    if (video.ext.toLowerCase().contains("mp4")
-                            && video.type.toLowerCase().contains("medium")) {
-                        retVidUrl = video.url;
-                        break;
-                    }
-                }
-                if (retVidUrl == null) {
-                    for (Video video : videos) {
-                        if (video.ext.toLowerCase().contains("3gp")
-                                && video.type.toLowerCase().contains("medium")) {
-                            retVidUrl = video.url;
-                            break;
-                        }
-                    }
-                }
-                if (retVidUrl == null) {
-                    for (Video video : videos) {
-                        if (video.ext.toLowerCase().contains("mp4")
-                                && video.type.toLowerCase().contains("low")) {
-                            retVidUrl = video.url;
-                            break;
-                        }
-                    }
-                }
-                if (retVidUrl == null) {
-                    for (Video video : videos) {
-                        if (video.ext.toLowerCase().contains("3gp")
-                                && video.type.toLowerCase().contains("low")) {
-                            retVidUrl = video.url;
-                            break;
-                        }
-                    }
-                }
+    private static final Pattern patternItag = Pattern.compile("(?:\\?|&)itag=([0-9]+?)(?:&.*|)$");
 
-                ret = retVidUrl;
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
+    private static final Pattern patternSig = Pattern.compile("(?:\\?|&)sig=(.*?)(?:&.*|)$");
+
+    private static final Pattern patternUrl = Pattern.compile("url=(.*?)(?:&.*|)$");
+
+    private static List<Video> getStreamingUrisFromYouTubePage(String url) throws IOException {
+
+        String html = getPageHtml(url);
+        if (html == null) {
+            return null;
         }
 
-        return ret;
+        html = html.replace("\\u0026", "&");
+
+        // Parse the HTML response and extract the streaming URIs
+        if (html.contains("verify-age-thumb")) {
+            return null;
+        }
+
+        if (html.contains("das_captcha")) {
+            return null;
+        }
+
+        List<String> streamMaps = new ArrayList<>();
+        {
+            Matcher mStreamMap = patternStreamMap.matcher(html);
+            while (mStreamMap.find()) {
+                streamMaps.add(mStreamMap.group());
+            }
+        }
+
+        if (streamMaps.size() != 1) {
+            return null;
+        }
+
+        Map<String, String> foundItags = new HashMap<>();
+        String urls[] = streamMaps.get(0).split(",");
+        if ((urls != null) && (0 < urls.length)) {
+            for (String ppUrl : urls) {
+                String _url = URLDecoder.decode(ppUrl, "UTF-8");
+
+                Matcher mItag = patternItag.matcher(_url);
+                String itag = null;
+                if (mItag.find()) {
+                    itag = mItag.group(1);
+                }
+
+                Matcher mSig = patternSig.matcher(_url);
+                String sig = null;
+                if (mSig.find()) {
+                    sig = mSig.group(1);
+                }
+
+                Matcher mUrl = patternUrl.matcher(ppUrl);
+                String _u = null;
+                if (mUrl.find()) {
+                    _u = mUrl.group(1);
+                }
+
+                if ((itag != null) && (sig != null) && (_u != null)) {
+                    foundItags.put(itag, URLDecoder.decode(_u, "UTF-8") + "&" + "signature=" + sig);
+                }
+            }
+        }
+
+        if (foundItags.size() == 0) {
+            return null;
+        }
+
+        List<Video> videos = new ArrayList<>();
+
+        for (Entry<String, Meta> entry : typeMap.entrySet()) {
+            String format = entry.getKey();
+            Meta meta = entry.getValue();
+            if (foundItags.containsKey(format)) {
+                videos.add(new Video(meta.ext, meta.type, foundItags.get(format)));
+            }
+        }
+
+        return videos;
     }
 
-    private static String getHtml(String url) throws IOException {
+    private static String getPageHtml(String url) throws IOException {
 
         // TODO
         // must keep only argument "v"
@@ -101,89 +204,6 @@ public class YoutubeUtils {
 
         return HttpUtils.execGet(url, "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:8.0.1)",
                 Charset.forName("UTF-8"));
-    }
-
-    private static List<Video> getStreamingUrisFromYouTubePage(String ytUrl) throws IOException {
-
-        String html = getHtml(ytUrl);
-        if (html == null) {
-            return null;
-        }
-
-        html = html.replace("\\u0026", "&");
-
-        // Parse the HTML response and extract the streaming URIs
-        if (html.contains("verify-age-thumb")) {
-            return null;
-        }
-
-        if (html.contains("das_captcha")) {
-            return null;
-        }
-
-        List<String> matches = new ArrayList<>();
-        {
-            Pattern p = Pattern.compile("stream_map\": \"(.*?)?\"");
-            // Pattern p = Pattern.compile("/stream_map=(.[^&]*?)\"/");
-            Matcher m = p.matcher(html);
-            while (m.find()) {
-                matches.add(m.group());
-            }
-        }
-
-        if (matches.size() != 1) {
-            return null;
-        }
-
-        Map<String, String> foundArray = new HashMap<>();
-        String urls[] = matches.get(0).split(",");
-        if ((urls != null) && (0 < urls.length)) {
-            Pattern p1 = Pattern.compile("itag=([0-9]+?)[&]");
-            Pattern p2 = Pattern.compile("sig=(.*?)[&]");
-            Pattern p3 = Pattern.compile("url=(.*?)[&]");
-            for (String ppUrl : urls) {
-                String url = URLDecoder.decode(ppUrl, "UTF-8");
-
-                Matcher m1 = p1.matcher(url);
-                String itag = null;
-                if (m1.find()) {
-                    itag = m1.group(1);
-                }
-
-                Matcher m2 = p2.matcher(url);
-                String sig = null;
-                if (m2.find()) {
-                    sig = m2.group(1);
-                }
-
-                Matcher m3 = p3.matcher(ppUrl);
-                String um = null;
-                if (m3.find()) {
-                    um = m3.group(1);
-                }
-
-                if ((itag != null) && (sig != null) && (um != null)) {
-                    foundArray.put(itag, URLDecoder.decode(um, "UTF-8") + "&" + "signature=" + sig);
-                }
-            }
-        }
-
-        if (foundArray.size() == 0) {
-            return null;
-        }
-
-        List<Video> videos = new ArrayList<>();
-
-        for (Entry<String, Meta> entry : typeMap.entrySet()) {
-            String format = entry.getKey();
-            Meta meta = entry.getValue();
-            if (foundArray.containsKey(format)) {
-                Video newVideo = new Video(meta.ext, meta.type, foundArray.get(format));
-                videos.add(newVideo);
-            }
-        }
-
-        return videos;
     }
 }
 

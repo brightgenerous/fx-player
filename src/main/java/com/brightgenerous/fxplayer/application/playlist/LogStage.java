@@ -39,6 +39,7 @@ public class LogStage extends Stage {
     }
 
     public void appendLog(String str) {
+        toFront();
         logText.appendText(str);
     }
 }

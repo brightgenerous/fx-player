@@ -32,28 +32,40 @@
         <content>
           <TableView fx:id="mediaList" tableMenuButtonVisible="true">
             <columns>
-              <TableColumn fx:id="tableColumnIndex" sortable="false" text="%media.index" prefWidth="40">
+              <TableColumn fx:id="tableColumnIndex" text="%media.index"
+                  sortable="false" prefWidth="40">
                 <cellValueFactory><PropertyValueFactory property="exist" /></cellValueFactory>
               </TableColumn>
-              <TableColumn fx:id="tableColumnCursor" sortable="false" prefWidth="70">
+              <TableColumn fx:id="tableColumnCursor"
+                  sortable="false" prefWidth="70">
                 <cellValueFactory><PropertyValueFactory property="cursor" /></cellValueFactory>
               </TableColumn>
-              <TableColumn text="%media.titleDesc" sortable="false" prefWidth="265">
+              <TableColumn fx:id="tableColumnMediaStatus" text="%media.mediaStatus"
+                  sortable="false" prefWidth="110" visible="false">
+                <cellValueFactory><PropertyValueFactory property="mediaStatus" /></cellValueFactory>
+              </TableColumn>
+              <TableColumn text="%media.titleDesc"
+                  sortable="false" prefWidth="265">
                 <cellValueFactory><PropertyValueFactory property="titleDesc" /></cellValueFactory>
               </TableColumn>
-              <TableColumn text="%media.artist" sortable="false" prefWidth="170">
+              <TableColumn text="%media.artist"
+                  sortable="false" prefWidth="170">
                 <cellValueFactory><PropertyValueFactory property="artist" /></cellValueFactory>
               </TableColumn>
-              <TableColumn fx:id="tableColumnDuration" text="%media.duration" sortable="false" prefWidth="80">
+              <TableColumn fx:id="tableColumnDuration" text="%media.duration"
+                  sortable="false" prefWidth="80">
                 <cellValueFactory><PropertyValueFactory property="duration" /></cellValueFactory>
               </TableColumn>
-              <TableColumn text="%media.album" sortable="false" prefWidth="170">
+              <TableColumn text="%media.album"
+                  sortable="false" prefWidth="170">
                 <cellValueFactory><PropertyValueFactory property="album" /></cellValueFactory>
               </TableColumn>
-              <TableColumn text="%media.description" sortable="false" prefWidth="200">
+              <TableColumn text="%media.description"
+                  sortable="false" prefWidth="200">
                 <cellValueFactory><PropertyValueFactory property="description" /></cellValueFactory>
               </TableColumn>
-              <TableColumn text="%media.info" sortable="false" prefWidth="400">
+              <TableColumn text="%media.info"
+                  sortable="false" prefWidth="400">
                 <cellValueFactory><PropertyValueFactory property="info" /></cellValueFactory>
               </TableColumn>
             </columns>
