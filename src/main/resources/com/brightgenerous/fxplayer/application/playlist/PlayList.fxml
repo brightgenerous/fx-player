@@ -17,7 +17,8 @@
     fx:controller="com.brightgenerous.fxplayer.application.playlist.PlayList"
     stylesheets="com/brightgenerous/fxplayer/application/FxPlayer.css,
         com/brightgenerous/fxplayer/application/playlist/PlayList.css"
-    maxWidth="580" minHeight="240" prefHeight="360">
+    maxWidth="580" minHeight="240" prefHeight="360"
+    onKeyTyped="#keyTypedHandle">
   <HBox id="control-pane">
     <Button onAction="#controlDirectoryChooser" id="button-chooser"
         text="%control.directory-chooser" ellipsisString="%control.directory-chooser.ellipsis" mnemonicParsing="true"

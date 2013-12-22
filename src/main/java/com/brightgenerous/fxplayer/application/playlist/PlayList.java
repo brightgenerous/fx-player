@@ -9,6 +9,8 @@ import java.util.ResourceBundle;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
@@ -1564,6 +1566,100 @@ public class PlayList implements Initializable {
             };
         }
     };
+
+    // shortcuts
+
+    private final StringBuilder inputs = new StringBuilder();
+
+    private static final Pattern timePattern = Pattern
+            .compile("(?:t|tm|time)\\s*(\\+|\\-|)\\s*(?:(\\d*)\\s*(?:m|:)?\\s*(\\d*)\\s*s?)\\s*$");
+
+    private static final Pattern volPattern = Pattern
+            .compile("(?:v|vol|volume)\\s*(\\+|\\-|)\\s*(\\d*)\\s*$");
+
+    @FXML
+    protected void keyTypedHandle(KeyEvent event) {
+        try {
+            prv_keyTypedHandle(event);
+        } catch (Exception e) {
+            // as insurance
+            e.printStackTrace();
+            log(e.getLocalizedMessage());
+        }
+    }
+
+    private void prv_keyTypedHandle(KeyEvent event) {
+        String str = event.getCharacter();
+        if (str.isEmpty()) {
+            return;
+        }
+        char ch = str.toLowerCase().charAt(0);
+        if (ch == ';') {
+            parse: {
+                String in = inputs.toString();
+                {
+                    Matcher matcher = timePattern.matcher(in);
+                    if (matcher.find()) {
+                        int minutes;
+                        int seconds;
+                        String mg1 = matcher.group(1);
+                        String mg2 = matcher.group(2);
+                        String mg3 = matcher.group(3);
+                        int mg2i = mg2.isEmpty() ? 0 : ((9 < mg2.length()) ? Integer.MAX_VALUE
+                                : Integer.parseInt(mg2));
+                        int mg3i = mg3.isEmpty() ? 0 : ((9 < mg3.length()) ? Integer.MAX_VALUE
+                                : Integer.parseInt(mg3));
+                        if (mg2.isEmpty() && mg3.isEmpty()) {
+                            minutes = 0;
+                            seconds = 0;
+                        } else if (mg2.isEmpty()) {
+                            int tmp = mg3i;
+                            minutes = tmp / 100;
+                            seconds = tmp % 100;
+                        } else if (mg3.isEmpty()) {
+                            int tmp = mg2i;
+                            minutes = tmp / 100;
+                            seconds = tmp % 100;
+                        } else {
+                            minutes = mg2i;
+                            seconds = mg3i;
+                        }
+                        double millisec = ((minutes * 60) + seconds) * 1000;
+                        if (mg1.equals("+")) {
+                            millisec = controlTime.getValue() + millisec;
+                        } else if (mg1.endsWith("-")) {
+                            millisec = controlTime.getValue() - millisec;
+                        }
+                        controlTime.setValue(Math.max(controlTime.getMin(),
+                                Math.min(millisec, controlTime.getMax() - 1)));
+                        break parse;
+                    }
+                }
+                {
+                    Matcher matcher = volPattern.matcher(in);
+                    if (matcher.find()) {
+                        String mg1 = matcher.group(1);
+                        String mg2 = matcher.group(2);
+                        double vol = mg2.isEmpty() ? 0d : Integer.parseInt(mg2) / 100d;
+                        if (mg1.equals("+")) {
+                            vol = controlVolume.getValue() + vol;
+                        } else if (mg1.endsWith("-")) {
+                            vol = controlVolume.getValue() - vol;
+                        }
+                        controlVolume.setValue(Math.max(controlVolume.getMin(),
+                                Math.min(vol, controlVolume.getMax())));
+                        break parse;
+                    }
+                }
+            }
+            inputs.setLength(0);
+        } else {
+            inputs.append(ch);
+            if (100 < inputs.length()) {
+                inputs.delete(0, 50);
+            }
+        }
+    }
 
     //----------------------------------------------------------------------------------
     // About log type.

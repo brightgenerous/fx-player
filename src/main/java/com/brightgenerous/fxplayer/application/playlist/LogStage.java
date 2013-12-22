@@ -27,7 +27,7 @@ class LogStage extends Stage {
 
         logText = TextAreaBuilder.create().wrapText(true).editable(false).opacity(0.9).build();
 
-        frontCheck = new CheckBox("auto front");
+        frontCheck = new CheckBox("Auto Front");
 
         Label label = LabelBuilder
                 .create()
@@ -47,6 +47,9 @@ class LogStage extends Stage {
     public void appendLog(String str) {
         if (frontCheck.isSelected()) {
             toFront();
+        }
+        if (300000 < logText.getLength()) {
+            logText.deleteText(0, 100000);
         }
         logText.appendText(str);
     }
