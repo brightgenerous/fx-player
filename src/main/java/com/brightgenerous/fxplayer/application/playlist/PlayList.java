@@ -558,18 +558,20 @@ public class PlayList implements Initializable {
         // log
         {
             logWindow = new LogStage(bundle.getString("log.title"), owner.getIcons());
-            logWindow.setOnShown(new EventHandler<WindowEvent>() {
-
-                @Override
-                public void handle(WindowEvent event) {
-                    controlLog.setSelected(true);
-                }
-            });
             logWindow.setOnHidden(new EventHandler<WindowEvent>() {
 
                 @Override
                 public void handle(WindowEvent event) {
                     controlLog.setSelected(false);
+                    logWindow.setX(logWindow.getX());
+                    logWindow.setY(logWindow.getY());
+                }
+            });
+            logWindow.setOnShown(new EventHandler<WindowEvent>() {
+
+                @Override
+                public void handle(WindowEvent event) {
+                    controlLog.setSelected(true);
                 }
             });
             owner.addEventHandler(WindowEvent.WINDOW_CLOSE_REQUEST,
@@ -614,6 +616,14 @@ public class PlayList implements Initializable {
     }
 
     @FXML
+    protected void controlPlay() {
+        boolean selected = controlPlay.isSelected();
+        if (!controlPlayer(Control.PLAY, null)) {
+            controlPlay.setSelected(!selected);
+        }
+    }
+
+    @FXML
     protected void controlLog() {
         if (logWindow.isShowing()) {
             logWindow.close();
@@ -623,10 +633,11 @@ public class PlayList implements Initializable {
     }
 
     @FXML
-    protected void controlPlay() {
-        boolean selected = controlPlay.isSelected();
-        if (!controlPlayer(Control.PLAY, null)) {
-            controlPlay.setSelected(!selected);
+    protected void cntrolLogReset() {
+        logWindow.setX(owner.getX());
+        logWindow.setY(owner.getY());
+        if (logWindow.isShowing()) {
+            logWindow.toFront();
         }
     }
 

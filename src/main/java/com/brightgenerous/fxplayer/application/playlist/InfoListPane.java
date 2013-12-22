@@ -11,6 +11,10 @@ import javafx.scene.layout.Pane;
 
 public class InfoListPane extends Pane {
 
+    {
+        getStyleClass().add("infolist-pane");
+    }
+
     @Override
     protected void layoutChildren() {
 

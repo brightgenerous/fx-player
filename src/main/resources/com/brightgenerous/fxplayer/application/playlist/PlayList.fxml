@@ -28,6 +28,7 @@
     <TextField fx:id="pathText" id="path-text" HBox.hgrow="ALWAYS" />
     <ToggleButton fx:id="controlLog" onAction="#controlLog"
         text="%control.log" ellipsisString="%control.log.ellipsis" mnemonicParsing="true" />
+    <Button onAction="#cntrolLogReset" text="." />
   </HBox>
   <TabPane VBox.vgrow="ALWAYS">
     <tabs>
@@ -35,7 +36,7 @@
         <content>
           <InfoListPane>
             <infoList>
-              <TableView fx:id="infoList" tableMenuButtonVisible="true">
+              <TableView fx:id="infoList" tableMenuButtonVisible="true" opacity="0.95">
                 <columns>
                   <TableColumn fx:id="infoListColumnIndex" text="%media.index"
                       sortable="false" prefWidth="40">
@@ -92,6 +93,10 @@
                   <TableColumn fx:id="infoListCloneColumnDuration" text="%media.duration"
                       sortable="false" prefWidth="80">
                     <cellValueFactory><PropertyValueFactory property="duration" /></cellValueFactory>
+                  </TableColumn>
+                  <TableColumn text="%media.info"
+                      sortable="false" prefWidth="400">
+                    <cellValueFactory><PropertyValueFactory property="info" /></cellValueFactory>
                   </TableColumn>
                 </columns>
               </TableView>

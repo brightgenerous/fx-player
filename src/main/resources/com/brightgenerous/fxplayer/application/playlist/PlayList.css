@@ -38,6 +38,7 @@
   -fx-text-fill: #fff;
 }
 
+.infolist-pane,
 .video-pane {
  -fx-background-color:linear-gradient(to bottom,#333,#444); 
 }
