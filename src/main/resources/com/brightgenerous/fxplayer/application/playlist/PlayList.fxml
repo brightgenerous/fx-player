@@ -10,11 +10,14 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.control.ProgressBar?>
+<?import com.brightgenerous.fxplayer.application.playlist.InfoListPane?>
+<?import com.brightgenerous.fxplayer.application.playlist.VideoPane?>
+<?import javafx.scene.layout.HBox?>
 <VBox xmlns:fx="http://javafx.com/fxml"
     fx:controller="com.brightgenerous.fxplayer.application.playlist.PlayList"
     stylesheets="com/brightgenerous/fxplayer/application/FxPlayer.css,
         com/brightgenerous/fxplayer/application/playlist/PlayList.css"
-    maxWidth="640" minHeight="240" prefHeight="360">
+    maxWidth="580" minHeight="240" prefHeight="360">
   <HBox id="control-pane">
     <Button onAction="#controlDirectoryChooser" id="button-chooser"
         text="%control.directory-chooser" ellipsisString="%control.directory-chooser.ellipsis" mnemonicParsing="true"
@@ -26,63 +29,74 @@
     <ToggleButton fx:id="controlLog" onAction="#controlLog"
         text="%control.log" ellipsisString="%control.log.ellipsis" mnemonicParsing="true" />
   </HBox>
-  <TabPane VBox.vgrow="ALWAYS" side="BOTTOM">
+  <TabPane VBox.vgrow="ALWAYS">
     <tabs>
       <Tab text="%tab.list" closable="false">
         <content>
-          <TableView fx:id="mediaList" tableMenuButtonVisible="true">
-            <columns>
-              <TableColumn fx:id="tableColumnIndex" text="%media.index"
-                  sortable="false" prefWidth="40">
-                <cellValueFactory><PropertyValueFactory property="exist" /></cellValueFactory>
-              </TableColumn>
-              <TableColumn fx:id="tableColumnCursor"
-                  sortable="false" prefWidth="70">
-                <cellValueFactory><PropertyValueFactory property="cursor" /></cellValueFactory>
-              </TableColumn>
-              <TableColumn fx:id="tableColumnMediaStatus" text="%media.mediaStatus"
-                  sortable="false" prefWidth="110" visible="false">
-                <cellValueFactory><PropertyValueFactory property="mediaStatus" /></cellValueFactory>
-              </TableColumn>
-              <TableColumn text="%media.titleDesc"
-                  sortable="false" prefWidth="265">
-                <cellValueFactory><PropertyValueFactory property="titleDesc" /></cellValueFactory>
-              </TableColumn>
-              <TableColumn text="%media.artist"
-                  sortable="false" prefWidth="170">
-                <cellValueFactory><PropertyValueFactory property="artist" /></cellValueFactory>
-              </TableColumn>
-              <TableColumn fx:id="tableColumnDuration" text="%media.duration"
-                  sortable="false" prefWidth="80">
-                <cellValueFactory><PropertyValueFactory property="duration" /></cellValueFactory>
-              </TableColumn>
-              <TableColumn text="%media.album"
-                  sortable="false" prefWidth="170">
-                <cellValueFactory><PropertyValueFactory property="album" /></cellValueFactory>
-              </TableColumn>
-              <TableColumn text="%media.description"
-                  sortable="false" prefWidth="200">
-                <cellValueFactory><PropertyValueFactory property="description" /></cellValueFactory>
-              </TableColumn>
-              <TableColumn text="%media.info"
-                  sortable="false" prefWidth="400">
-                <cellValueFactory><PropertyValueFactory property="info" /></cellValueFactory>
-              </TableColumn>
-            </columns>
-          </TableView>
+          <InfoListPane>
+            <infoList>
+              <TableView fx:id="infoList" tableMenuButtonVisible="true">
+                <columns>
+                  <TableColumn fx:id="infoListColumnIndex" text="%media.index"
+                      sortable="false" prefWidth="40">
+                    <cellValueFactory><PropertyValueFactory property="exist" /></cellValueFactory>
+                  </TableColumn>
+                  <TableColumn text="%media.titleDesc"
+                      sortable="false" prefWidth="275">
+                    <cellValueFactory><PropertyValueFactory property="titleDesc" /></cellValueFactory>
+                  </TableColumn>
+                  <TableColumn fx:id="infoListColumnDuration" text="%media.duration"
+                      sortable="false" prefWidth="80">
+                    <cellValueFactory><PropertyValueFactory property="duration" /></cellValueFactory>
+                  </TableColumn>
+                  <TableColumn text="%media.artist"
+                      sortable="false" prefWidth="170">
+                    <cellValueFactory><PropertyValueFactory property="artist" /></cellValueFactory>
+                  </TableColumn>
+                  <TableColumn text="%media.album"
+                      sortable="false" prefWidth="170">
+                    <cellValueFactory><PropertyValueFactory property="album" /></cellValueFactory>
+                  </TableColumn>
+                  <TableColumn text="%media.info"
+                      sortable="false" prefWidth="400">
+                    <cellValueFactory><PropertyValueFactory property="info" /></cellValueFactory>
+                  </TableColumn>
+                  <TableColumn text="%media.description"
+                      sortable="false" prefWidth="200">
+                    <cellValueFactory><PropertyValueFactory property="description" /></cellValueFactory>
+                  </TableColumn>
+                  <TableColumn fx:id="infoListColumnCursor"
+                      sortable="false" prefWidth="70" visible="false">
+                    <cellValueFactory><PropertyValueFactory property="cursor" /></cellValueFactory>
+                  </TableColumn>
+                  <TableColumn fx:id="infoListColumnMediaStatus" text="%media.mediaStatus"
+                      sortable="false" prefWidth="110" visible="false">
+                    <cellValueFactory><PropertyValueFactory property="mediaStatus" /></cellValueFactory>
+                  </TableColumn>
+                </columns>
+              </TableView>
+            </infoList>
+          </InfoListPane>
         </content>
       </Tab>
-      <Tab fx:id="mediaContainer" text="%tab.video" closable="false">
+      <Tab fx:id="videoTab" text="%tab.video" closable="false">
         <content>
-          <HBox style="-fx-background-color:linear-gradient(to bottom,#333,#444);">
-            <Region HBox.hgrow="ALWAYS" />
-            <VBox>
-              <Region VBox.vgrow="ALWAYS" />
-              <Pane fx:id="mediaPane" />
-              <Region VBox.vgrow="ALWAYS" />
-            </VBox>
-            <Region HBox.hgrow="ALWAYS" />
-          </HBox>
+          <VideoPane fx:id="videoPane">
+            <infoList>
+              <TableView fx:id="infoListClone" opacity="0.7">
+                <columns>
+                  <TableColumn text="%media.titleDesc"
+                      sortable="false" prefWidth="275">
+                    <cellValueFactory><PropertyValueFactory property="titleDesc" /></cellValueFactory>
+                  </TableColumn>
+                  <TableColumn fx:id="infoListCloneColumnDuration" text="%media.duration"
+                      sortable="false" prefWidth="80">
+                    <cellValueFactory><PropertyValueFactory property="duration" /></cellValueFactory>
+                  </TableColumn>
+                </columns>
+              </TableView>
+            </infoList>
+          </VideoPane>
         </content>
       </Tab>
     </tabs>
@@ -101,8 +115,8 @@
       </HBox>
       <HBox id="control-line">
         <StackPane HBox.hgrow="ALWAYS">
-          <ProgressBar fx:id="progressCurrent" progress="0" prefWidth="9999" />
-          <ProgressBar fx:id="progressBuffer" progress="0" prefWidth="9999" opacity="0.3" />
+          <ProgressBar fx:id="controlTimeCurrent" progress="0" prefWidth="9999" />
+          <ProgressBar fx:id="controlTimeBuffer" progress="0" prefWidth="9999" opacity="0.3" />
           <Slider fx:id="controlTime" id="control-time" min="0" max="0" prefWidth="9999" />
         </StackPane>
         <Label fx:id="timeText" id="time-text" minWidth="190" alignment="CENTER_RIGHT" />
@@ -120,7 +134,7 @@
             prefWidth="75" />
         <Region minWidth="5" maxWidth="5" />
         <Slider fx:id="controlVolume" min="0.0" max="1.0" value="0.5" maxWidth="200" />
-        <Label fx:id="volumeText" id="volume-text" minWidth="40" alignment="CENTER_RIGHT" />
+        <Label fx:id="volumeText" id="volume-text" minWidth="60" alignment="CENTER_RIGHT" />
         <Region HBox.hgrow="ALWAYS" />
       </HBox>
     </VBox>

@@ -38,6 +38,10 @@
   -fx-text-fill: #fff;
 }
 
+.video-pane {
+ -fx-background-color:linear-gradient(to bottom,#333,#444); 
+}
+
 .tab {
   -fx-base: rgb(224, 224, 240);
 }

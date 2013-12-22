@@ -15,8 +15,10 @@ import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
+import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableBooleanValue;
 import javafx.beans.value.ObservableStringValue;
+import javafx.beans.value.ObservableValue;
 import javafx.beans.value.WritableValue;
 import javafx.collections.MapChangeListener;
 import javafx.collections.MapChangeListener.Change;
@@ -41,39 +43,79 @@ public class MediaInfo {
     private final ObjectProperty<MediaStatus> mediaStatusProperty = new SimpleObjectProperty<>(
             MediaStatus.MEDIA_YET);
 
-    private final BooleanProperty cursorProperty = new SimpleBooleanProperty();
+    private final BooleanProperty cursorProperty = new SimpleBooleanProperty(this, "cursor");
 
-    private final StringProperty titleProperty = new SimpleStringProperty("");
+    private final StringProperty titleProperty = new SimpleStringProperty(this, "title", "");
 
-    private final StringProperty titleDescProperty = new SimpleStringProperty();
+    private final StringProperty titleDescProperty = new SimpleStringProperty(this, "titleDesc");
 
-    private final StringProperty artistProperty = new SimpleStringProperty("");
+    private final StringProperty artistProperty = new SimpleStringProperty(this, "artist", "");
 
-    private final StringProperty albumProperty = new SimpleStringProperty("");
+    private final StringProperty albumProperty = new SimpleStringProperty(this, "album", "");
 
-    private final ObjectProperty<Duration> durationProperty = new SimpleObjectProperty<>();
+    private final ObjectProperty<Duration> durationProperty = new SimpleObjectProperty<>(this,
+            "duration");
 
-    private final WritableValue<String> durationTextProperty = new SimpleStringProperty("");
+    private final StringProperty durationTextProperty = new SimpleStringProperty(this,
+            "durationText", "");
 
-    private final ObjectProperty<Image> imageProperty = new SimpleObjectProperty<>();
+    private final ObjectProperty<Image> imageProperty = new SimpleObjectProperty<>(this, "image");
 
-    private final StringProperty audioCodecProperty = new SimpleStringProperty("");
+    private final StringProperty audioCodecProperty = new SimpleStringProperty(this, "audioCodec",
+            "");
 
-    private final StringProperty videoCodecProperty = new SimpleStringProperty("");
+    private final StringProperty videoCodecProperty = new SimpleStringProperty(this, "videoCodec",
+            "");
 
-    private final IntegerProperty widthProperty = new SimpleIntegerProperty();
+    private final IntegerProperty widthProperty = new SimpleIntegerProperty(this, "width");
 
-    private final IntegerProperty heightProperty = new SimpleIntegerProperty();
+    private final IntegerProperty heightProperty = new SimpleIntegerProperty(this, "height");
 
-    private final DoubleProperty framerateProperty = new SimpleDoubleProperty();
+    private final DoubleProperty framerateProperty = new SimpleDoubleProperty(this, "framerate");
 
-    private final BooleanProperty visibleTooltipProperty = new SimpleBooleanProperty();
+    private final BooleanProperty visibleTooltipProperty = new SimpleBooleanProperty(this,
+            "visibleTooltip");
 
-    private final Property<String> tooltipProperty = new SimpleStringProperty();
+    private final Property<String> tooltipProperty = new SimpleStringProperty(this, "tooltip");
 
-    private final Property<String> infoProperty = new SimpleStringProperty();
+    private final Property<String> infoProperty = new SimpleStringProperty(this, "info");
 
     {
+        {
+            durationProperty.addListener(new ChangeListener<Duration>() {
+
+                @Override
+                public void changed(ObservableValue<? extends Duration> observable,
+                        Duration oldValue, Duration newValue) {
+                    if (newValue != null) {
+                        String text = milliSecToTime(newValue.toMillis());
+                        if (!durationTextProperty.getValue().equals(text)) {
+                            durationTextProperty.setValue(text);
+                        }
+                    }
+                }
+
+                private String milliSecToTime(double millis) {
+                    int sec = (int) (millis / 1000);
+                    return String.format("%3d:%02d", Integer.valueOf(sec / 60),
+                            Integer.valueOf(sec % 60));
+                }
+            });
+
+            titleProperty.addListener(new ChangeListener<String>() {
+
+                @Override
+                public void changed(ObservableValue<? extends String> observable, String oldValue,
+                        String newValue) {
+                    if (newValue != null) {
+                        if (!titleDescProperty.getValue().equals(newValue)) {
+                            titleDescProperty.setValue(newValue);
+                        }
+                    }
+                }
+            });
+        }
+
         ObservableBooleanValue visibleVideoInfo;
         {
             BooleanExpression visibleAudioInfo = titleProperty.isNotEqualTo("")
@@ -93,7 +135,8 @@ public class MediaInfo {
                     .concat(videoCodecProperty).concat("\nAudio Codec : ")
                     .concat(audioCodecProperty).concat("\nWidth : ").concat(widthProperty)
                     .concat("\nHeight : ").concat(heightProperty).concat("\nFramerate : ")
-                    .concat(framerateProperty).concat("\nDuration : ").concat(durationTextProperty);
+                    .concat(framerateProperty.asString("%.2f")).concat("\nDuration : ")
+                    .concat(durationTextProperty);
 
             ObservableStringValue tooltip = Bindings.when(visibleVideoInfo).then(videoTooltip)
                     .otherwise(audioTooltip);
@@ -107,7 +150,7 @@ public class MediaInfo {
                     .concat(videoCodecProperty).concat(" , Audio Codec : ")
                     .concat(audioCodecProperty).concat(" , Width : ").concat(widthProperty)
                     .concat(" , Height : ").concat(heightProperty).concat(" , Framerate : ")
-                    .concat(framerateProperty).concat(" , Duration : ")
+                    .concat(framerateProperty.asString("%.2f")).concat(" , Duration : ")
                     .concat(durationTextProperty);
 
             StringBinding info = Bindings.when(visibleVideoInfo).then(videoInfo)
@@ -179,6 +222,10 @@ public class MediaInfo {
 
                 throw new MediaLoadException(e);
             }
+
+            // TOTO
+            // should reset properties ?
+
             ret.getMetadata().addListener(new MapChangeListener<String, Object>() {
 
                 @Override
@@ -187,7 +234,7 @@ public class MediaInfo {
                         String key = change.getKey();
                         switch (key) {
                             case "title": {
-                                setIfUpdate(change.getMap(), key, titleProperty, titleDescProperty);
+                                setIfUpdate(change.getMap(), key, titleProperty);
                                 break;
                             }
                             case "artist":
@@ -200,12 +247,7 @@ public class MediaInfo {
                                 break;
                             }
                             case "duration": {
-                                Duration newValue = setIfUpdate(change.getMap(), key,
-                                        durationProperty);
-                                if (newValue != null) {
-                                    durationTextProperty.setValue(milliSecToTime(newValue
-                                            .toMillis()));
-                                }
+                                setIfUpdate(change.getMap(), key, durationProperty);
                                 break;
                             }
                             case "image": {
@@ -238,15 +280,9 @@ public class MediaInfo {
                         metaChangeListener.onChanged(MediaInfo.this, ret, change);
                     }
                 }
-
-                private String milliSecToTime(double millis) {
-                    int sec = (int) (millis / 1000);
-                    return String.format("%3d:%02d", Integer.valueOf(sec / 60),
-                            Integer.valueOf(sec % 60));
-                }
             });
 
-            setIfUpdate(ret.getMetadata(), "title", titleProperty, titleDescProperty);
+            setIfUpdate(ret.getMetadata(), "title", titleProperty);
             setIfUpdate(ret.getMetadata(), "artist", artistProperty);
             setIfUpdate(ret.getMetadata(), "album artist", artistProperty);
             setIfUpdate(ret.getMetadata(), "album", albumProperty);
@@ -329,7 +365,7 @@ public class MediaInfo {
         return infoProperty;
     }
 
-    public Property<Image> imageProperty() {
+    public ReadOnlyProperty<Image> imageProperty() {
         return imageProperty;
     }
 
