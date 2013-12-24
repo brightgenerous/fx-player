@@ -10,7 +10,7 @@ JavaFX（ジャバえふえっくす）で書いた動画や音声をなるだ�
 最新版
 -------
 
-2.3.1
+2.4.0
 
 
 #### 機能
@@ -66,6 +66,15 @@ JavaFX（ジャバえふえっくす）で書いた動画や音声をなるだ�
 * たぶん、エンコードはUTF-8がいいとおもいます
 * ローカルのプレイリストファイルのサンプル - sample/local_playlist.txt
 * httpから取得するプレイリストファイルのサンプル - sample/url_playlist.txt
+
+
+
+その他機能
+-------
+
+#### ショートカット
+
+* ShortcutHandlerとかいうクラスのソース参照（com.brightgenerous.fxplayer.application.playlist.ShortcutHandler.java）
 
 
 

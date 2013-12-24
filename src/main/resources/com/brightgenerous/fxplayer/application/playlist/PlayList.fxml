@@ -1,18 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.control.cell.*?>
+<?import javafx.scene.image.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.*?>
-<?import javafx.scene.control.Slider?>
-<?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.Region?>
-<?import javafx.scene.control.Tab?>
-<?import javafx.scene.layout.VBox?>
-<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.control.ProgressBar?>
 <?import com.brightgenerous.fxplayer.application.playlist.InfoListPane?>
 <?import com.brightgenerous.fxplayer.application.playlist.VideoPane?>
-<?import javafx.scene.layout.HBox?>
 <VBox xmlns:fx="http://javafx.com/fxml"
     fx:controller="com.brightgenerous.fxplayer.application.playlist.PlayList"
     stylesheets="com/brightgenerous/fxplayer/application/FxPlayer.css,
@@ -26,10 +20,14 @@
     <Button onAction="#controlFileChooser" id="button-chooser"
         text="%control.file-chooser" ellipsisString="%control.file-chooser.ellipsis" mnemonicParsing="true"
         prefWidth="90" />
-    <TextField fx:id="pathText" id="path-text" HBox.hgrow="ALWAYS" />
+    <StackPane HBox.hgrow="ALWAYS">
+      <Button onAction="#controlPathText" text="_u" mnemonicParsing="true" focusTraversable="false"
+           maxWidth="1" maxHeight="1" style="-fx-font-size:1;" />
+      <TextField fx:id="pathText" id="path-text" />
+    </StackPane>
     <ToggleButton fx:id="controlLog" onAction="#controlLog"
         text="%control.log" ellipsisString="%control.log.ellipsis" mnemonicParsing="true" />
-    <Button onAction="#cntrolLogReset" text="." />
+    <Button onAction="#controlLogSnap" />
   </HBox>
   <TabPane VBox.vgrow="ALWAYS">
     <tabs>
@@ -129,11 +127,11 @@
       </HBox>
       <HBox id="control-line">
         <Region HBox.hgrow="ALWAYS" />
-        <ToggleButton fx:id="controlPlay" id="button-control" onAction="#controlPlay"
+        <ToggleButton fx:id="controlPlayPause" id="button-control" onAction="#controlPlayPause"
             text="%control.play" ellipsisString="%control.play.ellipsis" mnemonicParsing="true"
             prefWidth="75" />
-        <Button onAction="#controlPrev" id="button-control"
-            text="%control.prev" ellipsisString="%control.prev.ellipsis" mnemonicParsing="true"
+        <Button onAction="#controlBack" id="button-control"
+            text="%control.back" ellipsisString="%control.back.ellipsis" mnemonicParsing="true"
             prefWidth="75" />
         <Button onAction="#controlNext" id="button-control"
             text="%control.next" ellipsisString="%control.next.ellipsis" mnemonicParsing="true"

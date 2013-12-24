@@ -184,8 +184,8 @@ class YoutubeUtils {
 
     private static String getPageHtml(String url) throws IOException {
 
-        // TODO
-        // must keep only argument "v"
+        // [x] keep only first argument
+        // [ ] keep only argument "v"
 
         // Remove any query params in query string after the watch?v=<vid> in
         // e.g.

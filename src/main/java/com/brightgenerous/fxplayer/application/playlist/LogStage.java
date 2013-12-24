@@ -1,15 +1,19 @@
 package com.brightgenerous.fxplayer.application.playlist;
 
 import javafx.collections.ObservableList;
+import javafx.event.Event;
+import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.SceneBuilder;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.CheckBoxBuilder;
 import javafx.scene.control.Label;
 import javafx.scene.control.LabelBuilder;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextAreaBuilder;
 import javafx.scene.image.Image;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.VBoxBuilder;
@@ -23,11 +27,12 @@ class LogStage extends Stage {
 
     private final TextArea logText;
 
-    public LogStage(String title, ObservableList<Image> icons) {
+    public LogStage(String title, ObservableList<Image> icons, EventHandler<KeyEvent> keyHandler) {
 
-        logText = TextAreaBuilder.create().wrapText(true).editable(false).opacity(0.9).build();
+        logText = TextAreaBuilder.create().wrapText(true).editable(false).focusTraversable(false)
+                .opacity(0.9).build();
 
-        frontCheck = new CheckBox("Auto Front");
+        frontCheck = CheckBoxBuilder.create().text("_Auto Front").mnemonicParsing(true).build();
 
         Label label = LabelBuilder
                 .create()
@@ -35,8 +40,21 @@ class LogStage extends Stage {
                 .build();
         VBox.setVgrow(logText, Priority.ALWAYS);
 
-        Parent parent = VBoxBuilder.create().children(logText, frontCheck, label).spacing(5)
+        final Parent parent = VBoxBuilder.create().children(logText, frontCheck, label).spacing(5)
                 .padding(new Insets(5)).style("-fx-background-color:rgb(224, 224, 224);").build();
+
+        {
+            logText.setOnKeyTyped(new EventHandler<KeyEvent>() {
+
+                @Override
+                public void handle(KeyEvent event) {
+                    Event.fireEvent(parent, event);
+                }
+            });
+            if (keyHandler != null) {
+                parent.addEventHandler(KeyEvent.KEY_TYPED, keyHandler);
+            }
+        }
 
         StageBuilder.create().width(580).height(360).icons(icons).title(title)
                 .scene(SceneBuilder.create().root(parent).build()).applyTo(this);
