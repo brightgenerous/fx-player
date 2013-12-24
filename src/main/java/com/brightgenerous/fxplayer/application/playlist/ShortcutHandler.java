@@ -75,6 +75,8 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
         void controlWindowFront();
 
         void controlWindowBack();
+
+        void controlTimesVolumes();
     }
 
     private static final Pattern directoryPattern = Pattern
@@ -149,6 +151,9 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
     private static final Pattern windowBackPattern = Pattern
             .compile("^(?:.*\\s+)?(?:wb|wnbk|wdbk|wndbck)\\s*$");
+
+    private static final Pattern timesVolumesPattern = Pattern
+            .compile("^(?:.*\\s+)?(?:h|hr|hrizon|hrizontal)\\s*$");
 
     private final StringBuilder inputs = new StringBuilder();
 
@@ -350,6 +355,10 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
                     adapter.controlWindowBack();
                     break parse;
                 }
+                if (timesVolumesPattern.matcher(in).find()) {
+                    adapter.controlTimesVolumes();
+                    break parse;
+                }
             }
             inputs.setLength(0);
         } else {
@@ -366,6 +375,145 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
                 }
             }
             lastTime = current;
+        }
+    }
+
+    public static class SimpleAdapter implements IAdapter {
+
+        @Override
+        public void controlDirectoryChooser() {
+        }
+
+        @Override
+        public void controlFileChooser() {
+        }
+
+        @Override
+        public void focusPathText() {
+        }
+
+        @Override
+        public void controlLog() {
+        }
+
+        @Override
+        public void controlLogSnap() {
+        }
+
+        @Override
+        public void controlLogFront() {
+        }
+
+        @Override
+        public void controlLogBack() {
+        }
+
+        @Override
+        public void controlLogAuto() {
+        }
+
+        @Override
+        public void controlTab() {
+        }
+
+        @Override
+        public void controlTabSide() {
+        }
+
+        @Override
+        public void controlVideoInfoSide() {
+        }
+
+        @Override
+        public void controlSpectrums() {
+        }
+
+        @Override
+        public void controlPlayPause() {
+        }
+
+        @Override
+        public void controlPlay() {
+        }
+
+        @Override
+        public void controlPause() {
+        }
+
+        @Override
+        public void controlBack() {
+        }
+
+        @Override
+        public void controlNext() {
+        }
+
+        @Override
+        public void controlTime(long seconds) {
+        }
+
+        @Override
+        public void controlTimePlus(long seconds) {
+        }
+
+        @Override
+        public void controlTimeMinus(long seconds) {
+        }
+
+        @Override
+        public void controlVolume(int volume) {
+        }
+
+        @Override
+        public void controlVolumePlus(int volume) {
+        }
+
+        @Override
+        public void controlVolumeMinus(int volume) {
+        }
+
+        @Override
+        public void controlJump(int value) {
+        }
+
+        @Override
+        public void controlJumpPlus(int value) {
+        }
+
+        @Override
+        public void controlJumpMinus(int value) {
+        }
+
+        @Override
+        public void controlSaveFile() {
+        }
+
+        @Override
+        public void controlSaveImage() {
+        }
+
+        @Override
+        public void controlWindowScreen() {
+        }
+
+        @Override
+        public void controlWindowScreenMin() {
+        }
+
+        @Override
+        public void controlWindowScreenMax() {
+        }
+
+        @Override
+        public void controlWindowFront() {
+        }
+
+        @Override
+        public void controlWindowBack() {
+        }
+
+        @Override
+        public void controlTimesVolumes() {
         }
     }
 }

@@ -32,6 +32,8 @@ public class Settings {
 
     public final ObjectProperty<InfoSide> videoInfoSide = new SimpleObjectProperty<>();
 
+    public final BooleanProperty timesVolumesHorizontal = new SimpleBooleanProperty();
+
     public final BooleanProperty visibleSpectrums = new SimpleBooleanProperty();
 
     public Side toggleTabSide() {
@@ -47,6 +49,12 @@ public class Settings {
     public Boolean toggleVisibleSpectrums() {
         Boolean ret = visibleSpectrums.getValue();
         visibleSpectrums.set(!ret.booleanValue());
+        return ret;
+    }
+
+    public Boolean toggleTimesVolumesHorizontal() {
+        Boolean ret = timesVolumesHorizontal.getValue();
+        timesVolumesHorizontal.set(!ret.booleanValue());
         return ret;
     }
 

@@ -1,4 +1,4 @@
-package com.brightgenerous.fxplayer.playlist.service;
+package com.brightgenerous.fxplayer.service;
 
 import java.util.List;
 

@@ -49,6 +49,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.media.AudioSpectrumListener;
@@ -69,10 +70,10 @@ import com.brightgenerous.fxplayer.media.MediaInfo;
 import com.brightgenerous.fxplayer.media.MediaInfo.MetaChangeListener;
 import com.brightgenerous.fxplayer.media.MediaLoadException;
 import com.brightgenerous.fxplayer.media.MediaStatus;
-import com.brightgenerous.fxplayer.playlist.service.LoadDirectoryService;
-import com.brightgenerous.fxplayer.playlist.service.LoadFileService;
-import com.brightgenerous.fxplayer.playlist.service.LoadUrlService;
-import com.brightgenerous.fxplayer.playlist.service.SaveImageService;
+import com.brightgenerous.fxplayer.service.LoadDirectoryService;
+import com.brightgenerous.fxplayer.service.LoadFileService;
+import com.brightgenerous.fxplayer.service.LoadUrlService;
+import com.brightgenerous.fxplayer.service.SaveImageService;
 
 public class PlayList implements Initializable {
 
@@ -134,6 +135,17 @@ public class PlayList implements Initializable {
 
     @FXML
     private TableColumn<MediaInfo, Duration> infoListCloneColumnDuration;
+
+    // controls
+
+    @FXML
+    private GridPane timesVolumesPane;
+
+    @FXML
+    private Pane timesPane;
+
+    @FXML
+    private Pane volumesPane;
 
     // control - button
 
@@ -420,6 +432,25 @@ public class PlayList implements Initializable {
             infoListCloneColumnDuration.setCellFactory(infoListColumnDuration.getCellFactory());
         }
 
+        // control times volumes
+        {
+            settings.timesVolumesHorizontal.addListener(new ChangeListener<Boolean>() {
+
+                @Override
+                public void changed(ObservableValue<? extends Boolean> observable,
+                        Boolean oldValue, Boolean newValue) {
+                    timesVolumesPane.getChildren().clear();
+                    if (newValue.booleanValue()) {
+                        timesVolumesPane.add(timesPane, 1, 0);
+                        timesVolumesPane.add(volumesPane, 0, 0);
+                    } else {
+                        timesVolumesPane.add(timesPane, 0, 0);
+                        timesVolumesPane.add(volumesPane, 0, 1);
+                    }
+                }
+            });
+        }
+
         // control time
         {
             controlTime.valueProperty().addListener(new ChangeListener<Number>() {
@@ -597,6 +628,8 @@ public class PlayList implements Initializable {
             settings.visibleVideoInfo.set(false);
             settings.videoInfoSide.set(null);
             settings.videoInfoSide.set(InfoSide.RIGHT_BOTTOM);
+            settings.timesVolumesHorizontal.set(true);
+            settings.timesVolumesHorizontal.set(false);
             timeText.setText(LabelUtils.milliSecsToTime(0, 0, 0));
             volumeText.setText(LabelUtils.toVolume(Settings.DEFAULT_VOLUME));
         }
@@ -1633,6 +1666,11 @@ public class PlayList implements Initializable {
                 @Override
                 public void controlWindowBack() {
                     logWindow.toFront();
+                }
+
+                @Override
+                public void controlTimesVolumes() {
+                    settings.toggleTimesVolumesHorizontal();
                 }
             });
 
