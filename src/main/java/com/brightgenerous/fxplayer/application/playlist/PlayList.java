@@ -59,11 +59,11 @@ import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.MediaPlayer.Status;
 import javafx.scene.media.MediaView;
 import javafx.stage.Stage;
-import javafx.stage.Window;
 import javafx.stage.WindowEvent;
 import javafx.util.Callback;
 import javafx.util.Duration;
 
+import com.brightgenerous.fxplayer.application.FxUtils;
 import com.brightgenerous.fxplayer.application.FxUtils.Inject;
 import com.brightgenerous.fxplayer.application.playlist.VideoPane.InfoSide;
 import com.brightgenerous.fxplayer.media.MediaInfo;
@@ -74,18 +74,22 @@ import com.brightgenerous.fxplayer.service.LoadDirectoryService;
 import com.brightgenerous.fxplayer.service.LoadFileService;
 import com.brightgenerous.fxplayer.service.LoadUrlService;
 import com.brightgenerous.fxplayer.service.SaveImageService;
+import com.brightgenerous.fxplayer.service.StageCloseService;
 
 public class PlayList implements Initializable {
 
     private final Settings settings = new Settings();
 
     @Inject
-    private Stage owner;
+    private Stage stage;
 
-    private final ObjectProperty<Window> ownerProperty = new SimpleObjectProperty<>();
+    private final ObjectProperty<Stage> stageProperty = new SimpleObjectProperty<>();
 
     @Inject
     private ResourceBundle bundle;
+
+    @FXML
+    private Pane rootPane;
 
     // top control
 
@@ -99,7 +103,7 @@ public class PlayList implements Initializable {
     @FXML
     private ToggleButton controlLog;
 
-    private LogStage logWindow;
+    private LoggStage logStage;
 
     // tab - info
 
@@ -212,7 +216,7 @@ public class PlayList implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         {
-            ownerProperty.setValue(owner);
+            stageProperty.setValue(stage);
             pathTextProperty.bind(pathText.textProperty());
         }
 
@@ -462,7 +466,7 @@ public class PlayList implements Initializable {
                     if (mp == null) {
                         return;
                     }
-                    if (mp.getStatus().equals(Status.UNKNOWN)) {
+                    if (mp.getStatus() == Status.UNKNOWN) {
                         return;
                     }
                     double oldMillis = mp.getCurrentTime().toMillis();
@@ -500,7 +504,7 @@ public class PlayList implements Initializable {
                         if (mp == null) {
                             break player;
                         }
-                        if (mp.getStatus().equals(Status.UNKNOWN)) {
+                        if (mp.getStatus() == Status.UNKNOWN) {
                             break player;
                         }
                         double oldVol = mp.getVolume();
@@ -579,7 +583,7 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void handle(KeyEvent event) {
-                    if (event.getCode().equals(KeyCode.ENTER)) {
+                    if (event.getCode() == KeyCode.ENTER) {
                         if (!loadRunning()) {
                             loadUrlService.restart();
                         }
@@ -590,32 +594,45 @@ public class PlayList implements Initializable {
 
         // log
         {
-            logWindow = new LogStage(bundle.getString("log.title"), owner.getIcons(),
+            logStage = new LoggStage(bundle.getString("log.title"), stage.getIcons(),
                     shortCutHandler);
-            logWindow.setOnHidden(new EventHandler<WindowEvent>() {
+            logStage.setOnHidden(new EventHandler<WindowEvent>() {
 
                 @Override
                 public void handle(WindowEvent event) {
                     controlLog.setSelected(false);
-                    logWindow.setX(logWindow.getX());
-                    logWindow.setY(logWindow.getY());
+                    logStage.setX(logStage.getX());
+                    logStage.setY(logStage.getY());
                 }
             });
-            logWindow.setOnShown(new EventHandler<WindowEvent>() {
+            logStage.setOnShown(new EventHandler<WindowEvent>() {
 
                 @Override
                 public void handle(WindowEvent event) {
                     controlLog.setSelected(true);
                 }
             });
-            owner.addEventHandler(WindowEvent.WINDOW_CLOSE_REQUEST,
+        }
+
+        // exit event
+        {
+            rootPane.addEventFilter(KeyEvent.KEY_TYPED, new EventHandler<KeyEvent>() {
+
+                @Override
+                public void handle(KeyEvent event) {
+                    if (FxUtils.isESC(event)) {
+                        if (!stageCloseService.isRunning()) {
+                            stageCloseService.restart();
+                        }
+                    }
+                }
+            });
+            stage.addEventHandler(WindowEvent.WINDOW_CLOSE_REQUEST,
                     new EventHandler<WindowEvent>() {
 
                         @Override
                         public void handle(WindowEvent event) {
-                            if (logWindow.isShowing()) {
-                                logWindow.close();
-                            }
+                            logStage.close();
                         }
                     });
         }
@@ -658,20 +675,20 @@ public class PlayList implements Initializable {
 
     @FXML
     protected void controlLog() {
-        if (logWindow.isShowing()) {
-            logWindow.close();
+        if (logStage.isShowing()) {
+            logStage.hide();
         } else {
-            logWindow.show();
-            logWindow.toFront();
+            logStage.show();
+            logStage.toFront();
         }
     }
 
     @FXML
     protected void controlLogSnap() {
-        logWindow.setX(owner.getX());
-        logWindow.setY(owner.getY());
-        if (logWindow.isShowing()) {
-            logWindow.toFront();
+        logStage.setX(stage.getX());
+        logStage.setY(stage.getY());
+        if (logStage.isShowing()) {
+            logStage.toFront();
         }
     }
 
@@ -714,19 +731,19 @@ public class PlayList implements Initializable {
             MediaPlayer player = playerProperty.getValue();
 
             if (player != null) {
-                boolean controlPP = control.equals(Control.PLAY_PAUSE);
-                boolean controlPl = control.equals(Control.PLAY);
-                boolean controlPs = control.equals(Control.PAUSE);
+                boolean controlPP = control == Control.PLAY_PAUSE;
+                boolean controlPl = control == Control.PLAY;
+                boolean controlPs = control == Control.PAUSE;
                 if (controlPP || controlPl || controlPs) {
                     Status status = player.getStatus();
-                    if (status.equals(Status.PLAYING) && (controlPP || controlPs)) {
+                    if ((status == Status.PLAYING) && (controlPP || controlPs)) {
 
                         log("Control Pause : " + currentInfo.getDescription());
 
                         player.pause();
 
                         break player_block;
-                    } else if (status.equals(Status.PAUSED) && (controlPP || controlPl)) {
+                    } else if ((status == Status.PAUSED) && (controlPP || controlPl)) {
 
                         requestScroll(currentInfo);
 
@@ -758,7 +775,7 @@ public class PlayList implements Initializable {
             // now loading ...
             if (player != null) {
                 MediaException me = player.getError();
-                boolean unknown = player.getStatus().equals(Status.UNKNOWN);
+                boolean unknown = player.getStatus() == Status.UNKNOWN;
                 if (unknown && (me == null)) {
 
                     log("Now Loading ... Please wait a minute.");
@@ -788,12 +805,12 @@ public class PlayList implements Initializable {
                     }
                 }
                 if (index != -1) {
-                    if (control.equals(Control.NEXT)) {
+                    if (control == Control.NEXT) {
                         index++;
                         if (items.size() <= index) {
                             index = 0;
                         }
-                    } else if (control.equals(Control.BACK)) {
+                    } else if (control == Control.BACK) {
                         index--;
                         if (index < 0) {
                             index = items.size() - 1;
@@ -1333,7 +1350,8 @@ public class PlayList implements Initializable {
                                         break outer;
                                     }
                                     try {
-                                        Thread.sleep(100);
+                                        Thread.sleep(Math.max(
+                                                settings.loadMediaStepMilliseconds.get(), 0));
                                         //Thread.yield();
                                     } catch (InterruptedException e) {
                                     }
@@ -1363,6 +1381,9 @@ public class PlayList implements Initializable {
     private final Service<List<MediaInfo>> loadUrlService;
 
     private final Service<File> saveImageService;
+
+    private final Service<Void> stageCloseService;
+
     {
         MetaChangeListener metaChangeListener = new MetaChangeListener() {
 
@@ -1386,7 +1407,7 @@ public class PlayList implements Initializable {
                 return key.equals("raw metadata") || key.equals("image");
             }
         };
-        loadDirectoryService = new LoadDirectoryService(ownerProperty, metaChangeListener,
+        loadDirectoryService = new LoadDirectoryService(stageProperty, metaChangeListener,
                 new LoadDirectoryService.ICallback() {
 
                     @Override
@@ -1400,7 +1421,7 @@ public class PlayList implements Initializable {
                         loadMedia();
                     }
                 });
-        loadFileService = new LoadFileService(ownerProperty, metaChangeListener,
+        loadFileService = new LoadFileService(stageProperty, metaChangeListener,
                 new LoadFileService.ICallback() {
 
                     @Override
@@ -1428,7 +1449,7 @@ public class PlayList implements Initializable {
                         loadMedia();
                     }
                 });
-        saveImageService = new SaveImageService(currentInfoProperty, ownerProperty,
+        saveImageService = new SaveImageService(currentInfoProperty, stageProperty,
                 new SaveImageService.ICallback() {
 
                     @Override
@@ -1440,6 +1461,7 @@ public class PlayList implements Initializable {
                         log("Save Image : " + out.getAbsolutePath());
                     }
                 });
+        stageCloseService = new StageCloseService(stageProperty);
     }
 
     private boolean loadRunning() {
@@ -1486,12 +1508,12 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void controlLogFront() {
-                    logWindow.toFront();
+                    logStage.toFront();
                 }
 
                 @Override
                 public void controlLogBack() {
-                    owner.toFront();
+                    stage.toFront();
                 }
 
                 @Override
@@ -1527,6 +1549,11 @@ public class PlayList implements Initializable {
                 @Override
                 public void controlSpectrums() {
                     settings.toggleVisibleSpectrums();
+                }
+
+                @Override
+                public void controlTimesVolumes() {
+                    settings.toggleTimesVolumesHorizontal();
                 }
 
                 @Override
@@ -1641,36 +1668,48 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void controlWindowScreen() {
-                    owner.setFullScreen(!owner.isFullScreen());
+                    stage.setFullScreen(!stage.isFullScreen());
                 }
 
                 @Override
                 public void controlWindowScreenMin() {
-                    if (owner.isFullScreen()) {
-                        owner.setFullScreen(false);
+                    if (stage.isFullScreen()) {
+                        stage.setFullScreen(false);
                     }
                 }
 
                 @Override
                 public void controlWindowScreenMax() {
-                    if (!owner.isFullScreen()) {
-                        owner.setFullScreen(true);
+                    if (!stage.isFullScreen()) {
+                        stage.setFullScreen(true);
                     }
                 }
 
                 @Override
                 public void controlWindowFront() {
-                    owner.toFront();
+                    stage.toFront();
                 }
 
                 @Override
                 public void controlWindowBack() {
-                    logWindow.toFront();
+                    logStage.toFront();
                 }
 
                 @Override
-                public void controlTimesVolumes() {
-                    settings.toggleTimesVolumesHorizontal();
+                public void controlWindowIconified() {
+                    if (stage.isShowing()) {
+                        stage.setIconified(true);
+                    }
+                    if (logStage.isShowing()) {
+                        logStage.setIconified(true);
+                    }
+                }
+
+                @Override
+                public void controlWindowExit() {
+                    if (!stageCloseService.isRunning()) {
+                        stageCloseService.restart();
+                    }
                 }
             });
 
@@ -1699,6 +1738,6 @@ public class PlayList implements Initializable {
     }
 
     private void log(LogType type, String str) {
-        logWindow.appendLog(String.format("%1$tH:%1$tM:%1$tS:%1$tL - %2$s%n", new Date(), str));
+        logStage.appendLog(String.format("%1$tH:%1$tM:%1$tS:%1$tL - %2$s%n", new Date(), str));
     }
 }

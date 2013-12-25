@@ -17,7 +17,7 @@
 
 .button:hover,
 .toggle-button:hover {
-	-fx-color: #33ccff;
+  -fx-color: #33ccff;
 }
 
 #button-chooser {

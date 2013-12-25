@@ -16,6 +16,8 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.SceneBuilder;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.PaneBuilder;
 import javafx.stage.Stage;
 import javafx.util.Callback;
@@ -27,10 +29,35 @@ public class FxUtils {
     public static @interface Inject {
     }
 
+    public static class LoadData<T> {
+
+        private final T controller;
+
+        private final Parent root;
+
+        LoadData(T controller, Parent root) {
+            this.controller = controller;
+            this.root = root;
+        }
+
+        public T getController() {
+            return controller;
+        }
+
+        public Parent getRoot() {
+            return root;
+        }
+    }
+
     private FxUtils() {
     }
 
-    public static void move(final Stage owner, Class<?> clazz) {
+    public static void scene(Stage stage, Class<?> clazz) {
+        LoadData<?> loadData = load(clazz, stage);
+        stage.setScene(SceneBuilder.create().root(loadData.getRoot()).build());
+    }
+
+    public static <T> LoadData<T> load(Class<? extends T> clazz, Stage stage) {
         FXMLLoader loader = new FXMLLoader();
         {
             ResourceBundle bundle = null;
@@ -46,58 +73,55 @@ public class FxUtils {
                 loader.setLocation(fxml);
             }
         }
-        {
-            final Callback<Class<?>, Object> deleg = loader.getControllerFactory();
-            loader.setControllerFactory(new Callback<Class<?>, Object>() {
 
-                @Override
-                public Object call(Class<?> clazz) {
-                    Object ret = null;
-                    if (deleg != null) {
-                        ret = deleg.call(clazz);
+        T controller = null;
+        {
+            final Callback<Class<?>, Object> factory = loader.getControllerFactory();
+            if (factory != null) {
+                controller = (T) factory.call(clazz);
+            }
+            if (controller == null) {
+                try {
+                    controller = clazz.newInstance();
+                } catch (InstantiationException | IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            if (controller != null) {
+                for (Field field : clazz.getDeclaredFields()) {
+                    if (field.getAnnotation(Inject.class) == null) {
+                        continue;
                     }
-                    if (ret == null) {
+                    if (field.getType().isAssignableFrom(Stage.class)) {
                         try {
-                            ret = clazz.newInstance();
-                        } catch (InstantiationException | IllegalAccessException e) {
+                            if (!Modifier.isPublic(field.getModifiers()) && !field.isAccessible()) {
+                                field.setAccessible(true);
+                            }
+                            field.set(controller, stage);
+                        } catch (IllegalArgumentException | IllegalAccessException e) {
                             throw new RuntimeException(e);
                         }
-                    }
-                    if (ret != null) {
-                        for (Field field : clazz.getDeclaredFields()) {
-                            if (field.getAnnotation(Inject.class) == null) {
-                                continue;
-                            }
-                            if (field.getType().isAssignableFrom(Stage.class)) {
-                                try {
-                                    if (!Modifier.isPublic(field.getModifiers())
-                                            && !field.isAccessible()) {
-                                        field.setAccessible(true);
-                                    }
-                                    field.set(ret, owner);
-                                } catch (IllegalArgumentException | IllegalAccessException e) {
-                                    throw new RuntimeException(e);
+                    } else if (field.getType().isAssignableFrom(ResourceBundle.class)) {
+                        ResourceBundle bundle = ResourceBundle.getBundle(clazz.getName(),
+                                Locale.getDefault());
+                        if (bundle != null) {
+                            try {
+                                if (!Modifier.isPublic(field.getModifiers())
+                                        && !field.isAccessible()) {
+                                    field.setAccessible(true);
                                 }
-                            } else if (field.getType().isAssignableFrom(ResourceBundle.class)) {
-                                ResourceBundle bundle = ResourceBundle.getBundle(clazz.getName(),
-                                        Locale.getDefault());
-                                if (bundle != null) {
-                                    try {
-                                        if (!Modifier.isPublic(field.getModifiers())
-                                                && !field.isAccessible()) {
-                                            field.setAccessible(true);
-                                        }
-                                        field.set(ret, bundle);
-                                    } catch (IllegalArgumentException | IllegalAccessException e) {
-                                        throw new RuntimeException(e);
-                                    }
-                                }
+                                field.set(controller, bundle);
+                            } catch (IllegalArgumentException | IllegalAccessException e) {
+                                throw new RuntimeException(e);
                             }
                         }
                     }
-                    return ret;
                 }
-            });
+            }
+
+            if (controller != null) {
+                loader.setController(controller);
+            }
         }
 
         Parent root;
@@ -119,6 +143,17 @@ public class FxUtils {
             }
         }
 
-        owner.setScene(SceneBuilder.create().root(root).build());
+        return new LoadData<>(controller, root);
+    }
+
+    public static boolean isESC(KeyEvent event) {
+        boolean esc = event.getCode() == KeyCode.ESCAPE;
+        if (!esc) {
+            String str = event.getCharacter();
+            if (!str.isEmpty()) {
+                esc = str.charAt(0) == 27;
+            }
+        }
+        return esc;
     }
 }

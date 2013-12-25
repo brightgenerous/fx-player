@@ -3,14 +3,13 @@
 <?import javafx.scene.control.cell.*?>
 <?import javafx.scene.image.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.text.*?>
 <?import com.brightgenerous.fxplayer.application.playlist.InfoListPane?>
 <?import com.brightgenerous.fxplayer.application.playlist.VideoPane?>
 <VBox xmlns:fx="http://javafx.com/fxml"
-    fx:controller="com.brightgenerous.fxplayer.application.playlist.PlayList"
     stylesheets="com/brightgenerous/fxplayer/application/FxPlayer.css,
         com/brightgenerous/fxplayer/application/playlist/PlayList.css"
-    maxWidth="600" minHeight="240" prefHeight="360"
+    fx:id="rootPane"
+    prefWidth="600" minWidth="320" maxWidth="600" prefHeight="360" minHeight="240" maxHeight="360" 
     onKeyTyped="#keyTypedHandle">
   <VBox id="control-pane">
     <HBox id="control-line">

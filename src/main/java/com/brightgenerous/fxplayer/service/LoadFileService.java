@@ -28,14 +28,14 @@ public class LoadFileService extends Service<List<MediaInfo>> {
         }
     }
 
-    private final ReadOnlyProperty<Window> owner;
+    private final ReadOnlyProperty<? extends Window> owner;
 
     private final MetaChangeListener metaChangeListener;
 
     private final ICallback callback;
 
-    public LoadFileService(ReadOnlyProperty<Window> owner, MetaChangeListener metaChangeListener,
-            ICallback callback) {
+    public LoadFileService(ReadOnlyProperty<? extends Window> owner,
+            MetaChangeListener metaChangeListener, ICallback callback) {
         this.owner = owner;
         this.metaChangeListener = metaChangeListener;
         this.callback = callback;
@@ -49,6 +49,9 @@ public class LoadFileService extends Service<List<MediaInfo>> {
             protected List<MediaInfo> call() throws Exception {
                 File file = fileChooser.showOpenDialog(owner.getValue());
                 if (file == null) {
+                    return null;
+                }
+                if (isCancelled()) {
                     return null;
                 }
                 {

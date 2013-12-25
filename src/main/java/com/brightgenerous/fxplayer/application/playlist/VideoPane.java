@@ -134,7 +134,7 @@ public class VideoPane extends Pane {
             side = InfoSide.RIGHT_BOTTOM;
         }
 
-        if (side.equals(InfoSide.LEFT_TOP)) {
+        if (side == InfoSide.LEFT_TOP) {
             if (horizon) {
                 layoutInArea(video, leftInset + listWidth, topInset, videoWidth, videoHeight, 0,
                         HPos.CENTER, VPos.CENTER);

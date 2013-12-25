@@ -1,5 +1,6 @@
 package com.brightgenerous.fxplayer.application.playlist;
 
+import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,6 +34,8 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
         void controlVideoInfoSide();
 
         void controlSpectrums();
+
+        void controlTimesVolumes();
 
         void controlPlayPause();
 
@@ -76,84 +79,88 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
         void controlWindowBack();
 
-        void controlTimesVolumes();
+        void controlWindowIconified();
+
+        void controlWindowExit();
     }
 
     private static final Pattern directoryPattern = Pattern
-            .compile("^(?:.*\\s+)?(?:d|dir|directory)\\s*$");
+            .compile("^(?:.*\\s+)?(?:d|dir|directory)$");
 
-    private static final Pattern filePattern = Pattern.compile("^(?:.*\\s+)?(?:f|fl|file)\\s*$");
+    private static final Pattern filePattern = Pattern.compile("^(?:.*\\s+)?(?:f|fl|file)$");
 
-    private static final Pattern pathPattern = Pattern.compile("^(?:.*\\s+)?(?:u|url)\\s*$");
+    private static final Pattern pathPattern = Pattern.compile("^(?:.*\\s+)?(?:u|url)$");
 
-    private static final Pattern logPattern = Pattern.compile("^(?:.*\\s+)?(?:l|lg|log)\\s*$");
+    private static final Pattern logPattern = Pattern.compile("^(?:.*\\s+)?(?:l|lg|log)$");
 
     private static final Pattern logSnapPattern = Pattern
-            .compile("^(?:.*\\s+)?(?:ll|lglg|loglog)\\s*$");
+            .compile("^(?:.*\\s+)?(?:ll|lglg|loglog)$");
 
     private static final Pattern logFrontPattern = Pattern
-            .compile("^(?:.*\\s+)?(?:lf|lgfr|lgfrnt)\\s*$");
+            .compile("^(?:.*\\s+)?(?:lf|lgfr|lgfrnt)$");
 
-    private static final Pattern logBackPattern = Pattern
-            .compile("^(?:.*\\s+)?(?:lb|lgbk|lgbck)\\s*$");
+    private static final Pattern logBackPattern = Pattern.compile("^(?:.*\\s+)?(?:lb|lgbk|lgbck)$");
 
-    private static final Pattern logAutoPattern = Pattern
-            .compile("^(?:.*\\s+)?(?:la|lga|lgat)\\s*$");
+    private static final Pattern logAutoPattern = Pattern.compile("^(?:.*\\s+)?(?:la|lga|lgat)$");
 
-    private static final Pattern tabPattern = Pattern.compile("^(?:.*\\s+)?(?:t|tb)\\s*$");
+    private static final Pattern tabPattern = Pattern.compile("^(?:.*\\s+)?(?:t|tb)$");
 
-    private static final Pattern tabSidePattern = Pattern.compile("^(?:.*\\s+)?(?:ts|tbsd)\\s*$");
+    private static final Pattern tabSidePattern = Pattern.compile("^(?:.*\\s+)?(?:ts|tbsd)$");
 
     private static final Pattern videoInfoSidePattern = Pattern
-            .compile("^(?:.*\\s+)?(?:i|inf|info)\\s*$");
+            .compile("^(?:.*\\s+)?(?:i|inf|info)$");
 
     private static final Pattern spectrumsPattern = Pattern
-            .compile("^(?:.*\\s+)?(?:sn|sd|snd|sound)\\s*$"); // see "save"
-
-    private static final Pattern playPausePattern = Pattern
-            .compile("^(?:.*\\s+)?(?:p|pp|plps)\\s*$");
-
-    private static final Pattern playPattern = Pattern.compile("^(?:.*\\s+)?(?:pl|ply|play)\\s*$");
-
-    private static final Pattern pausePattern = Pattern
-            .compile("^(?:.*\\s+)?(?:ps|pse|pause)\\s*$");
-
-    private static final Pattern backPattern = Pattern.compile("^(?:.*\\s+)?(?:b|bck|back)\\s*$");
-
-    private static final Pattern nextPattern = Pattern.compile("^(?:.*\\s+)?(?:n|nxt|next)\\s*$");
-
-    private static final Pattern timePattern = Pattern
-            .compile("^(?:.*\\s+)?(?:t|tm|time)\\s*(\\+|\\-|)\\s*(?:(\\d*)\\s*(?:m|:)?\\s*(\\d*)\\s*s?)\\s*$");
-
-    private static final Pattern volPattern = Pattern
-            .compile("^(?:.*\\s+)?(?:v|vl|volume)\\s*(\\+|\\-|)\\s*(\\d*)\\s*$");
-
-    private static final Pattern jumpPattern = Pattern
-            .compile("^(?:.*\\s+)?(?:j|jmp|jump)\\s*(\\+|\\-|)\\s*(\\d*)\\s*$");
-
-    private static final Pattern saveFilePattern = Pattern
-            .compile("^(?:.*\\s+)?(?:s|sf|svfl|savefile)\\s*$");
-
-    private static final Pattern saveImagePattern = Pattern
-            .compile("^(?:.*\\s+)?(?:si|svim|svig|svimg|saveimage)\\s*$");
-
-    private static final Pattern windowScreenPattern = Pattern
-            .compile("^(?:.*\\s+)?(?:wm|wnm|wdm|wndm|windowm)\\s*$");
-
-    private static final Pattern windowScreenMinPattern = Pattern
-            .compile("^(?:.*\\s+)?(?:wmn|wnmn|wdmn|wndmn|windowmin)\\s*$");
-
-    private static final Pattern windowScreenMaxPattern = Pattern
-            .compile("^(?:.*\\s+)?(?:wmx|wnmx|wdmx|wndmx|windowmax)\\s*$");
-
-    private static final Pattern windowFrontPattern = Pattern
-            .compile("^(?:.*\\s+)?(?:wf|wnfr|wdfr|wndfrnt)\\s*$");
-
-    private static final Pattern windowBackPattern = Pattern
-            .compile("^(?:.*\\s+)?(?:wb|wnbk|wdbk|wndbck)\\s*$");
+            .compile("^(?:.*\\s+)?(?:sn|sd|snd|sound)$"); // see "save"
 
     private static final Pattern timesVolumesPattern = Pattern
-            .compile("^(?:.*\\s+)?(?:h|hr|hrizon|hrizontal)\\s*$");
+            .compile("^(?:.*\\s+)?(?:h|hr|hrizon|hrizontal)$");
+
+    private static final Pattern playPausePattern = Pattern.compile("^(?:.*\\s+)?(?:p|pp|plps)$");
+
+    private static final Pattern playPattern = Pattern.compile("^(?:.*\\s+)?(?:pl|ply|play)$");
+
+    private static final Pattern pausePattern = Pattern.compile("^(?:.*\\s+)?(?:ps|pse|pause)$");
+
+    private static final Pattern backPattern = Pattern.compile("^(?:.*\\s+)?(?:b|bck|back)$");
+
+    private static final Pattern nextPattern = Pattern.compile("^(?:.*\\s+)?(?:n|nxt|next)$");
+
+    private static final Pattern timePattern = Pattern
+            .compile("^(?:.*\\s+)?(?:t|tm|time)\\s*(\\+|\\-|)\\s*(?:(\\d*)\\s*(?:m|:)?\\s*(\\d*)\\s*s?)$");
+
+    private static final Pattern volPattern = Pattern
+            .compile("^(?:.*\\s+)?(?:v|vl|volume)\\s*(\\+|\\-|)\\s*(\\d*)$");
+
+    private static final Pattern jumpPattern = Pattern
+            .compile("^(?:.*\\s+)?(?:j|jmp|jump)\\s*(\\+|\\-|)\\s*(\\d*)$");
+
+    private static final Pattern saveFilePattern = Pattern
+            .compile("^(?:.*\\s+)?(?:s|sf|svfl|savefile)$");
+
+    private static final Pattern saveImagePattern = Pattern
+            .compile("^(?:.*\\s+)?(?:si|svim|svig|svimg|saveimage)$");
+
+    private static final Pattern windowScreenPattern = Pattern
+            .compile("^(?:.*\\s+)?(?:wm|wnm|wdm|wndm|windowm)$");
+
+    private static final Pattern windowScreenMinPattern = Pattern
+            .compile("^(?:.*\\s+)?(?:wmn|wnmn|wdmn|wndmn|windowmin)$");
+
+    private static final Pattern windowScreenMaxPattern = Pattern
+            .compile("^(?:.*\\s+)?(?:wmx|wnmx|wdmx|wndmx|windowmax)$");
+
+    private static final Pattern windowFrontPattern = Pattern
+            .compile("^(?:.*\\s+)?(?:wf|wnfr|wdfr|wndfrnt)$");
+
+    private static final Pattern windowBackPattern = Pattern
+            .compile("^(?:.*\\s+)?(?:wb|wnbk|wdbk|wndbck)$");
+
+    private static final Pattern windowIconifiedPattern = Pattern
+            .compile("^(?:.*\\s+)?(?:wi|wnic|wdic|wndicn)$");
+
+    private static final Pattern windowExitPattern = Pattern
+            .compile("^(?:.*\\s+)?(?:we|wnex|wdex|wndext)$");
 
     private final StringBuilder inputs = new StringBuilder();
 
@@ -175,19 +182,41 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
     @Override
     public void handle(KeyEvent event) {
         String str = event.getCharacter();
-        char ch = str.isEmpty() ? ' ' : str.toLowerCase().charAt(0);
+        char ch = ((str == null) || str.isEmpty()) ? ' ' : str.charAt(0);
         handle(ch);
         if (consume) {
             event.consume();
         }
     }
 
+    public static void main(String[] args) {
+        String str = "h\t\tg    \n\rjk\tl";
+        System.out.println(Arrays.toString(str.split("\\s+")));
+        System.out.println(Arrays.toString("abc".split("\\s+")));
+    }
+
     private void handle(char ch) {
         if ((ch == ';') || (ch == '\n') || (ch == '\r')) {
             parse: {
-                String in = inputs.toString().trim();
+                String in = inputs.toString().trim().toLowerCase();
                 if (in.isEmpty()) {
                     break parse;
+                }
+                if (12 < in.length()) {
+                    // adjust
+                    String[] strs = in.split("\\s+");
+                    int length = strs.length;
+                    // max length "t + 12 m 23 s" => 6 words
+                    if (6 < length) {
+                        StringBuilder sb = new StringBuilder();
+                        for (int i = Math.max(0, length - 6); i < length; i++) {
+                            if (0 < sb.length()) {
+                                sb.append(' ');
+                            }
+                            sb.append(strs[i]);
+                        }
+                        in = sb.toString();
+                    }
                 }
                 if (directoryPattern.matcher(in).find()) {
                     adapter.controlDirectoryChooser();
@@ -235,6 +264,10 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
                 }
                 if (spectrumsPattern.matcher(in).find()) {
                     adapter.controlSpectrums();
+                    break parse;
+                }
+                if (timesVolumesPattern.matcher(in).find()) {
+                    adapter.controlTimesVolumes();
                     break parse;
                 }
                 if (playPausePattern.matcher(in).find()) {
@@ -355,8 +388,12 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
                     adapter.controlWindowBack();
                     break parse;
                 }
-                if (timesVolumesPattern.matcher(in).find()) {
-                    adapter.controlTimesVolumes();
+                if (windowIconifiedPattern.matcher(in).find()) {
+                    adapter.controlWindowIconified();
+                    break parse;
+                }
+                if (windowExitPattern.matcher(in).find()) {
+                    adapter.controlWindowExit();
                     break parse;
                 }
             }
@@ -367,12 +404,13 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
                 inputs.setLength(0);
             } else {
                 if ((lastTime + 30_000) < current) {
-                    inputs.append(' ');
+                    inputs.setLength(0);
+                } else {
+                    if (100 < inputs.length()) {
+                        inputs.delete(0, 50);
+                    }
                 }
                 inputs.append(ch);
-                if (100 < inputs.length()) {
-                    inputs.delete(0, 50);
-                }
             }
             lastTime = current;
         }
@@ -426,6 +464,10 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
         @Override
         public void controlSpectrums() {
+        }
+
+        @Override
+        public void controlTimesVolumes() {
         }
 
         @Override
@@ -513,7 +555,11 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
         }
 
         @Override
-        public void controlTimesVolumes() {
+        public void controlWindowIconified() {
+        }
+
+        @Override
+        public void controlWindowExit() {
         }
     }
 }

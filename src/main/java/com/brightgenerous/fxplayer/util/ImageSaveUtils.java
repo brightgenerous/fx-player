@@ -97,7 +97,7 @@ public class ImageSaveUtils {
             Type[] types = Type.usefuls();
             if ((types != null) && (0 < types.length)) {
                 for (Type type : types) {
-                    if (type.equals(ret)) {
+                    if (type == ret) {
                         break loop;
                     }
                 }
@@ -163,7 +163,7 @@ public class ImageSaveUtils {
         try {
             BufferedImage bufferedImage = SwingFXUtils.fromFXImage(image, null);
             ImageWriter writer = null;
-            if (type.equals(Type.JPG) || type.equals(Type.BMP)) {
+            if ((type == Type.JPG) || (type == Type.BMP)) {
                 bufferedImage = convertToRGB(bufferedImage);
                 Iterator<ImageWriter> iws = ImageIO.getImageWritersByFormatName(type
                         .getFormatName());
@@ -171,7 +171,7 @@ public class ImageSaveUtils {
                     writer = iws.next();
                     ImageWriteParam param = writer.getDefaultWriteParam();
                     param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
-                    if (type.equals(Type.JPG)) {
+                    if (type == Type.JPG) {
                         param.setCompressionQuality(1.0f);
                     }
                 }

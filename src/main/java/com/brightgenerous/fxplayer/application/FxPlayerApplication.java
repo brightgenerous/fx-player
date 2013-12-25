@@ -40,7 +40,7 @@ public class FxPlayerApplication extends Application {
             }
         });
 
-        FxUtils.move(stage, PlayList.class);
+        FxUtils.scene(stage, PlayList.class);
         stage.show();
     }
 }

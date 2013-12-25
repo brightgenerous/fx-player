@@ -34,12 +34,12 @@ public class SaveImageService extends Service<File> {
 
     private final ReadOnlyProperty<MediaInfo> infoProperty;
 
-    private final ReadOnlyProperty<Window> owner;
+    private final ReadOnlyProperty<? extends Window> owner;
 
     private final ICallback callback;
 
     public SaveImageService(ReadOnlyProperty<MediaInfo> infoProperty,
-            ReadOnlyProperty<Window> owner, ICallback callback) {
+            ReadOnlyProperty<? extends Window> owner, ICallback callback) {
         this.infoProperty = infoProperty;
         this.owner = owner;
         this.callback = callback;
@@ -74,6 +74,9 @@ public class SaveImageService extends Service<File> {
                     file = saveChooser.showSaveDialog(owner.getValue());
                 }
                 if (file == null) {
+                    return null;
+                }
+                if (isCancelled()) {
                     return null;
                 }
                 {
