@@ -1,6 +1,8 @@
 package com.brightgenerous.fxplayer.util;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.util.regex.Matcher;
@@ -16,7 +18,19 @@ class XvideosUtils {
     }
 
     public static boolean isVideoUrl(String url) {
-        return url.indexOf("xvideos.com") != -1;
+        try {
+            URL _url = new URL(url);
+            String host = _url.getHost();
+            if (host == null) {
+                return false;
+            }
+            if (host.indexOf("xvideos.com") < 0) {
+                return false;
+            }
+            return true;
+        } catch (MalformedURLException e) {
+        }
+        return false;
     }
 
     public static String extractUrlSafely(String url) {

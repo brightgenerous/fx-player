@@ -200,6 +200,11 @@ public class PlayList implements Initializable {
     @FXML
     private ProgressBar spectrumBar4;
 
+    // other
+
+    @FXML
+    private Node bottomSpace;
+
     // state properties
 
     private final ObjectProperty<MediaInfo> currentInfoProperty = new SimpleObjectProperty<>();
@@ -513,6 +518,22 @@ public class PlayList implements Initializable {
             });
         }
 
+        // image
+        {
+            imageView.addEventFilter(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+
+                @Override
+                public void handle(MouseEvent event) {
+                    if (event.getClickCount() <= 1) {
+                        return;
+                    }
+                    if (!saveImageService.isRunning()) {
+                        saveImageService.restart();
+                    }
+                }
+            });
+        }
+
         // something
         {
             settings.visibleSpectrums.addListener(new ChangeListener<Boolean>() {
@@ -544,17 +565,15 @@ public class PlayList implements Initializable {
             });
         }
 
-        // image
+        // other
         {
-            imageView.addEventFilter(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+            bottomSpace.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
 
                 @Override
                 public void handle(MouseEvent event) {
-                    if (event.getClickCount() <= 1) {
-                        return;
-                    }
-                    if (!saveImageService.isRunning()) {
-                        saveImageService.restart();
+                    int count = event.getClickCount();
+                    if ((1 < count) && ((count % 2) == 0)) {
+                        settings.toggleTimesVolumesHorizontal();
                     }
                 }
             });

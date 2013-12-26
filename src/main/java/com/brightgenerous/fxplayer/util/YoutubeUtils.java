@@ -1,6 +1,8 @@
 package com.brightgenerous.fxplayer.util;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -37,23 +39,55 @@ public class YoutubeUtils {
         }
     }
 
-    private static final String SERVER = "http://www.youtube.com";
+    private static final String URL_HOST = "http://www.youtube.com";
 
     private YoutubeUtils() {
     }
 
     public static boolean isVideoUrl(String url) {
-        return url.indexOf("youtube.com/watch") != -1;
+        try {
+            URL _url = new URL(url);
+            String host = _url.getHost();
+            if (host == null) {
+                return false;
+            }
+            if (host.indexOf("youtube.com") < 0) {
+                return false;
+            }
+            String path = _url.getPath();
+            if (path == null) {
+                return false;
+            }
+            return path.startsWith("/watch");
+        } catch (MalformedURLException e) {
+        }
+        return false;
     }
 
     public static boolean isPlaylistUrl(String url) {
-        return (url.indexOf("youtube.com/playlist") != -1)
-                || (url.indexOf("youtube.com/channel") != -1)
-                || (url.indexOf("youtube.com/user") != -1);
+        try {
+            URL _url = new URL(url);
+            String host = _url.getHost();
+            if (host == null) {
+                return false;
+            }
+            if (host.indexOf("youtube.com") < 0) {
+                return false;
+            }
+            String path = _url.getPath();
+            if (path == null) {
+                return false;
+            }
+            return path.startsWith("/playlist") || path.startsWith("/channel")
+                    || path.startsWith("/user");
+        } catch (MalformedURLException e) {
+        }
+        return false;
     }
 
     private static final Pattern anchor = Pattern.compile("<a"
             + "(?:[^>]*\\stitle\\s*=\\s*\"([^\"]*)\")?"
+            // [x] keep only first argument
             + "[^>]*\\shref\\s*=\\s*\"(/watch[^&\"]*)[^\"]*\""
             + "(?:[^>]*\\stitle\\s*=\\s*\"([^\"]*)\")?" + "[^>]*>");
 
@@ -69,19 +103,22 @@ public class YoutubeUtils {
                 String title2 = matcher.group(3);
                 if ((title1 == null) || (title2 == null)) {
                     if (title1 != null) {
-                        title = title1.replace("&#39;", "'");
+                        title = title1;
                     } else if (title2 != null) {
-                        title = title2.replace("&#39;", "'");
+                        title = title2;
                     } else {
                         title = null;
                     }
                 } else if (title1.length() < title2.length()) {
-                    title = title2.replace("&#39;", "'");
+                    title = title2;
                 } else {
-                    title = title1.replace("&#39;", "'");
+                    title = title1;
+                }
+                if (title != null) {
+                    title = title.replace("&#39;", "'");
                 }
             }
-            String url = SERVER + href;
+            String url = URL_HOST + href;
             VideoInfo info = infos.get(url);
             if (info == null) {
                 info = new VideoInfo(url, title);

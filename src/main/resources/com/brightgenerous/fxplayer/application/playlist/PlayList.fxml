@@ -127,20 +127,22 @@
           </StackPane>
           <Label fx:id="timeText" id="time-text" minWidth="190" alignment="CENTER_RIGHT" />
         </HBox>
-        <HBox fx:id="volumesPane" id="control-line" alignment="CENTER" GridPane.columnIndex="0" GridPane.rowIndex="1">
-          <Region minWidth="15" maxWidth="15" minHeight="15" />
-          <ToggleButton fx:id="controlPlayPause" id="button-control" onAction="#controlPlayPause"
-              text="%control.play" ellipsisString="%control.play.ellipsis" mnemonicParsing="true"
-              prefWidth="75" />
-          <Button onAction="#controlBack" id="button-control"
-              text="%control.back" ellipsisString="%control.back.ellipsis" mnemonicParsing="true"
-              prefWidth="75" />
-          <Button onAction="#controlNext" id="button-control"
-              text="%control.next" ellipsisString="%control.next.ellipsis" mnemonicParsing="true"
-              prefWidth="75" />
-          <Region minWidth="5" maxWidth="5" />
-          <Slider fx:id="controlVolume" min="0.0" max="1.0" value="0.5" minWidth="80" maxWidth="200" />
-          <Label fx:id="volumeText" id="volume-text" minWidth="60" alignment="CENTER_RIGHT" />
+        <HBox fx:id="volumesPane" id="control-line" GridPane.columnIndex="0" GridPane.rowIndex="1">
+          <Region fx:id="bottomSpace" minWidth="15" maxWidth="15" minHeight="15" />
+          <HBox id="control-line" alignment="CENTER" HBox.hgrow="ALWAYS">
+            <ToggleButton fx:id="controlPlayPause" id="button-control" onAction="#controlPlayPause"
+                text="%control.play" ellipsisString="%control.play.ellipsis" mnemonicParsing="true"
+                prefWidth="75" />
+            <Button onAction="#controlBack" id="button-control"
+                text="%control.back" ellipsisString="%control.back.ellipsis" mnemonicParsing="true"
+                prefWidth="75" />
+            <Button onAction="#controlNext" id="button-control"
+                text="%control.next" ellipsisString="%control.next.ellipsis" mnemonicParsing="true"
+                prefWidth="75" />
+            <Region minWidth="5" maxWidth="5" />
+            <Slider fx:id="controlVolume" min="0.0" max="1.0" value="0.5" minWidth="80" maxWidth="200" />
+            <Label fx:id="volumeText" id="volume-text" minWidth="60" alignment="CENTER_RIGHT" />
+          </HBox>
         </HBox>
       </GridPane>
     </VBox>

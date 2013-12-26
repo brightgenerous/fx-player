@@ -193,8 +193,16 @@ class MediaInfoLoader {
             return null;
         }
 
-        boolean isHttp = str.startsWith("http://");
-        boolean isHttps = str.startsWith("https://");
+        URL url;
+        try {
+            url = new URL(str);
+        } catch (MalformedURLException e) {
+            return null;
+        }
+
+        String proto = url.getProtocol();
+        boolean isHttp = proto.equals("http");
+        boolean isHttps = proto.equals("https");
         if (!isHttp && !isHttps) {
             return null;
         }
@@ -204,24 +212,24 @@ class MediaInfoLoader {
             return null;
         }
 
-        String serverPath;
+        String host = url.getHost();
+        if ((host == null) || host.isEmpty()) {
+            return null;
+        }
+
+        String serverPath = proto + "://" + host;
         String dirPath;
         {
-            int idx;
-            if (isHttp) {
-                idx = str.indexOf("/", "http://".length());
+            String path = url.getPath();
+            if ((path == null) || path.isEmpty()) {
+                dirPath = serverPath + "/";
             } else {
-                idx = str.indexOf("/", "https://".length());
-            }
-            if (idx == -1) {
-                serverPath = str;
-                dirPath = str;
-            } else {
-                serverPath = str.substring(0, idx);
-                dirPath = str.substring(0, str.lastIndexOf("/"));
-            }
-            if (!dirPath.endsWith("/")) {
-                dirPath = dirPath + "/";
+                int idx = path.lastIndexOf("/");
+                if (idx < 0) {
+                    dirPath = serverPath + "/";
+                } else {
+                    dirPath = serverPath + path.substring(0, idx) + "/";
+                }
             }
         }
 
@@ -258,15 +266,15 @@ class MediaInfoLoader {
                     String path = null;
                     {
                         String tmp = strs[0];
-                        if (!tmp.startsWith("http://") && !tmp.startsWith("https://")) {
+                        if (tmp.startsWith("http://") || tmp.startsWith("https://")) {
+                            path = tmp;
+                        } else {
                             if (tmp.startsWith("/")) {
                                 path = serverPath + tmp;
                             } else {
                                 path = dirPath
                                         + URLEncoder.encode(tmp, "UTF-8").replace("+", "%20");
                             }
-                        } else {
-                            path = tmp;
                         }
                     }
                     {
