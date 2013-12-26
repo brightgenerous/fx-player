@@ -46,7 +46,7 @@
                     <cellValueFactory><PropertyValueFactory property="titleDesc" /></cellValueFactory>
                   </TableColumn>
                   <TableColumn fx:id="infoListColumnDuration" text="%media.duration"
-                      sortable="false" prefWidth="80">
+                      sortable="false" prefWidth="60" minWidth="50">
                     <cellValueFactory><PropertyValueFactory property="duration" /></cellValueFactory>
                   </TableColumn>
                   <TableColumn text="%media.artist"
@@ -86,7 +86,7 @@
                     <cellValueFactory><PropertyValueFactory property="titleDesc" /></cellValueFactory>
                   </TableColumn>
                   <TableColumn fx:id="infoListCloneColumnDuration" text="%media.duration"
-                      sortable="false" prefWidth="80">
+                      sortable="false" prefWidth="60" minWidth="50">
                     <cellValueFactory><PropertyValueFactory property="duration" /></cellValueFactory>
                   </TableColumn>
                   <TableColumn text="%media.info"
