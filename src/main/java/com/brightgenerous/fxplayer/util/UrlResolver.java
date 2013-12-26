@@ -63,9 +63,11 @@ public class UrlResolver {
 
         private volatile FutureTask<String> future;
 
+        private final Object lock = new Object();
+
         YoutubeUrl(String url) {
             this.url = url;
-            request(true);
+            request(false);
         }
 
         @Override
@@ -82,12 +84,12 @@ public class UrlResolver {
             if (!force && (future != null)) {
                 return;
             }
-            synchronized (this) {
+            synchronized (lock) {
                 if (!force && (future != null)) {
                     return;
                 }
                 if ((future != null) && !future.isDone()) {
-                    future.cancel(true);
+                    return;
                 }
                 FutureTask<String> ftr = new FutureTask<>(new Callable<String>() {
 
@@ -113,9 +115,11 @@ public class UrlResolver {
 
         private volatile FutureTask<String> future;
 
+        private final Object lock = new Object();
+
         XvideosUrl(String url) {
             this.url = url;
-            request(true);
+            request(false);
         }
 
         @Override
@@ -132,12 +136,12 @@ public class UrlResolver {
             if (!force && (future != null)) {
                 return;
             }
-            synchronized (this) {
+            synchronized (lock) {
                 if (!force && (future != null)) {
                     return;
                 }
                 if ((future != null) && !future.isDone()) {
-                    future.cancel(true);
+                    return;
                 }
                 FutureTask<String> ftr = new FutureTask<>(new Callable<String>() {
 

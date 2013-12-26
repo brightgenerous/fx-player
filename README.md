@@ -10,7 +10,7 @@ JavaFX（ジャバえふえっくす）で書いた動画や音声をなるだ�
 最新版
 -------
 
-2.4.2
+2.5.0
 
 
 #### 機能
@@ -23,8 +23,7 @@ JavaFX（ジャバえふえっくす）で書いた動画や音声をなるだ�
   
   
 * Youtubeの動画のURLを記述したプレイリストのファイルでもなるだけ再生するようにしました
-* YoutubeのPlaylistのURLでもなるだけ再生するようにしました
-* YoutubeのUserのURLでもなるだけ再生するようにしました
+* YoutubeのPlaylist/Channel/UserのURLでもなるだけ再生するようにしました
 * Xvideosの動画のURLを記述したプレイリストのファイルでもなるだけ再生しようとしますが、対応してないフォーマットなので再生できません。('A`)
   
   
@@ -80,6 +79,10 @@ JavaFX（ジャバえふえっくす）で書いた動画や音声をなるだ�
 
 * ShortcutHandlerとかいうクラスのソース参照（com.brightgenerous.fxplayer.application.playlist.ShortcutHandler.java）
 
+#### 内部的なやつ
+
+* キャッシュ - なるだけがんばってる
+* 遅延ロード - なるだけがんばってる
 
 
 ビルド

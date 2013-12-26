@@ -206,6 +206,8 @@ public class PlayList implements Initializable {
 
     private final ObjectProperty<MediaPlayer> playerProperty = new SimpleObjectProperty<>();
 
+    private final ObjectProperty<Boolean> directionProperty = new SimpleObjectProperty<>();
+
     private final LongProperty playerCreateTimeProperty = new SimpleLongProperty(Long.MIN_VALUE);
 
     private final ReadWriteLock infoListLock = new ReentrantReadWriteLock();
@@ -294,7 +296,7 @@ public class PlayList implements Initializable {
                             TableRow<?> row = (TableRow<?>) source;
                             Object obj = row.getItem();
                             if (obj instanceof MediaInfo) {
-                                controlPlayer(Control.SPECIFY, (MediaInfo) obj, true, 0);
+                                controlPlayerForceWithoutSkip(Control.SPECIFY, (MediaInfo) obj);
                             }
                         }
                     }
@@ -675,7 +677,7 @@ public class PlayList implements Initializable {
 
     @FXML
     protected void controlPlayPause() {
-        if (!controlPlayerForce(Control.PLAY_PAUSE, null)) {
+        if (!controlPlayerForceWithSkip(Control.PLAY_PAUSE, null)) {
             syncControlPlayPause();
         }
     }
@@ -694,12 +696,12 @@ public class PlayList implements Initializable {
 
     @FXML
     protected void controlBack() {
-        controlPlayerForce(Control.BACK, null);
+        controlPlayerForceWithSkip(Control.BACK, null);
     }
 
     @FXML
     protected void controlNext() {
-        controlPlayerForce(Control.NEXT, null);
+        controlPlayerForceWithSkip(Control.NEXT, null);
     }
 
     private enum Control {
@@ -707,26 +709,30 @@ public class PlayList implements Initializable {
     }
 
     private boolean controlPlayerSoft(Control control, MediaInfo info) {
-        return controlPlayer(control, info, false, 0);
+        return controlPlayer(control, info, false, 0, false);
     }
 
-    private boolean controlPlayerForce(Control control, MediaInfo info) {
-        return controlPlayer(control, info, true, settings.skipOnError.get());
+    private boolean controlPlayerForceWithoutSkip(Control control, MediaInfo info) {
+        return controlPlayer(control, info, true, 0, false);
+    }
+
+    private boolean controlPlayerForceWithSkip(Control control, MediaInfo info) {
+        return controlPlayer(control, info, true, settings.skipOnError.get(), false);
     }
 
     private void controlPlayerLater(final Control control, final MediaInfo info,
-            final boolean forceResolve, final int skipOnError) {
+            final boolean forceResolve, final int skipOnError, final boolean chain) {
         Platform.runLater(new Runnable() {
 
             @Override
             public void run() {
-                controlPlayer(control, info, forceResolve, skipOnError);
+                controlPlayer(control, info, forceResolve, skipOnError, chain);
             }
         });
     }
 
     private boolean controlPlayer(final Control control, MediaInfo info,
-            final boolean forceResolve, final int skipOnError) {
+            final boolean forceResolve, final int skipOnError, boolean chain) {
 
         // if too fast to be called repeatedly,
         //   returns false.
@@ -770,7 +776,7 @@ public class PlayList implements Initializable {
             {
                 // OMAJINAI!!!
                 long currentTime = System.currentTimeMillis();
-                if (currentTime < (playerCreateTimeProperty.get() + 500)) {
+                if (!chain && (currentTime < (playerCreateTimeProperty.get() + 500))) {
 
                     ret = false;
 
@@ -835,13 +841,39 @@ public class PlayList implements Initializable {
             try {
                 Media media = targetInfo.getMedia();
                 if ((media == null) && forceResolve) {
-                    targetInfo.resetIfYet(true);
-                    media = targetInfo.getMedia();
+                    media = targetInfo.forceResolveIfYet();
+                    if (media == null) {
+                        // wait for finishing future task...
+
+                        // media = targetInfo.getMedia();
+
+                        // by called targetInfo.resetIfYet(true),
+                        //   next call targetInfo.getMedia() returns not null or throws MediaException.
+                        //   as result, will not execute this block in next time.
+                        controlPlayerLater(Control.SPECIFY, targetInfo, forceResolve,
+                                skipOnError - 1, true);
+
+                        break player_block;
+                    }
                 }
                 if (media == null) {
                     throw new MediaLoadException("Media is null");
                 }
-                mp = new MediaPlayer(media);
+                try {
+                    mp = new MediaPlayer(media);
+                } catch (MediaException e) {
+                    // changed actual file URL ?
+
+                    syncControlPlayPause();
+
+                    onMediaPlayerError(e, targetInfo);
+
+                    targetInfo.releaseMedia();
+                    controlPlayerLater(Control.SPECIFY, targetInfo, forceResolve, skipOnError - 1,
+                            true);
+
+                    break player_block;
+                }
             } catch (MediaLoadException e) {
 
                 syncControlPlayPause();
@@ -849,10 +881,13 @@ public class PlayList implements Initializable {
                 onMediaLoadError(e, targetInfo);
 
                 if (0 < skipOnError) {
-                    if (control == Control.BACK) {
-                        controlPlayerLater(Control.BACK, targetInfo, forceResolve, skipOnError - 1);
+                    Boolean dir = directionProperty.getValue();
+                    if ((dir == null) || dir.booleanValue()) {
+                        controlPlayerLater(Control.NEXT, targetInfo, forceResolve, skipOnError - 1,
+                                true);
                     } else {
-                        controlPlayerLater(Control.NEXT, targetInfo, forceResolve, skipOnError - 1);
+                        controlPlayerLater(Control.BACK, targetInfo, forceResolve, skipOnError - 1,
+                                true);
                     }
                 }
 
@@ -1062,12 +1097,13 @@ public class PlayList implements Initializable {
                     if (0 < skipOnError) {
                         MediaPlayer player = playerProperty.getValue();
                         if ((player == null) || (mp == player)) {
-                            if (control == Control.BACK) {
-                                controlPlayer(Control.BACK, targetInfo, forceResolve,
-                                        skipOnError - 1);
-                            } else {
+                            Boolean dir = directionProperty.getValue();
+                            if ((dir == null) || dir.booleanValue()) {
                                 controlPlayer(Control.NEXT, targetInfo, forceResolve,
-                                        skipOnError - 1);
+                                        skipOnError - 1, true);
+                            } else {
+                                controlPlayer(Control.BACK, targetInfo, forceResolve,
+                                        skipOnError - 1, true);
                             }
                         }
                     }
@@ -1083,11 +1119,13 @@ public class PlayList implements Initializable {
 
                     targetInfo.mediaStatusProperty().setValue(MediaStatus.PLAYER_END);
 
-                    // no fear, would be called on main thread.
-                    if (control == Control.BACK) {
-                        controlPlayer(Control.BACK, null, forceResolve, skipOnError);
-                    } else {
-                        controlPlayer(Control.NEXT, null, forceResolve, skipOnError);
+                    {
+                        Boolean dir = directionProperty.getValue();
+                        if ((dir == null) || dir.booleanValue()) {
+                            controlNext();
+                        } else {
+                            controlBack();
+                        }
                     }
                 }
             });
@@ -1176,11 +1214,13 @@ public class PlayList implements Initializable {
     }
 
     private void updateItems(String path, List<MediaInfo> items) {
+        List<MediaInfo> dels = new ArrayList<>();
         Lock lock = infoListLock.writeLock();
         try {
             lock.lock();
             pathText.setText(path);
             {
+                dels.addAll(infoList.getItems());
                 infoList.getItems().clear();
                 infoList.getItems().addAll(items);
             }
@@ -1190,6 +1230,9 @@ public class PlayList implements Initializable {
             }
         } finally {
             lock.unlock();
+        }
+        for (MediaInfo del : dels) {
+            del.releaseMedia();
         }
     }
 
@@ -1258,7 +1301,8 @@ public class PlayList implements Initializable {
         return installMediaInfoTooltip(node, info, opacity);
     }
 
-    private static Tooltip installMediaInfoTooltip(Node node, MediaInfo info, final double opacity) {
+    private static Tooltip installMediaInfoTooltip(Node node, final MediaInfo info,
+            final double opacity) {
         final Tooltip ret = new Tooltip();
         {
             ret.textProperty().bind(info.tooltipProperty());
@@ -1295,18 +1339,30 @@ public class PlayList implements Initializable {
         if (visible.getValue().booleanValue()) {
             ret.setOpacity(opacity);
         } else {
-            ret.setOpacity(0);
-            visible.addListener(new ChangeListener<Boolean>() {
+            ret.setOnShowing(new EventHandler<WindowEvent>() {
 
                 @Override
-                public void changed(ObservableValue<? extends Boolean> observable,
-                        Boolean oldValue, Boolean newValue) {
-                    if (newValue.booleanValue()) {
+                public void handle(WindowEvent event) {
+                    if (!visible.getValue().booleanValue()) {
+                        if (ret.getOpacity() != 0) {
+                            ret.setOpacity(0);
+                            visible.addListener(new ChangeListener<Boolean>() {
+
+                                @Override
+                                public void changed(ObservableValue<? extends Boolean> observable,
+                                        Boolean oldValue, Boolean newValue) {
+                                    if (newValue.booleanValue()) {
+                                        ret.setOpacity(opacity);
+                                    } else {
+                                        ret.setOpacity(0);
+                                    }
+                                    visible.removeListener(this);
+                                }
+                            });
+                        }
+                    } else if (ret.getOpacity() == 0) {
                         ret.setOpacity(opacity);
-                    } else {
-                        ret.setOpacity(0);
                     }
-                    visible.removeListener(this);
                 }
             });
         }
@@ -1660,7 +1716,7 @@ public class PlayList implements Initializable {
                         return;
                     }
                     int idx = Math.min(Math.max(value, 1), size) - 1;
-                    controlPlayer(Control.SPECIFY, infos.get(idx), true, 0);
+                    controlPlayerForceWithoutSkip(Control.SPECIFY, infos.get(idx));
                 }
 
                 @Override
@@ -1677,7 +1733,7 @@ public class PlayList implements Initializable {
                     while (idx < 0) {
                         idx += size;
                     }
-                    controlPlayer(Control.SPECIFY, infos.get(idx), true, 0);
+                    controlPlayerForceWithoutSkip(Control.SPECIFY, infos.get(idx));
                 }
 
                 @Override

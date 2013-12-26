@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.StringReader;
+import java.lang.ref.SoftReference;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
@@ -13,19 +14,81 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+import javafx.scene.media.Media;
 
 import com.brightgenerous.fxplayer.media.MediaInfo;
 import com.brightgenerous.fxplayer.media.MediaInfo.MetaChangeListener;
 import com.brightgenerous.fxplayer.media.MediaInfoFactory;
 import com.brightgenerous.fxplayer.util.HttpUtils;
+import com.brightgenerous.fxplayer.util.IData;
 import com.brightgenerous.fxplayer.util.UrlResolver;
 import com.brightgenerous.fxplayer.util.YoutubeUtils;
 import com.brightgenerous.fxplayer.util.YoutubeUtils.VideoInfo;
 
 class MediaInfoLoader {
 
-    private static final MediaInfoFactory factory = new MediaInfoFactory(UrlResolver.get());
+    private static final MediaInfoFactory factory;
+    static {
+        Map<String, SoftReference<Media>> mediaCache = new LimitedCache<>();
+        Map<String, SoftReference<IData<String>>> resolveCache = new LimitedCache<>();
+        factory = new MediaInfoFactory(UrlResolver.get(), mediaCache, resolveCache);
+    }
+
+    private static class LimitedCache<K, V> extends ConcurrentHashMap<K, SoftReference<V>> {
+
+        private static final long serialVersionUID = 4020277383498994461L;
+
+        @Override
+        public SoftReference<V> put(K key, SoftReference<V> value) {
+            truncate();
+            return super.put(key, value);
+        }
+
+        @Override
+        public SoftReference<V> putIfAbsent(K key, SoftReference<V> value) {
+            truncate();
+            return super.putIfAbsent(key, value);
+        }
+
+        @Override
+        public void putAll(Map<? extends K, ? extends SoftReference<V>> m) {
+            truncate();
+            super.putAll(m);
+        }
+
+        private volatile long last = Long.MIN_VALUE;
+
+        private final Object lockTime = new Object();
+
+        private void truncate() {
+            if (System.currentTimeMillis() < (last + 60_000)) {
+                return;
+            }
+            synchronized (lockTime) {
+                long time = System.currentTimeMillis();
+                if (time < (last + 60_000)) {
+                    return;
+                }
+                last = time;
+            }
+            Set<K> dels = new HashSet<>();
+            for (Entry<K, SoftReference<V>> e : entrySet()) {
+                SoftReference<V> v = e.getValue();
+                if ((v == null) || (v.get() == null)) {
+                    dels.add(e.getKey());
+                }
+            }
+            for (K del : dels) {
+                remove(del);
+            }
+        }
+    }
 
     private MediaInfoLoader() {
     }

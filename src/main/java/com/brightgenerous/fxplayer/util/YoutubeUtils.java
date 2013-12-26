@@ -52,7 +52,7 @@ public class YoutubeUtils {
 
     private static final Pattern anchor = Pattern.compile("<a"
             + "(?:[^>]*\\stitle\\s*=\\s*\"([^\"]*)\")?"
-            + "[^>]*\\shref\\s*=\\s*\"(/watch[^&\"]*)(?:&.*\"|\")"
+            + "[^>]*\\shref\\s*=\\s*\"(/watch[^&\"]*)[^\"]*\""
             + "(?:[^>]*\\stitle\\s*=\\s*\"([^\"]*)\")?" + "[^>]*>");
 
     public static List<VideoInfo> parsePlaylist(String html) {

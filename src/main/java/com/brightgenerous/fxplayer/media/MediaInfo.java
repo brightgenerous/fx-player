@@ -1,7 +1,10 @@
 package com.brightgenerous.fxplayer.media;
 
+import java.lang.ref.SoftReference;
+import java.util.Map;
+
 import javafx.beans.binding.Bindings;
-import javafx.beans.binding.BooleanExpression;
+import javafx.beans.binding.BooleanBinding;
 import javafx.beans.binding.StringBinding;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
@@ -35,10 +38,6 @@ public class MediaInfo {
         void onChanged(MediaInfo info, Media media,
                 Change<? extends String, ? extends Object> change);
     }
-
-    private volatile Media media;
-
-    private final IMediaSource source;
 
     private final ObjectProperty<MediaStatus> mediaStatusProperty = new SimpleObjectProperty<>(
             MediaStatus.MEDIA_YET);
@@ -116,16 +115,19 @@ public class MediaInfo {
             });
         }
 
-        ObservableBooleanValue visibleVideoInfo;
+        BooleanBinding visibleAudioInfo;
+        BooleanBinding visibleVideoInfo;
         {
-            BooleanExpression visibleAudioInfo = titleProperty.isNotEqualTo("")
-                    .or(artistProperty.isNotEqualTo("")).or(albumProperty.isNotEqualTo(""))
-                    .or(imageProperty.isNotNull());
+            visibleAudioInfo = titleProperty.isNotEqualTo("").or(artistProperty.isNotEqualTo(""))
+                    .or(albumProperty.isNotEqualTo("")).or(imageProperty.isNotNull());
             visibleVideoInfo = videoCodecProperty.isNotEqualTo("")
                     .or(audioCodecProperty.isNotEqualTo("")).or(widthProperty.greaterThan(0))
                     .or(heightProperty.greaterThan(0)).or(framerateProperty.greaterThan(0));
+            ObservableBooleanValue visibleOtherwise = mediaStatusProperty.isNotEqualTo(
+                    MediaStatus.MEDIA_YET).and(
+                    mediaStatusProperty.isNotEqualTo(MediaStatus.MEDIA_ERROR));
 
-            visibleTooltipProperty.bind(visibleAudioInfo.or(visibleVideoInfo));
+            visibleTooltipProperty.bind(visibleAudioInfo.or(visibleVideoInfo).or(visibleOtherwise));
         }
         {
             ObservableStringValue audioTooltip = Bindings.concat("Title : ").concat(titleProperty)
@@ -137,9 +139,15 @@ public class MediaInfo {
                     .concat("\nHeight : ").concat(heightProperty).concat("\nFramerate : ")
                     .concat(framerateProperty.asString("%.2f")).concat("\nDuration : ")
                     .concat(durationTextProperty);
+            ObservableStringValue otherwiseTooltip = Bindings.concat(titleDescProperty)
+                    .concat("\nDuration : ").concat(durationTextProperty);
 
-            ObservableStringValue tooltip = Bindings.when(visibleVideoInfo).then(videoTooltip)
-                    .otherwise(audioTooltip);
+            ObservableStringValue tooltip = Bindings
+                    .when(visibleVideoInfo)
+                    .then(videoTooltip)
+                    .otherwise(
+                            Bindings.when(visibleAudioInfo).then(audioTooltip)
+                                    .otherwise(otherwiseTooltip));
             tooltipProperty.bind(Bindings.when(visibleTooltipProperty).then(tooltip).otherwise(""));
         }
         {
@@ -152,21 +160,39 @@ public class MediaInfo {
                     .concat(" , Height : ").concat(heightProperty).concat(" , Framerate : ")
                     .concat(framerateProperty.asString("%.2f")).concat(" , Duration : ")
                     .concat(durationTextProperty);
+            ObservableStringValue otherwiseInfo = Bindings.concat(titleDescProperty)
+                    .concat(" , Duration : ").concat(durationTextProperty);
 
-            StringBinding info = Bindings.when(visibleVideoInfo).then(videoInfo)
-                    .otherwise(audioInfo);
+            StringBinding info = Bindings
+                    .when(visibleVideoInfo)
+                    .then(videoInfo)
+                    .otherwise(
+                            Bindings.when(visibleAudioInfo).then(audioInfo)
+                                    .otherwise(otherwiseInfo));
             infoProperty.bind(Bindings.when(visibleTooltipProperty).then(info).otherwise(""));
         }
     }
 
+    private volatile Media media;
+
+    private volatile MapChangeListener<String, Object> changeListener;
+
     private volatile boolean tryLoaded;
 
-    private final MetaChangeListener metaChangeListener;
+    private final IMediaSource source;
 
-    MediaInfo(IMediaSource source, MetaChangeListener metaChangeListener) {
+    private final MetaChangeListener callback;
+
+    private final Map<String, SoftReference<Media>> mediaCache;
+
+    private final Object lock = new Object();
+
+    MediaInfo(IMediaSource source, MetaChangeListener callback,
+            Map<String, SoftReference<Media>> mediaCache) {
         this.source = source;
-        this.metaChangeListener = metaChangeListener;
+        this.callback = callback;
         titleDescProperty.set(source.getDescription());
+        this.mediaCache = mediaCache;
     }
 
     public IMediaSource getSource() {
@@ -181,122 +207,156 @@ public class MediaInfo {
         return getMedia() != null;
     }
 
-    public void resetIfYet(boolean forceResolve) {
+    public Media forceResolveIfYet() {
         if (media != null) {
-            return;
+            return media;
         }
-        synchronized (this) {
+        synchronized (lock) {
             if (media != null) {
-                return;
+                return media;
             }
             tryLoaded = false;
             media = null;
-            source.requestResolve(forceResolve);
+            source.requestResolve(true);
         }
+        return null;
+    }
+
+    public Media releaseMedia() {
+        Media ret;
+        synchronized (lock) {
+            ret = media;
+            tryLoaded = false;
+            media = null;
+            if (ret != null) {
+                unbind(ret);
+            }
+        }
+        return ret;
     }
 
     public Media getMedia() throws MediaLoadException {
         if (!tryLoaded && (media == null)) {
-            synchronized (this) {
+            synchronized (lock) {
                 if (!tryLoaded && (media == null)) {
-                    media = createMedia();
+                    tryLoaded = true;
+                    String url = source.getFileUrl();
+                    if ((url != null) && (mediaCache != null)) {
+                        SoftReference<Media> sf = mediaCache.get(url);
+                        if (sf != null) {
+                            media = sf.get();
+                        }
+                    }
+                    if (media == null) {
+                        media = createMedia(url);
+                        if ((url != null) && (media != null) && (mediaCache != null)) {
+                            SoftReference<Media> sf = new SoftReference<>(media);
+                            mediaCache.put(url, sf);
+                        }
+                    }
+                    if (media != null) {
+                        bind(media);
+                    }
                 }
             }
         }
         return media;
     }
 
-    private Media createMedia() throws MediaLoadException {
-        final Media ret;
-        {
-            try {
-                tryLoaded = true;
-                String url = source.getFileUrl();
-                if (url == null) {
-                    throw new MediaLoadException("file url is null.");
-                }
-                ret = new Media(url);
-            } catch (IllegalArgumentException | MediaException e) {
-
-                mediaStatusProperty.setValue(MediaStatus.MEDIA_ERROR);
-
-                throw new MediaLoadException(e);
+    private Media createMedia(String url) throws MediaLoadException {
+        Media ret;
+        try {
+            if (url == null) {
+                throw new MediaLoadException("file url is null.");
             }
+            ret = new Media(url);
+        } catch (IllegalArgumentException | MediaException e) {
 
-            // TOTO
-            // should reset properties ?
+            mediaStatusProperty.setValue(MediaStatus.MEDIA_ERROR);
 
-            ret.getMetadata().addListener(new MapChangeListener<String, Object>() {
-
-                @Override
-                public void onChanged(Change<? extends String, ? extends Object> change) {
-                    if (change.wasAdded()) {
-                        String key = change.getKey();
-                        switch (key) {
-                            case "title": {
-                                setIfUpdate(change.getMap(), key, titleProperty);
-                                break;
-                            }
-                            case "artist":
-                            case "album artist": {
-                                setIfUpdate(change.getMap(), key, artistProperty);
-                                break;
-                            }
-                            case "album": {
-                                setIfUpdate(change.getMap(), key, albumProperty);
-                                break;
-                            }
-                            case "duration": {
-                                setIfUpdate(change.getMap(), key, durationProperty);
-                                break;
-                            }
-                            case "image": {
-                                setIfUpdate(change.getMap(), key, imageProperty);
-                                break;
-                            }
-                            case "audio codec": {
-                                setIfUpdate(change.getMap(), key, audioCodecProperty);
-                                break;
-                            }
-                            case "video codec": {
-                                setIfUpdate(change.getMap(), key, videoCodecProperty);
-                                break;
-                            }
-                            case "width": {
-                                setIfUpdate(change.getMap(), key, widthProperty);
-                                break;
-                            }
-                            case "height": {
-                                setIfUpdate(change.getMap(), key, heightProperty);
-                                break;
-                            }
-                            case "framerate": {
-                                setIfUpdate(change.getMap(), key, framerateProperty);
-                                break;
-                            }
-                        }
-                    }
-                    if (metaChangeListener != null) {
-                        metaChangeListener.onChanged(MediaInfo.this, ret, change);
-                    }
-                }
-            });
-
-            setIfUpdate(ret.getMetadata(), "title", titleProperty);
-            setIfUpdate(ret.getMetadata(), "artist", artistProperty);
-            setIfUpdate(ret.getMetadata(), "album artist", artistProperty);
-            setIfUpdate(ret.getMetadata(), "album", albumProperty);
-            setIfUpdate(ret.getMetadata(), "duration", durationProperty);
-            setIfUpdate(ret.getMetadata(), "image", imageProperty);
-            setIfUpdate(ret.getMetadata(), "audio codec", audioCodecProperty);
-            setIfUpdate(ret.getMetadata(), "video codec", videoCodecProperty);
-            setIfUpdate(ret.getMetadata(), "width", widthProperty);
-            setIfUpdate(ret.getMetadata(), "height", heightProperty);
-            setIfUpdate(ret.getMetadata(), "framerate", framerateProperty);
-
-            mediaStatusProperty.setValue(MediaStatus.MEDIA_SUCCESS);
+            throw new MediaLoadException(e);
         }
         return ret;
+    }
+
+    private void unbind(Media media) {
+        media.getMetadata().removeListener(changeListener);
+    }
+
+    private void bind(final Media media) {
+        changeListener = new MapChangeListener<String, Object>() {
+
+            @Override
+            public void onChanged(Change<? extends String, ? extends Object> change) {
+                if (change.wasAdded()) {
+                    String key = change.getKey();
+                    switch (key) {
+                        case "title": {
+                            setIfUpdate(change.getMap(), key, titleProperty);
+                            break;
+                        }
+                        case "artist":
+                        case "album artist": {
+                            setIfUpdate(change.getMap(), key, artistProperty);
+                            break;
+                        }
+                        case "album": {
+                            setIfUpdate(change.getMap(), key, albumProperty);
+                            break;
+                        }
+                        case "duration": {
+                            setIfUpdate(change.getMap(), key, durationProperty);
+                            break;
+                        }
+                        case "image": {
+                            setIfUpdate(change.getMap(), key, imageProperty);
+                            break;
+                        }
+                        case "audio codec": {
+                            setIfUpdate(change.getMap(), key, audioCodecProperty);
+                            break;
+                        }
+                        case "video codec": {
+                            setIfUpdate(change.getMap(), key, videoCodecProperty);
+                            break;
+                        }
+                        case "width": {
+                            setIfUpdate(change.getMap(), key, widthProperty);
+                            break;
+                        }
+                        case "height": {
+                            setIfUpdate(change.getMap(), key, heightProperty);
+                            break;
+                        }
+                        case "framerate": {
+                            setIfUpdate(change.getMap(), key, framerateProperty);
+                            break;
+                        }
+                    }
+                }
+                if (callback != null) {
+                    callback.onChanged(MediaInfo.this, media, change);
+                }
+            }
+        };
+
+        // TOTO
+        // should reset properties ?
+        media.getMetadata().addListener(changeListener);
+
+        setIfUpdate(media.getMetadata(), "title", titleProperty);
+        setIfUpdate(media.getMetadata(), "artist", artistProperty);
+        setIfUpdate(media.getMetadata(), "album artist", artistProperty);
+        setIfUpdate(media.getMetadata(), "album", albumProperty);
+        setIfUpdate(media.getMetadata(), "duration", durationProperty);
+        setIfUpdate(media.getMetadata(), "image", imageProperty);
+        setIfUpdate(media.getMetadata(), "audio codec", audioCodecProperty);
+        setIfUpdate(media.getMetadata(), "video codec", videoCodecProperty);
+        setIfUpdate(media.getMetadata(), "width", widthProperty);
+        setIfUpdate(media.getMetadata(), "height", heightProperty);
+        setIfUpdate(media.getMetadata(), "framerate", framerateProperty);
+
+        mediaStatusProperty.setValue(MediaStatus.MEDIA_SUCCESS);
     }
 
     private static <T> T setIfUpdate(ObservableMap<? extends String, ? extends Object> map,
