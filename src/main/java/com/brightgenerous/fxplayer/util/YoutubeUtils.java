@@ -37,6 +37,8 @@ public class YoutubeUtils {
         }
     }
 
+    private static final String SERVER = "http://www.youtube.com";
+
     private YoutubeUtils() {
     }
 
@@ -79,7 +81,7 @@ public class YoutubeUtils {
                     title = title1.replace("&#39;", "'");
                 }
             }
-            String url = "http://www.youtube.com" + href;
+            String url = SERVER + href;
             VideoInfo info = infos.get(url);
             if (info == null) {
                 info = new VideoInfo(url, title);
@@ -115,7 +117,7 @@ public class YoutubeUtils {
     public static String extractUrl(String url) throws IOException {
         String ret = null;
 
-        List<Video> videos = getStreamingUrisFromYouTubePage(url);
+        List<Video> videos = getStreamingUrisFromUrl(url);
         if ((videos != null) && !videos.isEmpty()) {
             String retUrl = null;
             for (Video video : videos) {
@@ -185,12 +187,36 @@ public class YoutubeUtils {
 
     private static final Pattern patternUrl = Pattern.compile("url=(.*?)(?:&.*|)$");
 
-    private static List<Video> getStreamingUrisFromYouTubePage(String url) throws IOException {
-
+    private static List<Video> getStreamingUrisFromUrl(String url) throws IOException {
         String html = getPageHtml(url);
         if (html == null) {
             return null;
         }
+        List<Video> ret = parseAsVideoHtml(html);
+        if ((ret == null) || ret.isEmpty()) {
+            ret = parseAsConfirmHtml(html);
+        }
+        return ret;
+    }
+
+    private static List<Video> parseAsConfirmHtml(String html) throws IOException {
+        List<Video> ret = null;
+        String _url = parseUrlAsConfirm(html);
+        if (_url != null) {
+            String _html = getPageHtml(_url);
+            if (_html != null) {
+                ret = parseAsVideoHtml(_html);
+            }
+        }
+        return ret;
+    }
+
+    private static String parseUrlAsConfirm(String html) throws IOException {
+        String ret = null;
+        return ret;
+    }
+
+    private static List<Video> parseAsVideoHtml(String html) throws IOException {
 
         html = html.replace("\\u0026", "&");
 

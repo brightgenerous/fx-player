@@ -1,6 +1,5 @@
 package com.brightgenerous.fxplayer.application.playlist;
 
-import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -187,12 +186,6 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
         if (consume) {
             event.consume();
         }
-    }
-
-    public static void main(String[] args) {
-        String str = "h\t\tg    \n\rjk\tl";
-        System.out.println(Arrays.toString(str.split("\\s+")));
-        System.out.println(Arrays.toString("abc".split("\\s+")));
     }
 
     private void handle(char ch) {

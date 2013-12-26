@@ -72,6 +72,7 @@ public class UrlResolver {
 
         @Override
         public String get() {
+            request(false);
             try {
                 return future.get();
             } catch (InterruptedException | ExecutionException e) {
@@ -124,6 +125,7 @@ public class UrlResolver {
 
         @Override
         public String get() {
+            request(false);
             try {
                 return future.get();
             } catch (InterruptedException | ExecutionException e) {

@@ -850,8 +850,8 @@ public class PlayList implements Initializable {
                         // by called targetInfo.resetIfYet(true),
                         //   next call targetInfo.getMedia() returns not null or throws MediaException.
                         //   as result, will not execute this block in next time.
-                        controlPlayerLater(Control.SPECIFY, targetInfo, forceResolve,
-                                skipOnError - 1, true);
+                        controlPlayerLater(Control.SPECIFY, targetInfo, forceResolve, skipOnError,
+                                true);
 
                         break player_block;
                     }
@@ -869,8 +869,10 @@ public class PlayList implements Initializable {
                     onMediaPlayerError(e, targetInfo);
 
                     targetInfo.releaseMedia();
-                    controlPlayerLater(Control.SPECIFY, targetInfo, forceResolve, skipOnError - 1,
-                            true);
+                    if (0 < skipOnError) {
+                        controlPlayerLater(Control.SPECIFY, targetInfo, forceResolve,
+                                skipOnError - 1, true);
+                    }
 
                     break player_block;
                 }
@@ -1116,6 +1118,9 @@ public class PlayList implements Initializable {
                 public void run() {
 
                     log("End of Media : " + targetInfo.getDescription());
+
+                    mp.stop();
+                    syncControlPlayPause();
 
                     targetInfo.mediaStatusProperty().setValue(MediaStatus.PLAYER_END);
 
