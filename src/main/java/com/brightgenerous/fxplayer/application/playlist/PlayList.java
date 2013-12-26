@@ -111,16 +111,10 @@ public class PlayList implements Initializable {
     private TableView<MediaInfo> infoList;
 
     @FXML
-    private TableColumn<MediaInfo, Boolean> infoListColumnIndex;
+    private TableColumn<MediaInfo, MediaStatus> infoListColumnIndex;
 
     @FXML
     private TableColumn<MediaInfo, Duration> infoListColumnDuration;
-
-    @FXML
-    private TableColumn<MediaInfo, Boolean> infoListColumnCursor;
-
-    @FXML
-    private TableColumn<MediaInfo, MediaStatus> infoListColumnMediaStatus;
 
     // tab - video
 
@@ -136,6 +130,9 @@ public class PlayList implements Initializable {
 
     @FXML
     private TableView<MediaInfo> infoListClone;
+
+    @FXML
+    private TableColumn<MediaInfo, MediaStatus> infoListCloneColumnIndex;
 
     @FXML
     private TableColumn<MediaInfo, Duration> infoListCloneColumnDuration;
@@ -297,7 +294,7 @@ public class PlayList implements Initializable {
                             TableRow<?> row = (TableRow<?>) source;
                             Object obj = row.getItem();
                             if (obj instanceof MediaInfo) {
-                                controlPlayer(Control.SPECIFY, (MediaInfo) obj, true);
+                                controlPlayer(Control.SPECIFY, (MediaInfo) obj, true, 0);
                             }
                         }
                     }
@@ -339,22 +336,50 @@ public class PlayList implements Initializable {
             });
 
             infoListColumnIndex
-                    .setCellFactory(new Callback<TableColumn<MediaInfo, Boolean>, TableCell<MediaInfo, Boolean>>() {
+                    .setCellFactory(new Callback<TableColumn<MediaInfo, MediaStatus>, TableCell<MediaInfo, MediaStatus>>() {
 
                         @Override
-                        public TableCell<MediaInfo, Boolean> call(
-                                TableColumn<MediaInfo, Boolean> param) {
-                            return new TableCell<MediaInfo, Boolean>() {
+                        public TableCell<MediaInfo, MediaStatus> call(
+                                TableColumn<MediaInfo, MediaStatus> param) {
+                            return new TableCell<MediaInfo, MediaStatus>() {
 
                                 @Override
-                                protected void updateItem(Boolean item, boolean empty) {
+                                protected void updateItem(MediaStatus item, boolean empty) {
                                     super.updateItem(item, empty);
 
-                                    if (empty) {
+                                    if (empty || (item == null)) {
                                         setText(null);
                                     } else {
-                                        setText(String.format("%d",
-                                                Integer.valueOf(getTableRow().getIndex() + 1)));
+                                        String str;
+                                        switch (item) {
+                                            case MEDIA_YET:
+                                                str = String.format("- %d", Integer
+                                                        .valueOf(getTableRow().getIndex() + 1));
+                                                break;
+                                            case MEDIA_SUCCESS:
+                                                str = String.format("%d", Integer
+                                                        .valueOf(getTableRow().getIndex() + 1));
+                                                break;
+                                            case MEDIA_ERROR:
+                                                str = String.format("x %d", Integer
+                                                        .valueOf(getTableRow().getIndex() + 1));
+                                                break;
+                                            case PLAYER_LOADING:
+                                            case PLAYER_READY:
+                                            case PLAYER_PLAYING:
+                                            case PLAYER_PAUSE:
+                                                str = String.format("+ %d", Integer
+                                                        .valueOf(getTableRow().getIndex() + 1));
+                                                break;
+                                            case PLAYER_END:
+                                                str = String.format("%d", Integer
+                                                        .valueOf(getTableRow().getIndex() + 1));
+                                                break;
+                                            default:
+                                                str = "";
+                                                break;
+                                        }
+                                        setText(str);
                                         setAlignment(Pos.CENTER_RIGHT);
                                     }
                                 }
@@ -386,53 +411,9 @@ public class PlayList implements Initializable {
                         }
                     });
 
-            infoListColumnCursor
-                    .setCellFactory(new Callback<TableColumn<MediaInfo, Boolean>, TableCell<MediaInfo, Boolean>>() {
-
-                        @Override
-                        public TableCell<MediaInfo, Boolean> call(
-                                TableColumn<MediaInfo, Boolean> param) {
-                            return new TableCell<MediaInfo, Boolean>() {
-
-                                @Override
-                                protected void updateItem(Boolean item, boolean empty) {
-                                    super.updateItem(item, empty);
-
-                                    if (empty || (item == null) || !item.booleanValue()) {
-                                        setText(null);
-                                    } else {
-                                        setText(bundle.getString("media.crusor"));
-                                        setAlignment(Pos.CENTER);
-                                    }
-                                }
-                            };
-                        }
-                    });
-
-            infoListColumnMediaStatus
-                    .setCellFactory(new Callback<TableColumn<MediaInfo, MediaStatus>, TableCell<MediaInfo, MediaStatus>>() {
-
-                        @Override
-                        public TableCell<MediaInfo, MediaStatus> call(
-                                TableColumn<MediaInfo, MediaStatus> param) {
-                            return new TableCell<MediaInfo, MediaStatus>() {
-
-                                @Override
-                                protected void updateItem(MediaStatus item, boolean empty) {
-                                    super.updateItem(item, empty);
-
-                                    if (empty || (item == null)) {
-                                        setText(null);
-                                    } else {
-                                        setText(item.name());
-                                    }
-                                }
-                            };
-                        }
-                    });
-
             // clone
             infoListClone.setRowFactory(infoList.getRowFactory());
+            infoListCloneColumnIndex.setCellFactory(infoListColumnIndex.getCellFactory());
             infoListCloneColumnDuration.setCellFactory(infoListColumnDuration.getCellFactory());
         }
 
@@ -694,32 +675,58 @@ public class PlayList implements Initializable {
 
     @FXML
     protected void controlPlayPause() {
-        boolean selected = controlPlayPause.isSelected();
-        if (!controlPlayer(Control.PLAY_PAUSE, null)) {
-            // restore selected state to before click.
-            controlPlayPause.setSelected(!selected);
+        if (!controlPlayerForce(Control.PLAY_PAUSE, null)) {
+            syncControlPlayPause();
+        }
+    }
+
+    protected void controlPlay() {
+        if (!controlPlayerSoft(Control.PLAY, null)) {
+            syncControlPlayPause();
+        }
+    }
+
+    protected void controlPause() {
+        if (!controlPlayerSoft(Control.PAUSE, null)) {
+            syncControlPlayPause();
         }
     }
 
     @FXML
     protected void controlBack() {
-        controlPlayer(Control.BACK, null);
+        controlPlayerForce(Control.BACK, null);
     }
 
     @FXML
     protected void controlNext() {
-        controlPlayer(Control.NEXT, null);
-    }
-
-    private boolean controlPlayer(Control control, MediaInfo info) {
-        return controlPlayer(control, info, false);
+        controlPlayerForce(Control.NEXT, null);
     }
 
     private enum Control {
         PLAY_PAUSE, PLAY, PAUSE, BACK, NEXT, SPECIFY;
     }
 
-    private boolean controlPlayer(Control control, MediaInfo info, boolean forceResolve) {
+    private boolean controlPlayerSoft(Control control, MediaInfo info) {
+        return controlPlayer(control, info, false, 0);
+    }
+
+    private boolean controlPlayerForce(Control control, MediaInfo info) {
+        return controlPlayer(control, info, true, settings.skipOnError.get());
+    }
+
+    private void controlPlayerLater(final Control control, final MediaInfo info,
+            final boolean forceResolve, final int skipOnError) {
+        Platform.runLater(new Runnable() {
+
+            @Override
+            public void run() {
+                controlPlayer(control, info, forceResolve, skipOnError);
+            }
+        });
+    }
+
+    private boolean controlPlayer(final Control control, MediaInfo info,
+            final boolean forceResolve, final int skipOnError) {
 
         // if too fast to be called repeatedly,
         //   returns false.
@@ -791,7 +798,7 @@ public class PlayList implements Initializable {
                 List<MediaInfo> items = getItemsSnapshot();
                 if (items.isEmpty()) {
 
-                    viewStop();
+                    syncControlPlayPause();
 
                     break player_block;
                 }
@@ -837,9 +844,17 @@ public class PlayList implements Initializable {
                 mp = new MediaPlayer(media);
             } catch (MediaLoadException e) {
 
-                viewStop();
+                syncControlPlayPause();
 
                 onMediaLoadError(e, targetInfo);
+
+                if (0 < skipOnError) {
+                    if (control == Control.BACK) {
+                        controlPlayerLater(Control.BACK, targetInfo, forceResolve, skipOnError - 1);
+                    } else {
+                        controlPlayerLater(Control.NEXT, targetInfo, forceResolve, skipOnError - 1);
+                    }
+                }
 
                 break player_block;
             }
@@ -1040,9 +1055,22 @@ public class PlayList implements Initializable {
                 public void run() {
                     imageView.setImage(new Image(PlayList.class.getResourceAsStream("dame.png")));
 
-                    viewStop();
+                    syncControlPlayPause();
 
                     onMediaPlayerError(mp.getError(), targetInfo);
+
+                    if (0 < skipOnError) {
+                        MediaPlayer player = playerProperty.getValue();
+                        if ((player == null) || (mp == player)) {
+                            if (control == Control.BACK) {
+                                controlPlayer(Control.BACK, targetInfo, forceResolve,
+                                        skipOnError - 1);
+                            } else {
+                                controlPlayer(Control.NEXT, targetInfo, forceResolve,
+                                        skipOnError - 1);
+                            }
+                        }
+                    }
                 }
             });
 
@@ -1056,7 +1084,11 @@ public class PlayList implements Initializable {
                     targetInfo.mediaStatusProperty().setValue(MediaStatus.PLAYER_END);
 
                     // no fear, would be called on main thread.
-                    controlPlayer(Control.NEXT, null);
+                    if (control == Control.BACK) {
+                        controlPlayer(Control.BACK, null, forceResolve, skipOnError);
+                    } else {
+                        controlPlayer(Control.NEXT, null, forceResolve, skipOnError);
+                    }
                 }
             });
 
@@ -1064,7 +1096,7 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void run() {
-                    viewPlaying();
+                    syncControlPlayPause();
 
                     targetInfo.mediaStatusProperty().setValue(MediaStatus.PLAYER_PLAYING);
                 }
@@ -1074,7 +1106,7 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void run() {
-                    viewStop();
+                    syncControlPlayPause();
 
                     targetInfo.mediaStatusProperty().setValue(MediaStatus.PLAYER_PAUSE);
                 }
@@ -1122,12 +1154,13 @@ public class PlayList implements Initializable {
         info.mediaStatusProperty().setValue(MediaStatus.MEDIA_ERROR);
     }
 
-    private void viewPlaying() {
-        controlPlayPause.setSelected(true);
-    }
-
-    private void viewStop() {
-        controlPlayPause.setSelected(false);
+    private void syncControlPlayPause() {
+        MediaPlayer player = playerProperty.getValue();
+        if ((player != null) && (player.getStatus() == Status.PLAYING)) {
+            controlPlayPause.setSelected(true);
+        } else {
+            controlPlayPause.setSelected(false);
+        }
     }
 
     private List<MediaInfo> getItemsSnapshot() {
@@ -1558,17 +1591,17 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void controlPlayPause() {
-                    controlPlayer(Control.PLAY_PAUSE, null);
+                    PlayList.this.controlPlayPause();
                 }
 
                 @Override
                 public void controlPlay() {
-                    controlPlayer(Control.PLAY, null);
+                    PlayList.this.controlPlay();
                 }
 
                 @Override
                 public void controlPause() {
-                    controlPlayer(Control.PAUSE, null);
+                    PlayList.this.controlPause();
                 }
 
                 @Override
@@ -1627,7 +1660,7 @@ public class PlayList implements Initializable {
                         return;
                     }
                     int idx = Math.min(Math.max(value, 1), size) - 1;
-                    controlPlayer(Control.SPECIFY, infos.get(idx));
+                    controlPlayer(Control.SPECIFY, infos.get(idx), true, 0);
                 }
 
                 @Override
@@ -1644,7 +1677,7 @@ public class PlayList implements Initializable {
                     while (idx < 0) {
                         idx += size;
                     }
-                    controlPlayer(Control.SPECIFY, infos.get(idx));
+                    controlPlayer(Control.SPECIFY, infos.get(idx), true, 0);
                 }
 
                 @Override

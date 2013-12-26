@@ -36,11 +36,15 @@ public class FxPlayerApplication extends Application {
             @Override
             public void handle(WindowEvent event) {
                 Platform.exit();
-                System.exit(0);
             }
         });
 
         FxUtils.scene(stage, PlayList.class);
         stage.show();
+    }
+
+    @Override
+    public void stop() {
+        System.exit(0);
     }
 }

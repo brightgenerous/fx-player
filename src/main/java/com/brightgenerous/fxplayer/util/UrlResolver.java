@@ -25,9 +25,9 @@ public class UrlResolver {
         IData<String> ret = null;
         if (url == null) {
             ret = new DirectUrl(url);
-        } else if (url.indexOf("youtube.com") != -1) {
+        } else if (YoutubeUtils.isVideoUrl(url)) {
             ret = new YoutubeUrl(url);
-        } else if (url.indexOf("xvideos.com") != -1) {
+        } else if (XvideosUtils.isVideoUrl(url)) {
             ret = new XvideosUrl(url);
         } else {
             ret = new DirectUrl(url);

@@ -11,9 +11,89 @@ import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-class YoutubeUtils {
+public class YoutubeUtils {
+
+    public static class VideoInfo {
+
+        private final String url;
+
+        private String title;
+
+        VideoInfo(String url, String title) {
+            this.url = url;
+            this.title = title;
+        }
+
+        public String getUrl() {
+            return url;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        void setTitle(String title) {
+            this.title = title;
+        }
+    }
 
     private YoutubeUtils() {
+    }
+
+    public static boolean isVideoUrl(String url) {
+        return url.indexOf("youtube.com/watch") != -1;
+    }
+
+    public static boolean isPlaylistUrl(String url) {
+        return (url.indexOf("youtube.com/playlist") != -1)
+                || (url.indexOf("youtube.com/channel") != -1)
+                || (url.indexOf("youtube.com/user") != -1);
+    }
+
+    private static final Pattern anchor = Pattern.compile("<a"
+            + "(?:[^>]*\\stitle\\s*=\\s*\"([^\"]*)\")?"
+            + "[^>]*\\shref\\s*=\\s*\"(/watch[^&\"]*)(?:&.*\"|\")"
+            + "(?:[^>]*\\stitle\\s*=\\s*\"([^\"]*)\")?" + "[^>]*>");
+
+    public static List<VideoInfo> parsePlaylist(String html) {
+        List<VideoInfo> ret = new ArrayList<>();
+        Map<String, VideoInfo> infos = new HashMap<>();
+        Matcher matcher = anchor.matcher(html);
+        while (matcher.find()) {
+            String href = matcher.group(2);
+            String title;
+            {
+                String title1 = matcher.group(1);
+                String title2 = matcher.group(3);
+                if ((title1 == null) || (title2 == null)) {
+                    if (title1 != null) {
+                        title = title1.replace("&#39;", "'");
+                    } else if (title2 != null) {
+                        title = title2.replace("&#39;", "'");
+                    } else {
+                        title = null;
+                    }
+                } else if (title1.length() < title2.length()) {
+                    title = title2.replace("&#39;", "'");
+                } else {
+                    title = title1.replace("&#39;", "'");
+                }
+            }
+            String url = "http://www.youtube.com" + href;
+            VideoInfo info = infos.get(url);
+            if (info == null) {
+                info = new VideoInfo(url, title);
+                infos.put(url, info);
+                ret.add(info);
+            } else {
+                if (info.getTitle() == null) {
+                    info.setTitle(title);
+                } else if ((title != null) && (info.getTitle().length() < title.length())) {
+                    info.setTitle(title);
+                }
+            }
+        }
+        return ret;
     }
 
     public static String extractUrlSafely(String url) {

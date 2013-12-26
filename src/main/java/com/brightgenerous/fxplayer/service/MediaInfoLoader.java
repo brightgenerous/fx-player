@@ -20,6 +20,8 @@ import com.brightgenerous.fxplayer.media.MediaInfo.MetaChangeListener;
 import com.brightgenerous.fxplayer.media.MediaInfoFactory;
 import com.brightgenerous.fxplayer.util.HttpUtils;
 import com.brightgenerous.fxplayer.util.UrlResolver;
+import com.brightgenerous.fxplayer.util.YoutubeUtils;
+import com.brightgenerous.fxplayer.util.YoutubeUtils.VideoInfo;
 
 class MediaInfoLoader {
 
@@ -170,36 +172,47 @@ class MediaInfoLoader {
         }
 
         List<MediaInfo> ret = new ArrayList<>();
-        try (BufferedReader br = new BufferedReader(new StringReader(text))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                line = line.trim();
-                if (line.isEmpty() || line.startsWith("#")) {
-                    continue;
-                }
-                String[] strs = lineToStrs(line);
-                if ((strs == null) || (strs[0] == null)) {
-                    continue;
-                }
-                String path = null;
-                {
-                    String tmp = strs[0];
-                    if (!tmp.startsWith("http://") && !tmp.startsWith("https://")) {
-                        if (tmp.startsWith("/")) {
-                            path = serverPath + tmp;
-                        } else {
-                            path = dirPath + URLEncoder.encode(tmp, "UTF-8").replace("+", "%20");
-                        }
-                    } else {
-                        path = tmp;
-                    }
-                }
-                {
-                    String desc = (strs[1] == null) ? strs[0] : strs[1];
-                    ret.add(factory.create(path, desc, metaChangeListener));
+        if (YoutubeUtils.isPlaylistUrl(str)) {
+            List<VideoInfo> infos = YoutubeUtils.parsePlaylist(text);
+            if (infos != null) {
+                for (VideoInfo info : infos) {
+                    String desc = (info.getTitle() == null) ? info.getUrl() : info.getTitle();
+                    ret.add(factory.create(info.getUrl(), desc, metaChangeListener));
                 }
             }
-        } catch (IOException e) {
+        } else {
+            try (BufferedReader br = new BufferedReader(new StringReader(text))) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    line = line.trim();
+                    if (line.isEmpty() || line.startsWith("#")) {
+                        continue;
+                    }
+                    String[] strs = lineToStrs(line);
+                    if ((strs == null) || (strs[0] == null)) {
+                        continue;
+                    }
+                    String path = null;
+                    {
+                        String tmp = strs[0];
+                        if (!tmp.startsWith("http://") && !tmp.startsWith("https://")) {
+                            if (tmp.startsWith("/")) {
+                                path = serverPath + tmp;
+                            } else {
+                                path = dirPath
+                                        + URLEncoder.encode(tmp, "UTF-8").replace("+", "%20");
+                            }
+                        } else {
+                            path = tmp;
+                        }
+                    }
+                    {
+                        String desc = (strs[1] == null) ? strs[0] : strs[1];
+                        ret.add(factory.create(path, desc, metaChangeListener));
+                    }
+                }
+            } catch (IOException e) {
+            }
         }
         return ret;
     }
@@ -207,18 +220,15 @@ class MediaInfoLoader {
     private static String[] lineToStrs(String line) {
         String[] ret = new String[2];
         if ((line != null)) {
-            String[] strs = line.trim().split("\t");
+            String[] strs = line.trim().split("\t+");
             ret[0] = strs[0].trim();
             for (int i = 1; i < strs.length; i++) {
-                String str = strs[i];
-                if (str != null) {
-                    str = str.trim();
-                    if (!str.isEmpty()) {
-                        if (!str.startsWith("#")) {
-                            ret[1] = str;
-                        }
-                        break;
+                String str = strs[i].trim();
+                if (!str.isEmpty()) {
+                    if (!str.startsWith("#")) {
+                        ret[1] = str;
                     }
+                    break;
                 }
             }
         }

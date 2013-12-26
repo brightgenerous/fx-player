@@ -40,6 +40,8 @@ public class StageCloseService extends Service<Void> {
                             @Override
                             public void handle(ActionEvent event) {
                                 owner.getValue().close();
+                                dialog.close();
+                                Platform.exit();
                             }
                         });
 

@@ -384,27 +384,28 @@ public class MediaInfo {
     public ReadOnlyProperty<String> tooltipProperty() {
         return tooltipProperty;
     }
+    /*
+        @Override
+        public int hashCode() {
+            if (source == null) {
+                return -1;
+            }
+            return source.hashCode();
+        }
 
-    @Override
-    public int hashCode() {
-        if (source == null) {
-            return -1;
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof MediaInfo)) {
+                return false;
+            }
+            MediaInfo arg = (MediaInfo) obj;
+            if (source == arg.source) {
+                return true;
+            }
+            if ((source == null) || (arg.source == null)) {
+                return false;
+            }
+            return source.equals(arg.source);
         }
-        return source.hashCode();
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (!(obj instanceof MediaInfo)) {
-            return false;
-        }
-        MediaInfo arg = (MediaInfo) obj;
-        if (source == arg.source) {
-            return true;
-        }
-        if ((source == null) || (arg.source == null)) {
-            return false;
-        }
-        return source.equals(arg.source);
-    }
+    */
 }

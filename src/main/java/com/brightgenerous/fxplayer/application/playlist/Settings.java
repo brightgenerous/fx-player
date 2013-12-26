@@ -2,9 +2,11 @@ package com.brightgenerous.fxplayer.application.playlist;
 
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.LongProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleLongProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ObservableBooleanValue;
@@ -39,6 +41,8 @@ public class Settings {
     public final BooleanProperty visibleSpectrums = new SimpleBooleanProperty();
 
     public final LongProperty loadMediaStepMilliseconds = new SimpleLongProperty(500);
+
+    public final IntegerProperty skipOnError = new SimpleIntegerProperty(3);
 
     public Side toggleTabSide() {
         Side ret = tabSide.get();

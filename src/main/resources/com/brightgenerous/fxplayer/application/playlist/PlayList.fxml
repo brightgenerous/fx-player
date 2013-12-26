@@ -39,7 +39,7 @@
                 <columns>
                   <TableColumn fx:id="infoListColumnIndex" text="%media.index"
                       sortable="false" prefWidth="40">
-                    <cellValueFactory><PropertyValueFactory property="exist" /></cellValueFactory>
+                    <cellValueFactory><PropertyValueFactory property="mediaStatus" /></cellValueFactory>
                   </TableColumn>
                   <TableColumn text="%media.titleDesc"
                       sortable="false" prefWidth="275">
@@ -62,16 +62,8 @@
                     <cellValueFactory><PropertyValueFactory property="info" /></cellValueFactory>
                   </TableColumn>
                   <TableColumn text="%media.description"
-                      sortable="false" prefWidth="200">
+                      sortable="false" prefWidth="400">
                     <cellValueFactory><PropertyValueFactory property="description" /></cellValueFactory>
-                  </TableColumn>
-                  <TableColumn fx:id="infoListColumnCursor"
-                      sortable="false" prefWidth="70" visible="false">
-                    <cellValueFactory><PropertyValueFactory property="cursor" /></cellValueFactory>
-                  </TableColumn>
-                  <TableColumn fx:id="infoListColumnMediaStatus" text="%media.mediaStatus"
-                      sortable="false" prefWidth="110" visible="false">
-                    <cellValueFactory><PropertyValueFactory property="mediaStatus" /></cellValueFactory>
                   </TableColumn>
                 </columns>
               </TableView>
@@ -85,6 +77,10 @@
             <infoList>
               <TableView fx:id="infoListClone" opacity="0.7">
                 <columns>
+                  <TableColumn fx:id="infoListCloneColumnIndex" text="%media.index"
+                      sortable="false" prefWidth="40">
+                    <cellValueFactory><PropertyValueFactory property="mediaStatus" /></cellValueFactory>
+                  </TableColumn>
                   <TableColumn text="%media.titleDesc"
                       sortable="false" prefWidth="275">
                     <cellValueFactory><PropertyValueFactory property="titleDesc" /></cellValueFactory>
@@ -96,6 +92,10 @@
                   <TableColumn text="%media.info"
                       sortable="false" prefWidth="400">
                     <cellValueFactory><PropertyValueFactory property="info" /></cellValueFactory>
+                  </TableColumn>
+                  <TableColumn text="%media.description"
+                      sortable="false" prefWidth="400">
+                    <cellValueFactory><PropertyValueFactory property="description" /></cellValueFactory>
                   </TableColumn>
                 </columns>
               </TableView>

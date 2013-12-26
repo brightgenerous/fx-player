@@ -15,6 +15,10 @@ class XvideosUtils {
     private XvideosUtils() {
     }
 
+    public static boolean isVideoUrl(String url) {
+        return url.indexOf("xvideos.com") != -1;
+    }
+
     public static String extractUrlSafely(String url) {
         return extractUrl(url, null);
     }
