@@ -8,7 +8,9 @@ import java.nio.charset.Charset;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-class XvideosUtils {
+public class XvideosUtils {
+
+    private static final Pattern patternTitle = Pattern.compile("<title>([^<]*)</title>");
 
     private static final Pattern patternFlashVars = Pattern.compile("flashvars=\"(.*?)?\"");
 
@@ -18,6 +20,10 @@ class XvideosUtils {
     }
 
     public static boolean isVideoUrl(String url) {
+        if (url == null) {
+            return false;
+        }
+
         try {
             URL _url = new URL(url);
             String host = _url.getHost();
@@ -30,7 +36,20 @@ class XvideosUtils {
             return true;
         } catch (MalformedURLException e) {
         }
+
         return false;
+    }
+
+    public static String extractTitle(String html) {
+        if (html == null) {
+            return null;
+        }
+
+        Matcher matcher = patternTitle.matcher(html);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
     }
 
     public static String extractUrlSafely(String url) {
@@ -50,9 +69,7 @@ class XvideosUtils {
     }
 
     public static String extractUrl(String url) throws IOException {
-
         String html = getPageHtml(url);
-
         if (html == null) {
             return null;
         }
@@ -81,6 +98,9 @@ class XvideosUtils {
     }
 
     private static String getPageHtml(String url) throws IOException {
+        if (url == null) {
+            return null;
+        }
 
         {
             int idx = url.indexOf('#');

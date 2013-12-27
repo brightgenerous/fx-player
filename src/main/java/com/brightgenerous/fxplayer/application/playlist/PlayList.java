@@ -596,15 +596,13 @@ public class PlayList implements Initializable {
 
         // log
         {
-            logStage = new LoggStage(bundle.getString("log.title"), stage.getIcons(),
+            logStage = new LoggStage(stage, bundle.getString("log.title"), stage.getIcons(),
                     shortCutHandler);
             logStage.setOnHidden(new EventHandler<WindowEvent>() {
 
                 @Override
                 public void handle(WindowEvent event) {
                     controlLog.setSelected(false);
-                    logStage.setX(logStage.getX());
-                    logStage.setY(logStage.getY());
                 }
             });
             logStage.setOnShown(new EventHandler<WindowEvent>() {
@@ -889,8 +887,14 @@ public class PlayList implements Initializable {
 
                     targetInfo.releaseMedia();
                     if (0 < skipOnError) {
-                        controlPlayerLater(Control.SPECIFY, targetInfo, forceResolve,
-                                skipOnError - 1, true);
+                        Boolean dir = directionProperty.getValue();
+                        if ((dir == null) || dir.booleanValue()) {
+                            controlPlayerLater(Control.NEXT, targetInfo, forceResolve,
+                                    skipOnError - 1, true);
+                        } else {
+                            controlPlayerLater(Control.BACK, targetInfo, forceResolve,
+                                    skipOnError - 1, true);
+                        }
                     }
 
                     break player_block;
@@ -1115,16 +1119,23 @@ public class PlayList implements Initializable {
 
                     onMediaPlayerError(mp.getError(), targetInfo);
 
+                    targetInfo.releaseMedia();
                     if (0 < skipOnError) {
                         MediaPlayer player = playerProperty.getValue();
                         if ((player == null) || (mp == player)) {
-                            Boolean dir = directionProperty.getValue();
-                            if ((dir == null) || dir.booleanValue()) {
-                                controlPlayer(Control.NEXT, targetInfo, forceResolve,
+                            Duration dur = mp.getCurrentTime();
+                            if ((dur != null) && dur.equals(Duration.ZERO)) {
+                                controlPlayerLater(Control.SPECIFY, targetInfo, forceResolve,
                                         skipOnError - 1, true);
                             } else {
-                                controlPlayer(Control.BACK, targetInfo, forceResolve,
-                                        skipOnError - 1, true);
+                                Boolean dir = directionProperty.getValue();
+                                if ((dir == null) || dir.booleanValue()) {
+                                    controlPlayer(Control.NEXT, targetInfo, forceResolve,
+                                            skipOnError - 1, true);
+                                } else {
+                                    controlPlayer(Control.BACK, targetInfo, forceResolve,
+                                            skipOnError - 1, true);
+                                }
                             }
                         }
                     }
@@ -1631,9 +1642,7 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void controlLogAuto() {
-                    // TODO
-                    // check auto front in log window
-                    // no implement now
+                    logStage.toggleAutoFront();
                 }
 
                 @Override

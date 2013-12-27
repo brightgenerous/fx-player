@@ -229,7 +229,25 @@ public class MediaInfo {
             tryLoaded = false;
             media = null;
             if (ret != null) {
-                unbind(ret);
+                // unbind
+                if (changeListener != null) {
+                    ret.getMetadata().removeListener(changeListener);
+                }
+            }
+            {
+                // reset properties
+                titleProperty.setValue("");
+                titleDescProperty.setValue(source.getDescription());
+                artistProperty.setValue("");
+                albumProperty.setValue("");
+                durationProperty.setValue(null);
+                durationTextProperty.setValue("");
+                imageProperty.setValue(null);
+                audioCodecProperty.setValue("");
+                videoCodecProperty.setValue("");
+                widthProperty.set(0);
+                heightProperty.set(0);
+                framerateProperty.set(0);
             }
         }
         return ret;
@@ -277,10 +295,6 @@ public class MediaInfo {
             throw new MediaLoadException(e);
         }
         return ret;
-    }
-
-    private void unbind(Media media) {
-        media.getMetadata().removeListener(changeListener);
     }
 
     private void bind(final Media media) {
@@ -340,8 +354,6 @@ public class MediaInfo {
             }
         };
 
-        // TOTO
-        // should reset properties ?
         media.getMetadata().addListener(changeListener);
 
         setIfUpdate(media.getMetadata(), "title", titleProperty);

@@ -45,6 +45,10 @@ public class YoutubeUtils {
     }
 
     public static boolean isVideoUrl(String url) {
+        if (url == null) {
+            return false;
+        }
+
         try {
             URL _url = new URL(url);
             String host = _url.getHost();
@@ -61,10 +65,15 @@ public class YoutubeUtils {
             return path.startsWith("/watch");
         } catch (MalformedURLException e) {
         }
+
         return false;
     }
 
     public static boolean isPlaylistUrl(String url) {
+        if (url == null) {
+            return false;
+        }
+
         try {
             URL _url = new URL(url);
             String host = _url.getHost();
@@ -82,6 +91,7 @@ public class YoutubeUtils {
                     || path.startsWith("/user");
         } catch (MalformedURLException e) {
         }
+
         return false;
     }
 
@@ -92,7 +102,12 @@ public class YoutubeUtils {
             + "(?:[^>]*\\stitle\\s*=\\s*\"([^\"]*)\")?" + "[^>]*>");
 
     public static List<VideoInfo> parsePlaylist(String html) {
+        if (html == null) {
+            return null;
+        }
+
         List<VideoInfo> ret = new ArrayList<>();
+
         Map<String, VideoInfo> infos = new HashMap<>();
         Matcher matcher = anchor.matcher(html);
         while (matcher.find()) {
@@ -115,7 +130,8 @@ public class YoutubeUtils {
                     title = title1;
                 }
                 if (title != null) {
-                    title = title.replace("&#39;", "'");
+                    title = title.replace("&#39;", "'").replace("&quot;", "\"")
+                            .replace("&amp;", "&");
                 }
             }
             String url = URL_HOST + href;
@@ -132,6 +148,7 @@ public class YoutubeUtils {
                 }
             }
         }
+
         return ret;
     }
 
@@ -152,6 +169,10 @@ public class YoutubeUtils {
     }
 
     public static String extractUrl(String url) throws IOException {
+        if (url == null) {
+            return null;
+        }
+
         String ret = null;
 
         List<Video> videos = getStreamingUrisFromUrl(url);
@@ -191,7 +212,6 @@ public class YoutubeUtils {
                     }
                 }
             }
-
             ret = retUrl;
         }
 
@@ -229,6 +249,7 @@ public class YoutubeUtils {
         if (html == null) {
             return null;
         }
+
         List<Video> ret = parseAsVideoHtml(html);
         if ((ret == null) || ret.isEmpty()) {
             ret = parseAsConfirmHtml(html);
@@ -254,6 +275,9 @@ public class YoutubeUtils {
     }
 
     private static List<Video> parseAsVideoHtml(String html) throws IOException {
+        if (html == null) {
+            return null;
+        }
 
         html = html.replace("\\u0026", "&");
 
@@ -326,6 +350,9 @@ public class YoutubeUtils {
     }
 
     private static String getPageHtml(String url) throws IOException {
+        if (url == null) {
+            return null;
+        }
 
         // [x] keep only first argument
         // [ ] keep only argument "v"

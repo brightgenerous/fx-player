@@ -85,6 +85,8 @@ public class Settings {
                 case LEFT_TOP:
                     videoInfoSide.setValue(InfoSide.RIGHT_BOTTOM);
                     break;
+                case LEFT_BOTTOM:
+                case RIGHT_TOP:
                 case RIGHT_BOTTOM:
                     videoInfoSide.setValue(InfoSide.LEFT_TOP);
                     break;

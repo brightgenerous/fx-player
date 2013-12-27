@@ -20,7 +20,7 @@ import javafx.scene.media.MediaView;
 public class VideoPane extends Pane {
 
     public static enum InfoSide {
-        LEFT_TOP, RIGHT_BOTTOM;
+        LEFT_TOP, LEFT_BOTTOM, RIGHT_TOP, RIGHT_BOTTOM;
     }
 
     {
@@ -145,7 +145,7 @@ public class VideoPane extends Pane {
 
             layoutInArea(list, leftInset, topInset, listWidth, listHeight, 0, HPos.CENTER,
                     VPos.CENTER);
-        } else {
+        } else if (side == InfoSide.RIGHT_BOTTOM) {
             layoutInArea(video, leftInset, topInset, videoWidth, videoHeight, 0, HPos.CENTER,
                     VPos.CENTER);
 
@@ -156,6 +156,32 @@ public class VideoPane extends Pane {
                 layoutInArea(list, leftInset, topInset + videoHeight, listWidth, listHeight, 0,
                         HPos.CENTER, VPos.CENTER);
             }
+        } else if (side == InfoSide.LEFT_BOTTOM) {
+            if (horizon) {
+                layoutInArea(video, leftInset + listWidth, topInset, videoWidth, videoHeight, 0,
+                        HPos.CENTER, VPos.CENTER);
+                layoutInArea(list, leftInset, topInset, listWidth, listHeight, 0, HPos.CENTER,
+                        VPos.CENTER);
+            } else {
+                layoutInArea(video, leftInset, topInset, videoWidth, videoHeight, 0, HPos.CENTER,
+                        VPos.CENTER);
+                layoutInArea(list, leftInset, topInset + videoHeight, listWidth, listHeight, 0,
+                        HPos.CENTER, VPos.CENTER);
+            }
+        } else if (side == InfoSide.RIGHT_TOP) {
+            if (horizon) {
+                layoutInArea(video, leftInset, topInset, videoWidth, videoHeight, 0, HPos.CENTER,
+                        VPos.CENTER);
+                layoutInArea(list, leftInset + videoWidth, topInset, listWidth, listHeight, 0,
+                        HPos.CENTER, VPos.CENTER);
+            } else {
+                layoutInArea(video, leftInset, topInset + listHeight, videoWidth, videoHeight, 0,
+                        HPos.CENTER, VPos.CENTER);
+                layoutInArea(list, leftInset, topInset, listWidth, listHeight, 0, HPos.CENTER,
+                        VPos.CENTER);
+            }
+        } else {
+            throw new IllegalStateException();
         }
     }
 

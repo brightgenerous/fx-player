@@ -6,11 +6,13 @@ import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.scene.Scene;
 import javafx.scene.SceneBuilder;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageBuilder;
 import javafx.stage.StageStyle;
+import javafx.stage.WindowEvent;
 
 import com.brightgenerous.fxplayer.application.FxUtils;
 import com.brightgenerous.fxplayer.application.FxUtils.LoadData;
@@ -26,8 +28,8 @@ public class StageCloseService extends Service<Void> {
         @Override
         public void run() {
             if (dialog == null) {
-                Stage stage = StageBuilder.create().style(StageStyle.UTILITY).resizable(false)
-                        .build();
+                final Stage stage = StageBuilder.create().style(StageStyle.UTILITY)
+                        .resizable(false).build();
                 stage.initOwner(owner.getValue());
                 stage.initModality(Modality.APPLICATION_MODAL);
 
@@ -44,6 +46,28 @@ public class StageCloseService extends Service<Void> {
                                 Platform.exit();
                             }
                         });
+
+                stage.addEventHandler(WindowEvent.WINDOW_SHOWING, new EventHandler<WindowEvent>() {
+
+                    @Override
+                    public void handle(WindowEvent event) {
+                        double sceneX = 0;
+                        double sceneY = 0;
+                        Scene scene = owner.getValue().getScene();
+                        if (scene != null) {
+                            sceneX = scene.getX();
+                            sceneY = scene.getY();
+                            if (Double.isNaN(sceneX)) {
+                                sceneX = 0;
+                            }
+                            if (Double.isNaN(sceneY)) {
+                                sceneY = 0;
+                            }
+                        }
+                        stage.setX(owner.getValue().getX() + sceneX);
+                        stage.setY(owner.getValue().getY() + sceneY);
+                    }
+                });
 
                 dialog = stage;
             }

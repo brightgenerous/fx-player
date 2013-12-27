@@ -65,4 +65,10 @@ public class Logg implements Initializable {
         }
         logText.appendText(str);
     }
+
+    public boolean toggleAutoFront() {
+        boolean ret = autoFrontControl.isSelected();
+        autoFrontControl.setSelected(!ret);
+        return ret;
+    }
 }

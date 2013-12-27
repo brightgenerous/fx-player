@@ -28,6 +28,7 @@ import com.brightgenerous.fxplayer.media.MediaInfoFactory;
 import com.brightgenerous.fxplayer.util.HttpUtils;
 import com.brightgenerous.fxplayer.util.IData;
 import com.brightgenerous.fxplayer.util.UrlResolver;
+import com.brightgenerous.fxplayer.util.XvideosUtils;
 import com.brightgenerous.fxplayer.util.YoutubeUtils;
 import com.brightgenerous.fxplayer.util.YoutubeUtils.VideoInfo;
 
@@ -251,6 +252,10 @@ class MediaInfoLoader {
                     ret.add(factory.create(info.getUrl(), desc, metaChangeListener));
                 }
             }
+        } else if (XvideosUtils.isVideoUrl(str)) {
+            String title = XvideosUtils.extractTitle(text);
+            String desc = ((title == null) || title.isEmpty()) ? str : title;
+            ret.add(factory.create(str, desc, metaChangeListener));
         } else {
             try (BufferedReader br = new BufferedReader(new StringReader(text))) {
                 String line;
