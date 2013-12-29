@@ -848,11 +848,17 @@ public class PlayList implements Initializable {
                     if (control == Control.NEXT) {
                         index++;
                         if (items.size() <= index) {
+                            if (onNextFromTail()) {
+                                break player_block;
+                            }
                             index = 0;
                         }
                     } else if (control == Control.BACK) {
                         index--;
                         if (index < 0) {
+                            if (onBackFromHead()) {
+                                break player_block;
+                            }
                             index = items.size() - 1;
                         }
                     }
@@ -1221,6 +1227,14 @@ public class PlayList implements Initializable {
         return ret;
     }
 
+    private boolean onNextFromTail() {
+        return movePageIfYoutube(1, true);
+    }
+
+    private boolean onBackFromHead() {
+        return movePageIfYoutube(-1, true);
+    }
+
     private void onMediaLoadError(MediaLoadException ex, MediaInfo info) {
         log("Load Error : " + info.getDescription());
         if (ex != null) {
@@ -1514,6 +1528,8 @@ public class PlayList implements Initializable {
 
     private final Service<List<MediaInfo>> loadUrlService;
 
+    private final Service<List<MediaInfo>> loadUrlAutoStartService;
+
     private final Service<File> saveImageService;
 
     private final Service<Void> stageCloseService;
@@ -1583,6 +1599,22 @@ public class PlayList implements Initializable {
                         loadMedia();
                     }
                 });
+        loadUrlAutoStartService = new LoadUrlService(pathTextProperty, metaChangeListener,
+                new LoadUrlService.ICallback() {
+
+                    @Override
+                    public void callback(String url, List<MediaInfo> infos) {
+                        if (infos == null) {
+                            log("Load URL Failure : " + url);
+                            return;
+                        }
+                        log("Load URL : " + url);
+                        updateItems(url, infos);
+                        loadMedia();
+                        controlPlayerLater(Control.NEXT, null, true, settings.skipOnError.get(),
+                                true);
+                    }
+                });
         saveImageService = new SaveImageService(currentInfoProperty, stageProperty,
                 new SaveImageService.ICallback() {
 
@@ -1600,7 +1632,7 @@ public class PlayList implements Initializable {
 
     private boolean loadRunning() {
         return loadDirectoryService.isRunning() || loadFileService.isRunning()
-                || loadUrlService.isRunning();
+                || loadUrlService.isRunning() || loadUrlAutoStartService.isRunning();
     }
 
     //----------------------------------------------------------------------------------
@@ -1849,50 +1881,64 @@ public class PlayList implements Initializable {
                     }
                 }
 
-                private final Pattern pagePattern = Pattern.compile("(.*(?:\\?|&)page=)(\\d*)(.*)");
-
                 @Override
                 public void controlOther(String[] args) {
                     String arg0 = (0 < args.length) ? args[0] : null;
-                    boolean ytn = "ytn".equals(arg0);
-                    boolean ytb = "ytb".equals(arg0);
-                    if (ytn || ytb) {
-                        String text = pathText.getText().trim();
-                        if (text.indexOf("youtube.com/results") != -1) {
-                            String url = null;
-                            Matcher matcher = pagePattern.matcher(text);
-                            if (matcher.find()) {
-                                String _u1 = matcher.group(1);
-                                String _p = matcher.group(2);
-                                String _u2 = matcher.group(3);
-                                int page = 1;
-                                try {
-                                    page = Integer.parseInt(_p);
-                                    if (ytn) {
-                                        page += 1;
-                                    } else {
-                                        page -= 1;
-                                    }
-                                } catch (NumberFormatException e) {
-                                }
-                                url = _u1 + Math.max(page, 1) + _u2;
-                            } else if (ytn) {
-                                if (text.indexOf('?') < 0) {
-                                    url = text + "?page=2";
-                                } else {
-                                    url = text + "&page=2";
-                                }
-                            }
-                            if ((url != null) && !text.equals(url)) {
-                                pathText.setText(url);
-                                if (!loadRunning()) {
-                                    loadUrlService.restart();
-                                }
-                            }
+                    if (arg0 != null) {
+                        if (arg0.equals("ytn")) {
+                            movePageIfYoutube(1, false);
+                        } else if (arg0.equals("ytb")) {
+                            movePageIfYoutube(-1, false);
                         }
                     }
                 }
             });
+
+    //----------------------------------------------------------------------------------
+    // ORETOKU funny functions.
+    //-------------------------
+
+    private final Pattern pagePattern = Pattern.compile("(.*(?:\\?|&)page=)(\\d*)(.*)");
+
+    private boolean movePageIfYoutube(int inc, boolean autoStart) {
+        String text = pathText.getText().trim();
+        if (text.indexOf("youtube.com/results") != -1) {
+            String url = null;
+            Matcher matcher = pagePattern.matcher(text);
+            if (matcher.find()) {
+                String _u1 = matcher.group(1);
+                String _p = matcher.group(2);
+                String _u2 = matcher.group(3);
+                int page = 1;
+                try {
+                    page = Integer.parseInt(_p) + inc;
+                } catch (NumberFormatException e) {
+                }
+                url = _u1 + Math.max(page, 1) + _u2;
+            } else {
+                int page = 1 + inc;
+                if (1 < page) {
+                    if (text.indexOf('?') < 0) {
+                        url = text + "?page=" + page;
+                    } else {
+                        url = text + "&page=" + page;
+                    }
+                }
+            }
+            if ((url != null) && !text.equals(url)) {
+                pathText.setText(url);
+                if (!loadRunning()) {
+                    if (autoStart) {
+                        loadUrlAutoStartService.restart();
+                    } else {
+                        loadUrlService.restart();
+                    }
+                }
+                return true;
+            }
+        }
+        return false;
+    }
 
     //----------------------------------------------------------------------------------
     // About log type.
