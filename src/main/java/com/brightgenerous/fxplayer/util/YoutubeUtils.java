@@ -6,6 +6,8 @@ import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -196,72 +198,78 @@ public class YoutubeUtils {
 
         List<Video> videos = getStreamingUrisFromUrl(url);
         if ((videos != null) && !videos.isEmpty()) {
-            String retUrl = null;
-            for (Video video : videos) {
-                if (video.ext.toLowerCase().contains("mp4")
-                        && video.type.toLowerCase().contains("medium")) {
-                    retUrl = video.url;
-                    break;
-                }
-            }
-            if (retUrl == null) {
-                for (Video video : videos) {
-                    if (video.ext.toLowerCase().contains("3gp")
-                            && video.type.toLowerCase().contains("medium")) {
-                        retUrl = video.url;
-                        break;
-                    }
-                }
-            }
-            if (retUrl == null) {
-                for (Video video : videos) {
-                    if (video.ext.toLowerCase().contains("mp4")
-                            && video.type.toLowerCase().contains("low")) {
-                        retUrl = video.url;
-                        break;
-                    }
-                }
-            }
-            if (retUrl == null) {
-                for (Video video : videos) {
-                    if (video.ext.toLowerCase().contains("3gp")
-                            && video.type.toLowerCase().contains("low")) {
-                        retUrl = video.url;
-                        break;
-                    }
-                }
-            }
-            ret = retUrl;
+            List<Video> tmp = new ArrayList<>(videos);
+            Collections.sort(tmp, priorityComparator);
+            ret = tmp.get(0).url;
         }
 
         return ret;
     }
 
-    private static final Map<String, Meta> typeMap = new HashMap<>();
+    private static final List<Meta> metas;
+
+    private static final Map<String, Meta> typeMap;
+
+    private static final Comparator<Video> priorityComparator;
     static {
-        typeMap.put("13", new Meta("13", "3GP", "Low Quality - 176x144"));
-        typeMap.put("17", new Meta("17", "3GP", "Medium Quality - 176x144"));
-        typeMap.put("36", new Meta("36", "3GP", "High Quality - 320x240"));
-        typeMap.put("5", new Meta("5", "FLV", "Low Quality - 400x226"));
-        typeMap.put("6", new Meta("6", "FLV", "Medium Quality - 640x360"));
-        typeMap.put("34", new Meta("34", "FLV", "Medium Quality - 640x360"));
-        typeMap.put("35", new Meta("35", "FLV", "High Quality - 854x480"));
-        typeMap.put("43", new Meta("43", "WEBM", "Low Quality - 640x360"));
-        typeMap.put("44", new Meta("44", "WEBM", "Medium Quality - 854x480"));
-        typeMap.put("45", new Meta("45", "WEBM", "High Quality - 1280x720"));
-        typeMap.put("18", new Meta("18", "MP4", "Medium Quality - 480x360"));
-        typeMap.put("22", new Meta("22", "MP4", "High Quality - 1280x720"));
-        typeMap.put("37", new Meta("37", "MP4", "High Quality - 1920x1080"));
-        typeMap.put("33", new Meta("38", "MP4", "High Quality - 4096x230"));
+        metas = new ArrayList<>();
+        metas.add(new Meta("38", "MP4", "High Quality - 2048x1536"));
+        metas.add(new Meta("37", "MP4", "High Quality - 1920x1080"));
+        metas.add(new Meta("22", "MP4", "High Quality - 1280x720"));
+        metas.add(new Meta("18", "MP4", "Medium Quality - 640x360"));
+        metas.add(new Meta("35", "FLV", "High Quality - 854x480"));
+        metas.add(new Meta("34", "FLV", "Medium Quality - 640x360"));
+        metas.add(new Meta("6", "FLV", "Medium Quality - 640x360"));
+        metas.add(new Meta("5", "FLV", "Low Quality - 320x240"));
+        metas.add(new Meta("45", "WEBM", "High Quality - 1280x720"));
+        metas.add(new Meta("44", "WEBM", "Medium Quality - 854x480"));
+        metas.add(new Meta("43", "WEBM", "Low Quality - 640x360"));
+        metas.add(new Meta("36", "3GP", "High Quality - 320x240"));
+        metas.add(new Meta("17", "3GP", "Medium Quality - 176x144"));
+        metas.add(new Meta("13", "3GP", "Low Quality - 176x144"));
+
+        typeMap = new HashMap<>();
+        for (Meta meta : metas) {
+            typeMap.put(meta.num, meta);
+        }
+
+        priorityComparator = new Comparator<Video>() {
+
+            @Override
+            public int compare(Video o1, Video o2) {
+                if (o1 == o2) {
+                    return 0;
+                }
+                if (o1 == null) {
+                    return 1;
+                }
+                if (o2 == null) {
+                    return -1;
+                }
+                int idx1 = metas.indexOf(o1.meta);
+                int idx2 = metas.indexOf(o2.meta);
+                if (idx1 == idx2) {
+                    return 0;
+                }
+                if (idx1 < 0) {
+                    return 1;
+                }
+                if (idx2 < 0) {
+                    return -1;
+                }
+                return idx1 - idx2;
+            }
+        };
     }
 
     private static final Pattern patternStreamMap = Pattern.compile("stream_map\": \"(.*?)?\"");
 
-    private static final Pattern patternItag = Pattern.compile("(?:\\?|&)itag=([0-9]+?)(?:&.*|)$");
+    private static final Pattern patternItag = Pattern
+            .compile("^(?:.*\\?|.*&)?itag=([0-9]+?)(?:&.*)?$");
 
-    private static final Pattern patternSig = Pattern.compile("(?:\\?|&)sig=(.*?)(?:&.*|)$");
+    private static final Pattern patternSig = Pattern.compile("^(?:.*\\?|.*&)?sig=(.*?)(?:&.*)?$");
 
-    private static final Pattern patternUrl = Pattern.compile("url=(.*?)(?:&.*|)$");
+    private static final Pattern patternUrl = Pattern.compile("^(?:.*\\?|.*&)?url=(.*?)(?:&.*)?$");
 
     private static List<Video> getStreamingUrisFromUrl(String url) throws IOException {
         String html = getPageHtml(url);
@@ -313,55 +321,65 @@ public class YoutubeUtils {
         {
             Matcher mStreamMap = patternStreamMap.matcher(html);
             while (mStreamMap.find()) {
-                streamMaps.add(mStreamMap.group());
+                streamMaps.add(mStreamMap.group(1));
             }
         }
 
-        if (streamMaps.size() != 1) {
+        if (streamMaps.isEmpty()) {
             return null;
         }
 
-        Map<String, String> foundItags = new HashMap<>();
-        String urls[] = streamMaps.get(0).split(",");
-        if ((urls != null) && (0 < urls.length)) {
-            for (String ppUrl : urls) {
-                String _url = URLDecoder.decode(ppUrl, "UTF-8");
+        Map<String, String> itagUrls = new HashMap<>();
+        {
+            String items[] = streamMaps.get(0).split(",");
+            if ((items != null) && (0 < items.length)) {
+                for (String item : items) {
+                    String decoded = URLDecoder.decode(item, "UTF-8");
 
-                Matcher mItag = patternItag.matcher(_url);
-                String itag = null;
-                if (mItag.find()) {
-                    itag = mItag.group(1);
-                }
+                    String itag = null;
+                    {
+                        Matcher matcher = patternItag.matcher(decoded);
+                        if (matcher.find()) {
+                            itag = matcher.group(1);
+                        }
+                    }
 
-                Matcher mSig = patternSig.matcher(_url);
-                String sig = null;
-                if (mSig.find()) {
-                    sig = mSig.group(1);
-                }
+                    String sig = null;
+                    {
+                        Matcher matcher = patternSig.matcher(decoded);
+                        if (matcher.find()) {
+                            sig = matcher.group(1);
+                        }
+                    }
 
-                Matcher mUrl = patternUrl.matcher(ppUrl);
-                String _u = null;
-                if (mUrl.find()) {
-                    _u = mUrl.group(1);
-                }
+                    String url = null;
+                    {
+                        Matcher matcher = patternUrl.matcher(item);
+                        if (matcher.find()) {
+                            url = matcher.group(1);
+                        }
+                    }
 
-                if ((itag != null) && (sig != null) && (_u != null)) {
-                    foundItags.put(itag, URLDecoder.decode(_u, "UTF-8") + "&" + "signature=" + sig);
+                    if ((itag != null) && (sig != null) && (url != null)) {
+                        itagUrls.put(itag, URLDecoder.decode(url, "UTF-8") + "&" + "signature="
+                                + sig);
+                    }
                 }
             }
         }
 
-        if (foundItags.size() == 0) {
+        if (itagUrls.size() == 0) {
             return null;
         }
 
         List<Video> videos = new ArrayList<>();
 
-        for (Entry<String, Meta> entry : typeMap.entrySet()) {
-            String format = entry.getKey();
-            Meta meta = entry.getValue();
-            if (foundItags.containsKey(format)) {
-                videos.add(new Video(meta.ext, meta.type, foundItags.get(format)));
+        for (Entry<String, String> entry : itagUrls.entrySet()) {
+            String itag = entry.getKey();
+            String url = entry.getValue();
+            Meta meta = typeMap.get(itag);
+            if (meta != null) {
+                videos.add(new Video(meta, url));
             }
         }
 
@@ -393,11 +411,11 @@ public class YoutubeUtils {
 
 class Meta {
 
-    public String num;
+    public final String num;
 
-    public String type;
+    public final String ext;
 
-    public String ext;
+    public final String type;
 
     Meta(String num, String ext, String type) {
         this.num = num;
@@ -408,15 +426,12 @@ class Meta {
 
 class Video {
 
-    public String ext;
+    public final Meta meta;
 
-    public String type;
+    public final String url;
 
-    public String url;
-
-    Video(String ext, String type, String url) {
-        this.ext = ext;
-        this.type = type;
+    Video(Meta meta, String url) {
+        this.meta = meta;
         this.url = url;
     }
 }

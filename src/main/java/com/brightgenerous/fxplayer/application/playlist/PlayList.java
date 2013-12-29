@@ -849,6 +849,8 @@ public class PlayList implements Initializable {
                         index++;
                         if (items.size() <= index) {
                             if (onNextFromTail()) {
+                                syncControlPlayPause();
+
                                 break player_block;
                             }
                             index = 0;
@@ -857,6 +859,8 @@ public class PlayList implements Initializable {
                         index--;
                         if (index < 0) {
                             if (onBackFromHead()) {
+                                syncControlPlayPause();
+
                                 break player_block;
                             }
                             index = items.size() - 1;

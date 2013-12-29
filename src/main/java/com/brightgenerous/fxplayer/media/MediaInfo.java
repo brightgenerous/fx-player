@@ -282,7 +282,12 @@ public class MediaInfo {
                 artistProperty.setValue("");
                 albumProperty.setValue("");
                 durationProperty.setValue(null);
-                durationTextProperty.setValue("");
+                try {
+                    durationTextProperty.setValue("");
+                } catch (IllegalStateException e) {
+                    // OMAJINAI
+                    // exception message => Not on FX application thread; currentThread = XXXXX
+                }
                 imageProperty.setValue(null);
                 audioCodecProperty.setValue("");
                 videoCodecProperty.setValue("");
