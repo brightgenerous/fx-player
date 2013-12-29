@@ -9,7 +9,7 @@
     stylesheets="com/brightgenerous/fxplayer/application/FxPlayer.css,
         com/brightgenerous/fxplayer/application/playlist/PlayList.css"
     fx:id="rootPane"
-    prefWidth="600" minWidth="320" maxWidth="600" prefHeight="360" minHeight="240" maxHeight="360" 
+    prefWidth="480" minWidth="320" maxWidth="480" prefHeight="360" minHeight="240" maxHeight="360" 
     onKeyTyped="#keyTypedHandle">
   <VBox id="control-pane">
     <HBox id="control-line">
@@ -18,7 +18,7 @@
           prefWidth="100" />
       <Button onAction="#controlFileChooser" id="button-chooser"
           text="%control.file-chooser" ellipsisString="%control.file-chooser.ellipsis" mnemonicParsing="true"
-          prefWidth="90" />
+          prefWidth="100" />
       <StackPane HBox.hgrow="ALWAYS">
         <Button onAction="#controlPathText" text="_u" mnemonicParsing="true" focusTraversable="false"
              maxWidth="1" maxHeight="1" style="-fx-font-size:1;" />
@@ -132,6 +132,9 @@
           <HBox id="control-line" alignment="CENTER" HBox.hgrow="ALWAYS">
             <ToggleButton fx:id="controlPlayPause" id="button-control" onAction="#controlPlayPause"
                 text="%control.play" ellipsisString="%control.play.ellipsis" mnemonicParsing="true"
+                prefWidth="75" />
+            <Button onAction="#controlHead" id="button-control"
+                text="%control.head" ellipsisString="%control.head.ellipsis" mnemonicParsing="true"
                 prefWidth="75" />
             <Button onAction="#controlBack" id="button-control"
                 text="%control.back" ellipsisString="%control.back.ellipsis" mnemonicParsing="true"

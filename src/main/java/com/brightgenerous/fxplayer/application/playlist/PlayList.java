@@ -9,6 +9,8 @@ import java.util.ResourceBundle;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -422,6 +424,9 @@ public class PlayList implements Initializable {
             infoListClone.setRowFactory(infoList.getRowFactory());
             infoListCloneColumnIndex.setCellFactory(infoListColumnIndex.getCellFactory());
             infoListCloneColumnDuration.setCellFactory(infoListColumnDuration.getCellFactory());
+            infoListClone.opacityProperty().bind(
+                    Bindings.when(settings.videoInfoSide.isEqualTo(InfoSide.OVERLAY)).then(0.3)
+                            .otherwise(0.7));
         }
 
         // control times volumes
@@ -712,6 +717,11 @@ public class PlayList implements Initializable {
     }
 
     @FXML
+    protected void controlHead() {
+        controlTime.setValue(0);
+    }
+
+    @FXML
     protected void controlBack() {
         controlPlayerForceWithSkip(Control.BACK, null);
     }
@@ -885,7 +895,7 @@ public class PlayList implements Initializable {
 
                     onMediaPlayerError(e, targetInfo);
 
-                    targetInfo.releaseMedia();
+                    targetInfo.releaseMedia(true);
                     if (0 < skipOnError) {
                         Boolean dir = directionProperty.getValue();
                         if ((dir == null) || dir.booleanValue()) {
@@ -1119,7 +1129,7 @@ public class PlayList implements Initializable {
 
                     onMediaPlayerError(mp.getError(), targetInfo);
 
-                    targetInfo.releaseMedia();
+                    targetInfo.releaseMedia(true);
                     if (0 < skipOnError) {
                         MediaPlayer player = playerProperty.getValue();
                         if ((player == null) || (mp == player)) {
@@ -1267,7 +1277,7 @@ public class PlayList implements Initializable {
             lock.unlock();
         }
         for (MediaInfo del : dels) {
-            del.releaseMedia();
+            del.releaseMedia(false);
         }
     }
 
@@ -1694,6 +1704,11 @@ public class PlayList implements Initializable {
                 }
 
                 @Override
+                public void controlHead() {
+                    PlayList.this.controlHead();
+                }
+
+                @Override
                 public void controlBack() {
                     PlayList.this.controlBack();
                 }
@@ -1831,6 +1846,50 @@ public class PlayList implements Initializable {
                 public void controlWindowExit() {
                     if (!stageCloseService.isRunning()) {
                         stageCloseService.restart();
+                    }
+                }
+
+                private final Pattern pagePattern = Pattern.compile("(.*(?:\\?|&)page=)(\\d*)(.*)");
+
+                @Override
+                public void controlOther(String[] args) {
+                    String arg0 = (0 < args.length) ? args[0] : null;
+                    boolean ytn = "ytn".equals(arg0);
+                    boolean ytb = "ytb".equals(arg0);
+                    if (ytn || ytb) {
+                        String text = pathText.getText().trim();
+                        if (text.indexOf("youtube.com/results") != -1) {
+                            String url = null;
+                            Matcher matcher = pagePattern.matcher(text);
+                            if (matcher.find()) {
+                                String _u1 = matcher.group(1);
+                                String _p = matcher.group(2);
+                                String _u2 = matcher.group(3);
+                                int page = 1;
+                                try {
+                                    page = Integer.parseInt(_p);
+                                    if (ytn) {
+                                        page += 1;
+                                    } else {
+                                        page -= 1;
+                                    }
+                                } catch (NumberFormatException e) {
+                                }
+                                url = _u1 + Math.max(page, 1) + _u2;
+                            } else if (ytn) {
+                                if (text.indexOf('?') < 0) {
+                                    url = text + "?page=2";
+                                } else {
+                                    url = text + "&page=2";
+                                }
+                            }
+                            if ((url != null) && !text.equals(url)) {
+                                pathText.setText(url);
+                                if (!loadRunning()) {
+                                    loadUrlService.restart();
+                                }
+                            }
+                        }
                     }
                 }
             });

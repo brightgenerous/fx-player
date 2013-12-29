@@ -252,6 +252,10 @@ class MediaInfoLoader {
                     ret.add(factory.create(info.getUrl(), desc, metaChangeListener));
                 }
             }
+        } else if (YoutubeUtils.isVideoUrl(str)) {
+            String title = YoutubeUtils.extractTitle(text);
+            String desc = ((title == null) || title.isEmpty()) ? str : title;
+            ret.add(factory.create(str, desc, metaChangeListener));
         } else if (XvideosUtils.isVideoUrl(str)) {
             String title = XvideosUtils.extractTitle(text);
             String desc = ((title == null) || title.isEmpty()) ? str : title;

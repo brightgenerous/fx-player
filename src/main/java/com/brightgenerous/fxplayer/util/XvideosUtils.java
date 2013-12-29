@@ -47,7 +47,11 @@ public class XvideosUtils {
 
         Matcher matcher = patternTitle.matcher(html);
         if (matcher.find()) {
-            return matcher.group(1);
+            String title = matcher.group(1);
+            if (title != null) {
+                title = title.trim();
+            }
+            return title;
         }
         return null;
     }

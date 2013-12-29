@@ -83,12 +83,15 @@ public class Settings {
         } else {
             switch (ret) {
                 case LEFT_TOP:
-                    videoInfoSide.setValue(InfoSide.RIGHT_BOTTOM);
+                    videoInfoSide.setValue(InfoSide.OVERLAY);
                     break;
                 case LEFT_BOTTOM:
                 case RIGHT_TOP:
                 case RIGHT_BOTTOM:
                     videoInfoSide.setValue(InfoSide.LEFT_TOP);
+                    break;
+                case OVERLAY:
+                    videoInfoSide.setValue(InfoSide.RIGHT_BOTTOM);
                     break;
             }
         }
@@ -102,7 +105,7 @@ public class Settings {
             toggleVisibleVideoInfo();
         } else {
             toggleVideoInfoSide();
-            if (side == InfoSide.LEFT_TOP) {
+            if (side == InfoSide.OVERLAY) {
                 toggleVisibleVideoInfo();
             }
         }

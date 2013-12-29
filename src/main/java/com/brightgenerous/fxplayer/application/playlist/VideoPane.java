@@ -20,7 +20,7 @@ import javafx.scene.media.MediaView;
 public class VideoPane extends Pane {
 
     public static enum InfoSide {
-        LEFT_TOP, LEFT_BOTTOM, RIGHT_TOP, RIGHT_BOTTOM;
+        LEFT_TOP, LEFT_BOTTOM, RIGHT_TOP, RIGHT_BOTTOM, OVERLAY;
     }
 
     {
@@ -108,10 +108,19 @@ public class VideoPane extends Pane {
             }
         }
 
-        if (list == null) {
+        InfoSide side = getInfoSide();
+        if (side == null) {
+            side = InfoSide.OVERLAY;
+        }
+
+        if ((list == null) || (side == InfoSide.OVERLAY)) {
             layoutInArea(video, leftInset + ((actualWidth - videoWidth) / 2), topInset
                     + ((actualHeight - videoHeight) / 2), videoWidth, videoHeight, 0, HPos.CENTER,
                     VPos.CENTER);
+            if (list != null) {
+                layoutInArea(list, leftInset, topInset, actualWidth, actualHeight, 0, HPos.CENTER,
+                        VPos.CENTER);
+            }
             return;
         }
 
@@ -127,11 +136,6 @@ public class VideoPane extends Pane {
                 listHeight = heightSpace;
                 horizon = false;
             }
-        }
-
-        InfoSide side = getInfoSide();
-        if (side == null) {
-            side = InfoSide.RIGHT_BOTTOM;
         }
 
         if (side == InfoSide.LEFT_TOP) {

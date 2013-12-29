@@ -42,6 +42,8 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
         void controlPause();
 
+        void controlHead();
+
         void controlBack();
 
         void controlNext();
@@ -81,6 +83,8 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
         void controlWindowIconified();
 
         void controlWindowExit();
+
+        void controlOther(String[] args);
     }
 
     private static final Pattern directoryPattern = Pattern
@@ -109,17 +113,21 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
     private static final Pattern videoInfoSidePattern = Pattern
             .compile("^(?:.*\\s+)?(?:i|inf|info)$");
 
+    // see "save"
     private static final Pattern spectrumsPattern = Pattern
-            .compile("^(?:.*\\s+)?(?:sn|sd|snd|sound)$"); // see "save"
+            .compile("^(?:.*\\s+)?(?:sn|sd|snd|sound)$");
 
     private static final Pattern timesVolumesPattern = Pattern
-            .compile("^(?:.*\\s+)?(?:h|hr|hrizon|hrizontal)$");
+            .compile("^(?:.*\\s+)?(?:hr|hrizon|hrizontal)$");
 
     private static final Pattern playPausePattern = Pattern.compile("^(?:.*\\s+)?(?:p|pp|plps)$");
 
     private static final Pattern playPattern = Pattern.compile("^(?:.*\\s+)?(?:pl|ply|play)$");
 
     private static final Pattern pausePattern = Pattern.compile("^(?:.*\\s+)?(?:ps|pse|pause)$");
+
+    // see "time volume horizontal"
+    private static final Pattern headPattern = Pattern.compile("^(?:.*\\s+)?(?:h|hd|head)$");
 
     private static final Pattern backPattern = Pattern.compile("^(?:.*\\s+)?(?:b|bck|back)$");
 
@@ -160,6 +168,8 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
     private static final Pattern windowExitPattern = Pattern
             .compile("^(?:.*\\s+)?(?:we|wnex|wdex|wndext)$");
+
+    private static final Pattern otherPattern = Pattern.compile("^(?:.*\\s+)?(?:sudo)\\s*(.*)$");
 
     private final StringBuilder inputs = new StringBuilder();
 
@@ -273,6 +283,10 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
                 }
                 if (pausePattern.matcher(in).find()) {
                     adapter.controlPause();
+                    break parse;
+                }
+                if (headPattern.matcher(in).find()) {
+                    adapter.controlHead();
                     break parse;
                 }
                 if (backPattern.matcher(in).find()) {
@@ -389,6 +403,14 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
                     adapter.controlWindowExit();
                     break parse;
                 }
+                {
+                    Matcher matcher = otherPattern.matcher(in);
+                    if (matcher.find()) {
+                        String str = matcher.group(1);
+                        adapter.controlOther(str.split("\\s+"));
+                        break parse;
+                    }
+                }
             }
             inputs.setLength(0);
         } else {
@@ -476,6 +498,10 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
         }
 
         @Override
+        public void controlHead() {
+        }
+
+        @Override
         public void controlBack() {
         }
 
@@ -553,6 +579,10 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
         @Override
         public void controlWindowExit() {
+        }
+
+        @Override
+        public void controlOther(String[] args) {
         }
     }
 }

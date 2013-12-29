@@ -88,7 +88,7 @@ public class YoutubeUtils {
                 return false;
             }
             return path.startsWith("/playlist") || path.startsWith("/channel")
-                    || path.startsWith("/user");
+                    || path.startsWith("/user") || path.startsWith("/results");
         } catch (MalformedURLException e) {
         }
 
@@ -131,7 +131,7 @@ public class YoutubeUtils {
                 }
                 if (title != null) {
                     title = title.replace("&#39;", "'").replace("&quot;", "\"")
-                            .replace("&amp;", "&");
+                            .replace("&amp;", "&").trim();
                 }
             }
             String url = URL_HOST + href;
@@ -150,6 +150,25 @@ public class YoutubeUtils {
         }
 
         return ret;
+    }
+
+    private static final Pattern patternTitle = Pattern
+            .compile("<span[^>]*\\sid\\s*=\\s*\"eow-title\"[^>]*>([^<]*)</span>");
+
+    public static String extractTitle(String html) {
+        if (html == null) {
+            return null;
+        }
+
+        Matcher matcher = patternTitle.matcher(html);
+        if (matcher.find()) {
+            String title = matcher.group(1);
+            if (title != null) {
+                title = title.trim();
+            }
+            return title;
+        }
+        return null;
     }
 
     public static String extractUrlSafely(String url) {

@@ -1,8 +1,11 @@
 package com.brightgenerous.fxplayer.media;
 
 import java.lang.ref.SoftReference;
+import java.util.Comparator;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.binding.StringBinding;
@@ -39,14 +42,35 @@ public class MediaInfo {
                 Change<? extends String, ? extends Object> change);
     }
 
+    public static final Comparator<MediaInfo> SourceUrlComparator = new Comparator<MediaInfo>() {
+
+        @Override
+        public int compare(MediaInfo arg0, MediaInfo arg1) {
+            if (arg0 == arg1) {
+                return 0;
+            }
+            if (arg0 == null) {
+                return 1;
+            }
+            if (arg1 == null) {
+                return -1;
+            }
+            return IMediaSource.UrlComparator.compare(arg0.source, arg1.source);
+        }
+    };
+
     private final ObjectProperty<MediaStatus> mediaStatusProperty = new SimpleObjectProperty<>(
             MediaStatus.MEDIA_YET);
+
+    private final AtomicInteger mediaStatusChanges = new AtomicInteger();
 
     private final BooleanProperty cursorProperty = new SimpleBooleanProperty(this, "cursor");
 
     private final StringProperty titleProperty = new SimpleStringProperty(this, "title", "");
 
     private final StringProperty titleDescProperty = new SimpleStringProperty(this, "titleDesc");
+
+    private final StringProperty descriptionProperty = new SimpleStringProperty(this, "description");
 
     private final StringProperty artistProperty = new SimpleStringProperty(this, "artist", "");
 
@@ -132,15 +156,18 @@ public class MediaInfo {
         {
             ObservableStringValue audioTooltip = Bindings.concat("Title : ").concat(titleProperty)
                     .concat("\nArtist : ").concat(artistProperty).concat("\nAlbum : ")
-                    .concat(albumProperty).concat("\nDuration : ").concat(durationTextProperty);
+                    .concat(albumProperty).concat("\nDuration : ").concat(durationTextProperty)
+                    .concat("\n--\nDescription : ").concat(descriptionProperty);
             ObservableStringValue videoTooltip = Bindings.concat("Video Codec : ")
                     .concat(videoCodecProperty).concat("\nAudio Codec : ")
                     .concat(audioCodecProperty).concat("\nWidth : ").concat(widthProperty)
                     .concat("\nHeight : ").concat(heightProperty).concat("\nFramerate : ")
                     .concat(framerateProperty.asString("%.2f")).concat("\nDuration : ")
-                    .concat(durationTextProperty);
+                    .concat(durationTextProperty).concat("\n--\nDescription : ")
+                    .concat(descriptionProperty);
             ObservableStringValue otherwiseTooltip = Bindings.concat(titleDescProperty)
-                    .concat("\nDuration : ").concat(durationTextProperty);
+                    .concat("\nDuration : ").concat(durationTextProperty)
+                    .concat("\n--\nDescription : ").concat(descriptionProperty);
 
             ObservableStringValue tooltip = Bindings
                     .when(visibleVideoInfo)
@@ -171,6 +198,18 @@ public class MediaInfo {
                                     .otherwise(otherwiseInfo));
             infoProperty.bind(Bindings.when(visibleTooltipProperty).then(info).otherwise(""));
         }
+
+        {
+            // OMAJINAI
+            mediaStatusProperty.addListener(new ChangeListener<MediaStatus>() {
+
+                @Override
+                public void changed(ObservableValue<? extends MediaStatus> observable,
+                        MediaStatus oldValue, MediaStatus newValue) {
+                    mediaStatusChanges.incrementAndGet();
+                }
+            });
+        }
     }
 
     private volatile Media media;
@@ -192,6 +231,7 @@ public class MediaInfo {
         this.source = source;
         this.callback = callback;
         titleDescProperty.set(source.getDescription());
+        descriptionProperty.set(source.getDescription());
         this.mediaCache = mediaCache;
     }
 
@@ -216,18 +256,19 @@ public class MediaInfo {
                 return media;
             }
             tryLoaded = false;
-            media = null;
+            //media = null;
             source.requestResolve(true);
         }
         return null;
     }
 
-    public Media releaseMedia() {
+    public Media releaseMedia(boolean forceResolve) {
         Media ret;
         synchronized (lock) {
             ret = media;
             tryLoaded = false;
             media = null;
+            source.requestResolve(forceResolve);
             if (ret != null) {
                 // unbind
                 if (changeListener != null) {
@@ -368,7 +409,26 @@ public class MediaInfo {
         setIfUpdate(media.getMetadata(), "height", heightProperty);
         setIfUpdate(media.getMetadata(), "framerate", framerateProperty);
 
-        mediaStatusProperty.setValue(MediaStatus.MEDIA_SUCCESS);
+        try {
+            // if this thread is not main thread,
+            //   in rare cases, thrown IllegalStateException in the next step.
+            mediaStatusProperty.setValue(MediaStatus.MEDIA_SUCCESS);
+        } catch (IllegalStateException e) {
+            // OMAJINAI
+            // exception message => Not on FX application thread; currentThread = XXXXX
+            Platform.runLater(new Runnable() {
+
+                int changes = mediaStatusChanges.get();
+
+                @Override
+                public void run() {
+                    // too late ?
+                    if (changes == mediaStatusChanges.get()) {
+                        mediaStatusProperty.setValue(MediaStatus.MEDIA_SUCCESS);
+                    }
+                }
+            });
+        }
     }
 
     private static <T> T setIfUpdate(ObservableMap<? extends String, ? extends Object> map,
@@ -456,28 +516,4 @@ public class MediaInfo {
     public ReadOnlyProperty<String> tooltipProperty() {
         return tooltipProperty;
     }
-    /*
-        @Override
-        public int hashCode() {
-            if (source == null) {
-                return -1;
-            }
-            return source.hashCode();
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (!(obj instanceof MediaInfo)) {
-                return false;
-            }
-            MediaInfo arg = (MediaInfo) obj;
-            if (source == arg.source) {
-                return true;
-            }
-            if ((source == null) || (arg.source == null)) {
-                return false;
-            }
-            return source.equals(arg.source);
-        }
-    */
 }
