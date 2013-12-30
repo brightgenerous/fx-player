@@ -15,6 +15,7 @@ import java.util.ResourceBundle;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.SceneBuilder;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -54,7 +55,10 @@ public class FxUtils {
 
     public static void scene(Stage stage, Class<?> clazz) {
         LoadData<?> loadData = load(clazz, stage);
-        stage.setScene(SceneBuilder.create().root(loadData.getRoot()).build());
+        Parent root = loadData.getRoot();
+        Scene scene = SceneBuilder.create().root(root).build();
+        scene.getStylesheets().addAll(root.getStylesheets());
+        stage.setScene(scene);
     }
 
     public static <T> LoadData<T> load(Class<? extends T> clazz, Stage stage) {

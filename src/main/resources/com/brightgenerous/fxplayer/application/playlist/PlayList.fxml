@@ -4,7 +4,9 @@
 <?import javafx.scene.image.*?>
 <?import javafx.scene.layout.*?>
 <?import com.brightgenerous.fxplayer.application.playlist.InfoListPane?>
+<?import com.brightgenerous.fxplayer.application.playlist.TabWrapPane?>
 <?import com.brightgenerous.fxplayer.application.playlist.VideoPane?>
+<?import javafx.scene.control.ToggleButton?>
 <VBox xmlns:fx="http://javafx.com/fxml"
     stylesheets="com/brightgenerous/fxplayer/application/FxPlayer.css,
         com/brightgenerous/fxplayer/application/playlist/PlayList.css"
@@ -29,82 +31,86 @@
       <Button onAction="#controlLogSnap" />
     </HBox>
   </VBox>
-  <TabPane VBox.vgrow="ALWAYS">
-    <tabs>
-      <Tab text="%tab.list" closable="false">
-        <content>
-          <InfoListPane>
-            <infoList>
-              <TableView fx:id="infoList" tableMenuButtonVisible="true" opacity="0.95">
-                <columns>
-                  <TableColumn fx:id="infoListColumnIndex" text="%media.index"
-                      sortable="false" prefWidth="40">
-                    <cellValueFactory><PropertyValueFactory property="mediaStatus" /></cellValueFactory>
-                  </TableColumn>
-                  <TableColumn text="%media.titleDesc"
-                      sortable="false" prefWidth="275">
-                    <cellValueFactory><PropertyValueFactory property="titleDesc" /></cellValueFactory>
-                  </TableColumn>
-                  <TableColumn fx:id="infoListColumnDuration" text="%media.duration"
-                      sortable="false" prefWidth="60" minWidth="50">
-                    <cellValueFactory><PropertyValueFactory property="duration" /></cellValueFactory>
-                  </TableColumn>
-                  <TableColumn text="%media.artist"
-                      sortable="false" prefWidth="170">
-                    <cellValueFactory><PropertyValueFactory property="artist" /></cellValueFactory>
-                  </TableColumn>
-                  <TableColumn text="%media.album"
-                      sortable="false" prefWidth="170">
-                    <cellValueFactory><PropertyValueFactory property="album" /></cellValueFactory>
-                  </TableColumn>
-                  <TableColumn text="%media.info"
-                      sortable="false" prefWidth="400">
-                    <cellValueFactory><PropertyValueFactory property="info" /></cellValueFactory>
-                  </TableColumn>
-                  <TableColumn text="%media.description"
-                      sortable="false" prefWidth="400">
-                    <cellValueFactory><PropertyValueFactory property="description" /></cellValueFactory>
-                  </TableColumn>
-                </columns>
-              </TableView>
-            </infoList>
-          </InfoListPane>
-        </content>
-      </Tab>
-      <Tab fx:id="videoTab" text="%tab.video" closable="false">
-        <content>
-          <VideoPane fx:id="videoPane">
-            <infoList>
-              <TableView fx:id="infoListClone" opacity="0.7">
-                <columns>
-                  <TableColumn fx:id="infoListCloneColumnIndex" text="%media.index"
-                      sortable="false" prefWidth="40">
-                    <cellValueFactory><PropertyValueFactory property="mediaStatus" /></cellValueFactory>
-                  </TableColumn>
-                  <TableColumn text="%media.titleDesc"
-                      sortable="false" prefWidth="275">
-                    <cellValueFactory><PropertyValueFactory property="titleDesc" /></cellValueFactory>
-                  </TableColumn>
-                  <TableColumn fx:id="infoListCloneColumnDuration" text="%media.duration"
-                      sortable="false" prefWidth="60" minWidth="50">
-                    <cellValueFactory><PropertyValueFactory property="duration" /></cellValueFactory>
-                  </TableColumn>
-                  <TableColumn text="%media.info"
-                      sortable="false" prefWidth="400">
-                    <cellValueFactory><PropertyValueFactory property="info" /></cellValueFactory>
-                  </TableColumn>
-                  <TableColumn text="%media.description"
-                      sortable="false" prefWidth="400">
-                    <cellValueFactory><PropertyValueFactory property="description" /></cellValueFactory>
-                  </TableColumn>
-                </columns>
-              </TableView>
-            </infoList>
-          </VideoPane>
-        </content>
-      </Tab>
-    </tabs>
-  </TabPane>
+  <TabWrapPane fx:id="tabWrapPane" VBox.vgrow="ALWAYS">
+    <content>
+      <TabPane>
+        <tabs>
+          <Tab text="%tab.list" closable="false">
+            <content>
+              <InfoListPane>
+                <infoList>
+                  <TableView fx:id="infoList" tableMenuButtonVisible="true" opacity="0.95">
+                    <columns>
+                      <TableColumn fx:id="infoListColumnIndex" text="%media.index"
+                          sortable="false" prefWidth="40">
+                        <cellValueFactory><PropertyValueFactory property="mediaStatus" /></cellValueFactory>
+                      </TableColumn>
+                      <TableColumn text="%media.titleDesc"
+                          sortable="false" prefWidth="260">
+                        <cellValueFactory><PropertyValueFactory property="titleDesc" /></cellValueFactory>
+                      </TableColumn>
+                      <TableColumn fx:id="infoListColumnDuration" text="%media.duration"
+                          sortable="false" prefWidth="60" minWidth="50">
+                        <cellValueFactory><PropertyValueFactory property="duration" /></cellValueFactory>
+                      </TableColumn>
+                      <TableColumn text="%media.artist"
+                          sortable="false" prefWidth="170">
+                        <cellValueFactory><PropertyValueFactory property="artist" /></cellValueFactory>
+                      </TableColumn>
+                      <TableColumn text="%media.album"
+                          sortable="false" prefWidth="170">
+                        <cellValueFactory><PropertyValueFactory property="album" /></cellValueFactory>
+                      </TableColumn>
+                      <TableColumn text="%media.info"
+                          sortable="false" prefWidth="400">
+                        <cellValueFactory><PropertyValueFactory property="info" /></cellValueFactory>
+                      </TableColumn>
+                      <TableColumn text="%media.description"
+                          sortable="false" prefWidth="400">
+                        <cellValueFactory><PropertyValueFactory property="description" /></cellValueFactory>
+                      </TableColumn>
+                    </columns>
+                  </TableView>
+                </infoList>
+              </InfoListPane>
+            </content>
+          </Tab>
+          <Tab fx:id="videoTab" text="%tab.video" closable="false">
+            <content>
+              <VideoPane fx:id="videoPane">
+                <infoList>
+                  <TableView fx:id="infoListClone" opacity="0.7">
+                    <columns>
+                      <TableColumn fx:id="infoListCloneColumnIndex" text="%media.index"
+                          sortable="false" prefWidth="40">
+                        <cellValueFactory><PropertyValueFactory property="mediaStatus" /></cellValueFactory>
+                      </TableColumn>
+                      <TableColumn text="%media.titleDesc"
+                          sortable="false" prefWidth="260">
+                        <cellValueFactory><PropertyValueFactory property="titleDesc" /></cellValueFactory>
+                      </TableColumn>
+                      <TableColumn fx:id="infoListCloneColumnDuration" text="%media.duration"
+                          sortable="false" prefWidth="60" minWidth="50">
+                        <cellValueFactory><PropertyValueFactory property="duration" /></cellValueFactory>
+                      </TableColumn>
+                      <TableColumn text="%media.info"
+                          sortable="false" prefWidth="400">
+                        <cellValueFactory><PropertyValueFactory property="info" /></cellValueFactory>
+                      </TableColumn>
+                      <TableColumn text="%media.description"
+                          sortable="false" prefWidth="400">
+                        <cellValueFactory><PropertyValueFactory property="description" /></cellValueFactory>
+                      </TableColumn>
+                    </columns>
+                  </TableView>
+                </infoList>
+              </VideoPane>
+            </content>
+          </Tab>
+        </tabs>
+      </TabPane>
+    </content>
+  </TabWrapPane>
   <HBox id="control-pane">
     <VBox HBox.hgrow="ALWAYS">
       <Region VBox.vgrow="ALWAYS" />
@@ -133,7 +139,8 @@
             <ToggleButton fx:id="controlPlayPause" id="button-control" onAction="#controlPlayPause"
                 text="%control.play" ellipsisString="%control.play.ellipsis" mnemonicParsing="true"
                 prefWidth="75" />
-            <Button onAction="#controlHead" id="button-control"
+            <Label fx:id="repeatText" id="repeat-text" text="%control.repeat.none" minWidth="25" alignment="CENTER_RIGHT" />
+            <Button onAction="#controlHead"
                 text="%control.head" ellipsisString="%control.head.ellipsis" mnemonicParsing="true"
                 prefWidth="75" />
             <Button onAction="#controlBack" id="button-control"
@@ -143,12 +150,15 @@
                 text="%control.next" ellipsisString="%control.next.ellipsis" mnemonicParsing="true"
                 prefWidth="75" />
             <Region minWidth="5" maxWidth="5" />
+            <ToggleButton fx:id="controlMute" text="%control.mute.off" mnemonicParsing="true"
+                minWidth="45" maxWidth="45" onAction="#controlMute" />
             <Slider fx:id="controlVolume" min="0.0" max="1.0" value="0.5" minWidth="80" maxWidth="200" />
-            <Label fx:id="volumeText" id="volume-text" minWidth="60" alignment="CENTER_RIGHT" />
+            <Label fx:id="volumeText" id="volume-text" minWidth="25" alignment="CENTER_RIGHT" />
           </HBox>
         </HBox>
       </GridPane>
     </VBox>
+    <Region minWidth="5" maxWidth="5" />
     <ImageView fx:id="imageView" id="meta-image" fitWidth="100" preserveRatio="true" smooth="true" />
   </HBox>
 </VBox>

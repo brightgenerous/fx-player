@@ -32,6 +32,18 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
         void controlVideoInfoSide();
 
+        void controlVideoInfoWidth(double width);
+
+        void controlVideoInfoWidthPlus(double width);
+
+        void controlVideoInfoWidthMinus(double width);
+
+        void controlVideoInfoHeight(double height);
+
+        void controlVideoInfoHeightPlus(double height);
+
+        void controlVideoInfoHeightMinus(double height);
+
         void controlSpectrums();
 
         void controlTimesVolumes();
@@ -41,6 +53,8 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
         void controlPlay();
 
         void controlPause();
+
+        void controlRepeat(NextMode next);
 
         void controlHead();
 
@@ -53,6 +67,8 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
         void controlTimePlus(long seconds);
 
         void controlTimeMinus(long seconds);
+
+        void controlMute();
 
         void controlVolume(int volume);
 
@@ -113,6 +129,12 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
     private static final Pattern videoInfoSidePattern = Pattern
             .compile("^(?:.*\\s+)?(?:i|inf|info)$");
 
+    private static final Pattern videoInfoWidthPattern = Pattern
+            .compile("^(?:.*\\s+)?(?:iw|infw|infowidth)\\s*(\\+|\\-|)\\s*(\\d*)$");
+
+    private static final Pattern videoInfoHeightPattern = Pattern
+            .compile("^(?:.*\\s+)?(?:ih|infh|infoheight)\\s*(\\+|\\-|)\\s*(\\d*)$");
+
     // see "save"
     private static final Pattern spectrumsPattern = Pattern
             .compile("^(?:.*\\s+)?(?:sn|sd|snd|sound)$");
@@ -126,6 +148,9 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
     private static final Pattern pausePattern = Pattern.compile("^(?:.*\\s+)?(?:ps|pse|pause)$");
 
+    private static final Pattern repeatPattern = Pattern
+            .compile("^(?:.*\\s+)?(?:r|rp|repeat)\\s*(none|same|other|)$");
+
     // see "time volume horizontal"
     private static final Pattern headPattern = Pattern.compile("^(?:.*\\s+)?(?:h|hd|head)$");
 
@@ -134,7 +159,9 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
     private static final Pattern nextPattern = Pattern.compile("^(?:.*\\s+)?(?:n|nxt|next)$");
 
     private static final Pattern timePattern = Pattern
-            .compile("^(?:.*\\s+)?(?:t|tm|time)\\s*(\\+|\\-|)\\s*(?:(\\d*)\\s*(?:m|:)?\\s*(\\d*)\\s*s?)$");
+            .compile("^(?:.*\\s+)?(?:t|tm|time)\\s*(\\+|\\-|)\\s*(?:(\\d*)\\s*(?::)?\\s*(\\d*))$");
+
+    private static final Pattern mutePattern = Pattern.compile("^(?:.*\\s+)?(?:m|mt|mute)$");
 
     private static final Pattern volPattern = Pattern
             .compile("^(?:.*\\s+)?(?:v|vl|volume)\\s*(\\+|\\-|)\\s*(\\d*)$");
@@ -265,6 +292,40 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
                     adapter.controlVideoInfoSide();
                     break parse;
                 }
+                {
+                    Matcher matcher = videoInfoWidthPattern.matcher(in);
+                    if (matcher.find()) {
+                        String mg1 = matcher.group(1);
+                        String mg2 = matcher.group(2);
+                        int value = mg2.isEmpty() ? 0 : ((9 < mg2.length()) ? Integer.MAX_VALUE
+                                : Integer.parseInt(mg2));
+                        if (mg1.equals("+")) {
+                            adapter.controlVideoInfoWidthPlus(value);
+                        } else if (mg1.equals("-")) {
+                            adapter.controlVideoInfoWidthMinus(value);
+                        } else {
+                            adapter.controlVideoInfoWidth(value);
+                        }
+                        break parse;
+                    }
+                }
+                {
+                    Matcher matcher = videoInfoHeightPattern.matcher(in);
+                    if (matcher.find()) {
+                        String mg1 = matcher.group(1);
+                        String mg2 = matcher.group(2);
+                        int value = mg2.isEmpty() ? 0 : ((9 < mg2.length()) ? Integer.MAX_VALUE
+                                : Integer.parseInt(mg2));
+                        if (mg1.equals("+")) {
+                            adapter.controlVideoInfoHeightPlus(value);
+                        } else if (mg1.equals("-")) {
+                            adapter.controlVideoInfoHeightMinus(value);
+                        } else {
+                            adapter.controlVideoInfoHeight(value);
+                        }
+                        break parse;
+                    }
+                }
                 if (spectrumsPattern.matcher(in).find()) {
                     adapter.controlSpectrums();
                     break parse;
@@ -284,6 +345,22 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
                 if (pausePattern.matcher(in).find()) {
                     adapter.controlPause();
                     break parse;
+                }
+                {
+                    Matcher matcher = repeatPattern.matcher(in);
+                    if (matcher.find()) {
+                        String mg1 = matcher.group(1);
+                        NextMode next = null;
+                        if (mg1.startsWith("n")) {
+                            next = NextMode.NONE;
+                        } else if (mg1.startsWith("s")) {
+                            next = NextMode.SAME;
+                        } else if (mg1.startsWith("o")) {
+                            next = NextMode.OTHER;
+                        }
+                        adapter.controlRepeat(next);
+                        break parse;
+                    }
                 }
                 if (headPattern.matcher(in).find()) {
                     adapter.controlHead();
@@ -332,6 +409,10 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
                         }
                         break parse;
                     }
+                }
+                if (mutePattern.matcher(in).find()) {
+                    adapter.controlMute();
+                    break parse;
                 }
                 {
                     Matcher matcher = volPattern.matcher(in);
@@ -478,6 +559,30 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
         }
 
         @Override
+        public void controlVideoInfoWidth(double width) {
+        }
+
+        @Override
+        public void controlVideoInfoWidthPlus(double width) {
+        }
+
+        @Override
+        public void controlVideoInfoWidthMinus(double width) {
+        }
+
+        @Override
+        public void controlVideoInfoHeight(double height) {
+        }
+
+        @Override
+        public void controlVideoInfoHeightPlus(double height) {
+        }
+
+        @Override
+        public void controlVideoInfoHeightMinus(double height) {
+        }
+
+        @Override
         public void controlSpectrums() {
         }
 
@@ -495,6 +600,10 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
         @Override
         public void controlPause() {
+        }
+
+        @Override
+        public void controlRepeat(NextMode next) {
         }
 
         @Override
@@ -519,6 +628,10 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
         @Override
         public void controlTimeMinus(long seconds) {
+        }
+
+        @Override
+        public void controlMute() {
         }
 
         @Override

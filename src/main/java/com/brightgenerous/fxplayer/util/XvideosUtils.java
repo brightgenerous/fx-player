@@ -30,7 +30,7 @@ public class XvideosUtils {
             if (host == null) {
                 return false;
             }
-            if (host.indexOf("xvideos.com") < 0) {
+            if (!host.contains("xvideos.com")) {
                 return false;
             }
             return true;

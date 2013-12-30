@@ -20,7 +20,7 @@ class LabelUtils {
     }
 
     public static String toVolume(double vol) {
-        return String.format("<|))%3d", Integer.valueOf((int) (vol * 100)));
+        return String.format("%3d", Integer.valueOf((int) (vol * 100)));
     }
 
     public static String toTabLabel(String str) {

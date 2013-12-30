@@ -130,7 +130,7 @@ public class VideoPane extends Pane {
         {
             double widthSpace = actualWidth - videoWidth;
             double heightSpace = actualHeight - videoHeight;
-            if (heightSpace <= widthSpace) {
+            if ((heightSpace / actualHeight) <= (widthSpace / actualWidth)) {
                 listWidth = widthSpace;
             } else {
                 listHeight = heightSpace;
@@ -138,49 +138,52 @@ public class VideoPane extends Pane {
             }
         }
 
+        double horizontalTopInset = (actualHeight - videoHeight) / 2;
+        double verticalLeftInset = (actualWidth - videoWidth) / 2;
+
         if (side == InfoSide.LEFT_TOP) {
             if (horizon) {
-                layoutInArea(video, leftInset + listWidth, topInset, videoWidth, videoHeight, 0,
-                        HPos.CENTER, VPos.CENTER);
+                layoutInArea(video, leftInset + listWidth, topInset + horizontalTopInset,
+                        videoWidth, videoHeight, 0, HPos.CENTER, VPos.CENTER);
             } else {
-                layoutInArea(video, leftInset, topInset + listHeight, videoWidth, videoHeight, 0,
-                        HPos.CENTER, VPos.CENTER);
+                layoutInArea(video, leftInset + verticalLeftInset, topInset + listHeight,
+                        videoWidth, videoHeight, 0, HPos.CENTER, VPos.CENTER);
             }
-
             layoutInArea(list, leftInset, topInset, listWidth, listHeight, 0, HPos.CENTER,
                     VPos.CENTER);
         } else if (side == InfoSide.RIGHT_BOTTOM) {
-            layoutInArea(video, leftInset, topInset, videoWidth, videoHeight, 0, HPos.CENTER,
-                    VPos.CENTER);
-
             if (horizon) {
+                layoutInArea(video, leftInset, topInset + horizontalTopInset, videoWidth,
+                        videoHeight, 0, HPos.CENTER, VPos.CENTER);
                 layoutInArea(list, leftInset + videoWidth, topInset, listWidth, listHeight, 0,
                         HPos.CENTER, VPos.CENTER);
             } else {
+                layoutInArea(video, leftInset + verticalLeftInset, topInset, videoWidth,
+                        videoHeight, 0, HPos.CENTER, VPos.CENTER);
                 layoutInArea(list, leftInset, topInset + videoHeight, listWidth, listHeight, 0,
                         HPos.CENTER, VPos.CENTER);
             }
         } else if (side == InfoSide.LEFT_BOTTOM) {
             if (horizon) {
-                layoutInArea(video, leftInset + listWidth, topInset, videoWidth, videoHeight, 0,
-                        HPos.CENTER, VPos.CENTER);
+                layoutInArea(video, leftInset + listWidth, topInset + horizontalTopInset,
+                        videoWidth, videoHeight, 0, HPos.CENTER, VPos.CENTER);
                 layoutInArea(list, leftInset, topInset, listWidth, listHeight, 0, HPos.CENTER,
                         VPos.CENTER);
             } else {
-                layoutInArea(video, leftInset, topInset, videoWidth, videoHeight, 0, HPos.CENTER,
-                        VPos.CENTER);
+                layoutInArea(video, leftInset + verticalLeftInset, topInset, videoWidth,
+                        videoHeight, 0, HPos.CENTER, VPos.CENTER);
                 layoutInArea(list, leftInset, topInset + videoHeight, listWidth, listHeight, 0,
                         HPos.CENTER, VPos.CENTER);
             }
         } else if (side == InfoSide.RIGHT_TOP) {
             if (horizon) {
-                layoutInArea(video, leftInset, topInset, videoWidth, videoHeight, 0, HPos.CENTER,
-                        VPos.CENTER);
+                layoutInArea(video, leftInset, topInset + horizontalTopInset, videoWidth,
+                        videoHeight, 0, HPos.CENTER, VPos.CENTER);
                 layoutInArea(list, leftInset + videoWidth, topInset, listWidth, listHeight, 0,
                         HPos.CENTER, VPos.CENTER);
             } else {
-                layoutInArea(video, leftInset, topInset + listHeight, videoWidth, videoHeight, 0,
-                        HPos.CENTER, VPos.CENTER);
+                layoutInArea(video, leftInset + verticalLeftInset, topInset + listHeight,
+                        videoWidth, videoHeight, 0, HPos.CENTER, VPos.CENTER);
                 layoutInArea(list, leftInset, topInset, listWidth, listHeight, 0, HPos.CENTER,
                         VPos.CENTER);
             }

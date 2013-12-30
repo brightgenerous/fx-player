@@ -14,7 +14,8 @@ import java.util.regex.Pattern;
 
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
-import javafx.beans.binding.DoubleBinding;
+import javafx.beans.binding.BooleanBinding;
+import javafx.beans.binding.NumberBinding;
 import javafx.beans.property.LongProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.Property;
@@ -107,6 +108,11 @@ public class PlayList implements Initializable {
 
     private LoggStage logStage;
 
+    // tab
+
+    @FXML
+    private TabWrapPane tabWrapPane;
+
     // tab - info
 
     @FXML
@@ -123,9 +129,9 @@ public class PlayList implements Initializable {
     @FXML
     private Tab videoTab;
 
-    private DoubleBinding mediaViewWidth;
+    private NumberBinding mediaViewWidth;
 
-    private DoubleBinding mediaViewHeight;
+    private NumberBinding mediaViewHeight;
 
     @FXML
     private VideoPane videoPane;
@@ -150,15 +156,18 @@ public class PlayList implements Initializable {
     @FXML
     private Pane volumesPane;
 
-    // control - button
+    // control - play
 
     @FXML
     private ToggleButton controlPlayPause;
 
+    @FXML
+    private Label repeatText;
+
     // control - time
 
     @FXML
-    private Slider controlTime;
+    private Slider controlTime; // 0.0 - ...  milliseconds
 
     @FXML
     private ProgressBar controlTimeCurrent;
@@ -172,7 +181,10 @@ public class PlayList implements Initializable {
     // control - volume
 
     @FXML
-    private Slider controlVolume;
+    private Slider controlVolume; // 0.0 - 1.0
+
+    @FXML
+    private ToggleButton controlMute;
 
     @FXML
     private Label volumeText;
@@ -213,11 +225,11 @@ public class PlayList implements Initializable {
 
     private final ObjectProperty<MediaPlayer> playerProperty = new SimpleObjectProperty<>();
 
-    private final ObjectProperty<Boolean> directionProperty = new SimpleObjectProperty<>();
-
     private final LongProperty playerCreateTimeProperty = new SimpleLongProperty(Long.MIN_VALUE);
 
     private final ReadWriteLock infoListLock = new ReentrantReadWriteLock();
+
+    private boolean logging;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -228,6 +240,13 @@ public class PlayList implements Initializable {
 
         // tab
         {
+            videoTab.getTabPane().tabMinHeightProperty().bind(settings.tabHeight);
+            videoTab.getTabPane().tabMaxHeightProperty().bind(settings.tabHeight);
+
+            tabWrapPane.tabHeightProperty().bind(settings.tabSpaceHeight);
+            tabWrapPane.visibleTabProperty().bind(settings.visibleTab);
+
+            videoTab.getTabPane().sideProperty().bind(settings.tabSide);
             videoTab.getTabPane().addEventHandler(MouseEvent.MOUSE_CLICKED,
                     new EventHandler<MouseEvent>() {
 
@@ -248,7 +267,10 @@ public class PlayList implements Initializable {
                             }
                         }
                     });
+        }
 
+        // video
+        {
             settings.visibleVideoInfo.addListener(new ChangeListener<Boolean>() {
 
                 @Override
@@ -269,23 +291,29 @@ public class PlayList implements Initializable {
                     videoPane.setInfoSide(newValue);
                 }
             });
-        }
 
-        // video
-        {
+            BooleanBinding infoHashSize = settings.visibleVideoInfo.and(settings.videoInfoSide
+                    .isNotEqualTo(InfoSide.OVERLAY));
+            NumberBinding videoInfoMinWidth = Bindings
+                    .when(infoHashSize)
+                    .then(Bindings.min(settings.videoInfoMinWidth, videoTab.getTabPane()
+                            .widthProperty().divide(2))).otherwise(0);
+            NumberBinding videoInfoMinHeight = Bindings
+                    .when(infoHashSize)
+                    .then(Bindings.min(settings.videoInfoMinHeight, videoTab.getTabPane()
+                            .heightProperty().divide(2))).otherwise(0);
             mediaViewWidth = videoTab.getTabPane().widthProperty()
-                    .subtract(settings.tabMarginWidth);
+                    .subtract(settings.tabMarginWidth).subtract(videoInfoMinWidth);
             mediaViewHeight = videoTab.getTabPane().heightProperty()
-                    .subtract(settings.tabMarginHeight);
+                    .subtract(settings.tabMarginHeight).subtract(videoInfoMinHeight);
 
-            videoTab.getTabPane().sideProperty().bind(settings.tabSide);
             timeText.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
 
                 @Override
                 public void handle(MouseEvent event) {
                     int count = event.getClickCount();
                     if ((1 < count) && ((count % 2) == 0)) {
-                        settings.toggleTabSide();
+                        settings.toggleVislbleTabSide();
                     }
                 }
             });
@@ -429,6 +457,38 @@ public class PlayList implements Initializable {
                             .otherwise(0.7));
         }
 
+        // control play
+        {
+            settings.nextMode.addListener(new ChangeListener<NextMode>() {
+
+                @Override
+                public void changed(ObservableValue<? extends NextMode> observable,
+                        NextMode oldValue, NextMode newValue) {
+                    switch (newValue) {
+                        case NONE:
+                            repeatText.setText(bundle.getString("control.repeat.none"));
+                            break;
+                        case SAME:
+                            repeatText.setText(bundle.getString("control.repeat.same"));
+                            break;
+                        case OTHER:
+                            repeatText.setText(bundle.getString("control.repeat.other"));
+                            break;
+                    }
+                }
+            });
+            repeatText.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+
+                @Override
+                public void handle(MouseEvent event) {
+                    int count = event.getClickCount();
+                    if ((1 < count) && ((count % 2) == 0)) {
+                        settings.toggleNextMode();
+                    }
+                }
+            });
+        }
+
         // control times volumes
         {
             settings.timesVolumesHorizontal.addListener(new ChangeListener<Boolean>() {
@@ -486,8 +546,8 @@ public class PlayList implements Initializable {
 
         // control volume
         {
-            controlVolume.setValue(Settings.DEFAULT_VOLUME); // set before add listener, for avoid log.
-            controlVolume.valueProperty().addListener(new ChangeListener<Number>() {
+            controlVolume.valueProperty().bindBidirectional(settings.volume);
+            settings.volume.addListener(new ChangeListener<Number>() {
 
                 @Override
                 public void changed(ObservableValue<? extends Number> observable, Number oldValue,
@@ -521,6 +581,38 @@ public class PlayList implements Initializable {
                     }
                 }
             });
+
+            controlMute.textProperty().bind(
+                    Bindings.when(controlMute.selectedProperty())
+                            .then(bundle.getString("control.mute.on"))
+                            .otherwise(bundle.getString("control.mute.off")));
+            controlMute.ellipsisStringProperty().bind(
+                    Bindings.when(controlMute.selectedProperty())
+                            .then(bundle.getString("control.mute.on.ellipsis"))
+                            .otherwise(bundle.getString("control.mute.off.ellipsis")));
+            settings.mute.addListener(new ChangeListener<Boolean>() {
+
+                @Override
+                public void changed(ObservableValue<? extends Boolean> observable,
+                        Boolean oldValue, Boolean newValue) {
+                    MediaPlayer player = playerProperty.get();
+                    if (newValue.booleanValue()) {
+                        if ((player != null) && !player.isMute()) {
+                            player.setMute(true);
+                        }
+                        controlMute.setSelected(true);
+
+                        log("Control Mute : on ");
+                    } else {
+                        if ((player != null) && player.isMute()) {
+                            player.setMute(false);
+                        }
+                        controlMute.setSelected(false);
+
+                        log("Control Mute : off ");
+                    }
+                }
+            });
         }
 
         // image
@@ -529,11 +621,11 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void handle(MouseEvent event) {
-                    if (event.getClickCount() <= 1) {
-                        return;
-                    }
-                    if (!saveImageService.isRunning()) {
-                        saveImageService.restart();
+                    int count = event.getClickCount();
+                    if ((1 < count) && ((count % 2) == 0)) {
+                        if (!saveImageService.isRunning()) {
+                            saveImageService.restart();
+                        }
                     }
                 }
             });
@@ -644,18 +736,11 @@ public class PlayList implements Initializable {
 
         // init
         {
-            settings.visibleSpectrums.set(true);
-            settings.visibleSpectrums.set(false);
-            settings.visibleVideoInfo.set(true);
-            settings.visibleVideoInfo.set(false);
-            settings.videoInfoSide.set(null);
-            settings.videoInfoSide.set(InfoSide.RIGHT_BOTTOM);
-            settings.timesVolumesHorizontal.set(true);
-            settings.timesVolumesHorizontal.set(false);
+            settings.reset();
             timeText.setText(LabelUtils.milliSecsToTime(0, 0, 0));
-            volumeText.setText(LabelUtils.toVolume(Settings.DEFAULT_VOLUME));
         }
 
+        logging = true;
         log("Wake up !!");
     }
 
@@ -698,21 +783,26 @@ public class PlayList implements Initializable {
     }
 
     @FXML
+    protected void controlMute() {
+        settings.mute.set(!settings.mute.get());
+    }
+
+    @FXML
     protected void controlPlayPause() {
         if (!controlPlayerForceWithSkip(Control.PLAY_PAUSE, null)) {
-            syncControlPlayPause();
+            //syncControlPlayPause();
         }
     }
 
     protected void controlPlay() {
         if (!controlPlayerSoft(Control.PLAY, null)) {
-            syncControlPlayPause();
+            //syncControlPlayPause();
         }
     }
 
     protected void controlPause() {
         if (!controlPlayerSoft(Control.PAUSE, null)) {
-            syncControlPlayPause();
+            //syncControlPlayPause();
         }
     }
 
@@ -830,9 +920,6 @@ public class PlayList implements Initializable {
             {
                 List<MediaInfo> items = getItemsSnapshot();
                 if (items.isEmpty()) {
-
-                    syncControlPlayPause();
-
                     break player_block;
                 }
                 int index = -1;
@@ -849,8 +936,6 @@ public class PlayList implements Initializable {
                         index++;
                         if (items.size() <= index) {
                             if (onNextFromTail()) {
-                                syncControlPlayPause();
-
                                 break player_block;
                             }
                             index = 0;
@@ -859,8 +944,6 @@ public class PlayList implements Initializable {
                         index--;
                         if (index < 0) {
                             if (onBackFromHead()) {
-                                syncControlPlayPause();
-
                                 break player_block;
                             }
                             index = items.size() - 1;
@@ -900,15 +983,16 @@ public class PlayList implements Initializable {
                     mp = new MediaPlayer(media);
                 } catch (MediaException e) {
                     // changed actual file URL ?
-
-                    syncControlPlayPause();
-
                     onMediaPlayerError(e, targetInfo);
 
                     targetInfo.releaseMedia(true);
                     if (0 < skipOnError) {
-                        Boolean dir = directionProperty.getValue();
-                        if ((dir == null) || dir.booleanValue()) {
+                        Boolean dir = settings.direction.getValue();
+                        if (dir == null) {
+                            // random ?
+                            controlPlayerLater(Control.NEXT, targetInfo, forceResolve,
+                                    skipOnError - 1, true);
+                        } else if (dir.booleanValue()) {
                             controlPlayerLater(Control.NEXT, targetInfo, forceResolve,
                                     skipOnError - 1, true);
                         } else {
@@ -920,13 +1004,10 @@ public class PlayList implements Initializable {
                     break player_block;
                 }
             } catch (MediaLoadException e) {
-
-                syncControlPlayPause();
-
                 onMediaLoadError(e, targetInfo);
 
                 if (0 < skipOnError) {
-                    Boolean dir = directionProperty.getValue();
+                    Boolean dir = settings.direction.getValue();
                     if ((dir == null) || dir.booleanValue()) {
                         controlPlayerLater(Control.NEXT, targetInfo, forceResolve, skipOnError - 1,
                                 true);
@@ -945,7 +1026,9 @@ public class PlayList implements Initializable {
                     currentInfo.mediaStatusProperty().setValue(MediaStatus.MEDIA_SUCCESS);
                 }
 
-                player.dispose();
+                if (player.getStatus() != Status.DISPOSED) {
+                    player.dispose();
+                }
             }
 
             mp.setOnReady(new Runnable() {
@@ -957,16 +1040,10 @@ public class PlayList implements Initializable {
                         targetInfo.durationProperty().setValue(dur);
                     }
 
-                    {
-                        // this callback would run on main thread.
-                        //   so here, (targetInfo == current) is Deterministic ?
-                        if (targetInfo != currentInfoProperty.getValue()) {
-
-                            log("WARNING!!! : targetInfo != current");
-
-                            mp.dispose();
-                            return;
-                        }
+                    // this callback would run on main thread.
+                    //   so here, (targetInfo == current) is Deterministic ?
+                    if (!checkInfoOnEvent(targetInfo, mp)) {
+                        return;
                     }
 
                     // reset seek 
@@ -993,7 +1070,7 @@ public class PlayList implements Initializable {
                                             public void changed(
                                                     ObservableValue<? extends Duration> observable,
                                                     Duration oldValue, Duration newValue) {
-                                                if (targetInfo == currentInfoProperty.getValue()) {
+                                                if (equalsCurrentInfo(targetInfo)) {
                                                     totalDuration.set(newValue.toMillis());
                                                 }
                                                 targetInfo.durationProperty().removeListener(this);
@@ -1016,7 +1093,7 @@ public class PlayList implements Initializable {
                             @Override
                             public void changed(ObservableValue<? extends Duration> observable,
                                     Duration oldValue, Duration newValue) {
-                                if (targetInfo != currentInfoProperty.getValue()) {
+                                if (!equalsCurrentInfo(targetInfo)) {
                                     return;
                                 }
                                 if (controlTime.isValueChanging()) {
@@ -1043,7 +1120,7 @@ public class PlayList implements Initializable {
                             @Override
                             public void changed(ObservableValue<? extends Duration> observable,
                                     Duration oldValue, Duration newValue) {
-                                if (targetInfo != currentInfoProperty.getValue()) {
+                                if (!equalsCurrentInfo(targetInfo)) {
                                     return;
                                 }
                                 double newMillis = newValue.toMillis();
@@ -1062,7 +1139,7 @@ public class PlayList implements Initializable {
 
                     // volume
                     {
-                        mp.setVolume(controlVolume.getValue());
+                        mp.setVolume(settings.volume.get());
                     }
 
                     // image
@@ -1072,7 +1149,7 @@ public class PlayList implements Initializable {
                             @Override
                             public void changed(ObservableValue<? extends Image> observable,
                                     Image oldValue, Image newValue) {
-                                if (targetInfo == currentInfoProperty.getValue()) {
+                                if (equalsCurrentInfo(targetInfo)) {
                                     imageView.setImage(newValue);
                                     requestScroll(targetInfo);
                                 }
@@ -1122,7 +1199,10 @@ public class PlayList implements Initializable {
 
                     // play
                     {
+                        mp.setMute(settings.mute.get());
+
                         mp.play();
+                        syncControlPlayPauseLater();
 
                         log("Control Play : " + targetInfo.getDescription());
                     }
@@ -1133,6 +1213,10 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void run() {
+                    if (!checkInfoOnEvent(targetInfo, mp)) {
+                        return;
+                    }
+
                     imageView.setImage(new Image(PlayList.class.getResourceAsStream("dame.png")));
 
                     syncControlPlayPause();
@@ -1145,11 +1229,16 @@ public class PlayList implements Initializable {
                         if ((player == null) || (mp == player)) {
                             Duration dur = mp.getCurrentTime();
                             if ((dur != null) && dur.equals(Duration.ZERO)) {
+                                // occurred event too fast.
                                 controlPlayerLater(Control.SPECIFY, targetInfo, forceResolve,
                                         skipOnError - 1, true);
                             } else {
-                                Boolean dir = directionProperty.getValue();
-                                if ((dir == null) || dir.booleanValue()) {
+                                Boolean dir = settings.direction.getValue();
+                                if (dir == null) {
+                                    // random ? 
+                                    controlPlayer(Control.NEXT, targetInfo, forceResolve,
+                                            skipOnError - 1, true);
+                                } else if (dir.booleanValue()) {
                                     controlPlayer(Control.NEXT, targetInfo, forceResolve,
                                             skipOnError - 1, true);
                                 } else {
@@ -1166,20 +1255,43 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void run() {
+                    if (!checkInfoOnEvent(targetInfo, mp)) {
+                        return;
+                    }
 
                     log("End of Media : " + targetInfo.getDescription());
 
-                    mp.stop();
-                    syncControlPlayPause();
+                    mp.dispose();
+                    syncControlPlayPauseLater();
 
                     targetInfo.mediaStatusProperty().setValue(MediaStatus.PLAYER_END);
 
                     {
-                        Boolean dir = directionProperty.getValue();
-                        if ((dir == null) || dir.booleanValue()) {
-                            controlNext();
-                        } else {
-                            controlBack();
+                        NextMode nextMode = settings.nextMode.getValue();
+                        if (nextMode == null) {
+                            nextMode = NextMode.NONE;
+                        }
+                        switch (nextMode) {
+                            case NONE:
+                                break;
+                            case SAME:
+                                controlPlayer(Control.SPECIFY, targetInfo, true,
+                                        settings.skipOnError.get(), true);
+                                break;
+                            case OTHER:
+                                Boolean dir = settings.direction.getValue();
+                                if (dir == null) {
+                                    // TODO random
+                                    controlPlayer(Control.NEXT, targetInfo, true,
+                                            settings.skipOnError.get(), true);
+                                } else if (dir.booleanValue()) {
+                                    controlPlayer(Control.NEXT, targetInfo, true,
+                                            settings.skipOnError.get(), true);
+                                } else {
+                                    controlPlayer(Control.BACK, targetInfo, true,
+                                            settings.skipOnError.get(), true);
+                                }
+                                break;
                         }
                     }
                 }
@@ -1189,6 +1301,10 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void run() {
+                    if (!checkInfoOnEvent(targetInfo, mp)) {
+                        return;
+                    }
+
                     syncControlPlayPause();
 
                     targetInfo.mediaStatusProperty().setValue(MediaStatus.PLAYER_PLAYING);
@@ -1199,6 +1315,10 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void run() {
+                    if (!checkInfoOnEvent(targetInfo, mp)) {
+                        return;
+                    }
+
                     syncControlPlayPause();
 
                     targetInfo.mediaStatusProperty().setValue(MediaStatus.PLAYER_PAUSE);
@@ -1228,7 +1348,26 @@ public class PlayList implements Initializable {
             playerProperty.setValue(mp);
         }
 
+        syncControlPlayPause();
+
         return ret;
+    }
+
+    private boolean equalsCurrentInfo(MediaInfo info) {
+        return info == currentInfoProperty.getValue();
+    }
+
+    private boolean checkInfoOnEvent(MediaInfo info, MediaPlayer mp) {
+        if (info != currentInfoProperty.getValue()) {
+
+            log("WARNING!!! : targetInfo != current");
+
+            if ((mp != null) && (mp.getStatus() != Status.DISPOSED)) {
+                mp.dispose();
+            }
+            return false;
+        }
+        return true;
     }
 
     private boolean onNextFromTail() {
@@ -1255,12 +1394,40 @@ public class PlayList implements Initializable {
         info.mediaStatusProperty().setValue(MediaStatus.MEDIA_ERROR);
     }
 
+    private void syncControlPlayPauseLater() {
+        Platform.runLater(new Runnable() {
+
+            @Override
+            public void run() {
+                syncControlPlayPause();
+            }
+        });
+    }
+
     private void syncControlPlayPause() {
         MediaPlayer player = playerProperty.getValue();
-        if ((player != null) && (player.getStatus() == Status.PLAYING)) {
-            controlPlayPause.setSelected(true);
+        if (player == null) {
+            if (controlPlayPause.isSelected()) {
+                controlPlayPause.setSelected(false);
+            }
         } else {
-            controlPlayPause.setSelected(false);
+            if (player.getStatus() == Status.PLAYING) {
+                double ct = player.getCurrentTime().toMillis();
+                double mt = player.getTotalDuration().toMillis();
+                if (ct < mt) {
+                    if (!controlPlayPause.isSelected()) {
+                        controlPlayPause.setSelected(true);
+                    }
+                } else {
+                    if (controlPlayPause.isSelected()) {
+                        controlPlayPause.setSelected(false);
+                    }
+                }
+            } else {
+                if (controlPlayPause.isSelected()) {
+                    controlPlayPause.setSelected(false);
+                }
+            }
         }
     }
 
@@ -1385,14 +1552,14 @@ public class PlayList implements Initializable {
                             imageView.setFitHeight(0);
                         } else {
                             imageView.setFitWidth(50);
-                            imageView.setFitHeight(50);
+                            imageView.setFitHeight(80);
                         }
                     }
                 });
                 imageView.imageProperty().bind(info.imageProperty());
             }
             ret.setGraphic(imageView);
-            ret.setStyle("-fx-background-color:linear-gradient(cyan,deepskyblue);-fx-padding: 5 15 5 5;");
+            ret.setId("media-info-tooltip");
         }
 
         node.setUserData(ret);
@@ -1706,12 +1873,48 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void controlTabSide() {
-                    settings.toggleTabSide();
+                    settings.toggleVislbleTabSide();
                 }
 
                 @Override
                 public void controlVideoInfoSide() {
                     settings.toggleVisibleVideoInfoSide();
+                }
+
+                @Override
+                public void controlVideoInfoWidth(double width) {
+                    settings.videoInfoMinHeight.set(0);
+                    settings.videoInfoMinWidth.set(Math.max(width, 0));
+                }
+
+                @Override
+                public void controlVideoInfoWidthPlus(double width) {
+                    settings.videoInfoMinHeight.set(0);
+                    settings.videoInfoMinWidth.set(Math.max(settings.videoInfoMinWidth.get()
+                            + width, 0));
+                }
+
+                @Override
+                public void controlVideoInfoWidthMinus(double width) {
+                    controlVideoInfoWidthPlus(width * -1);
+                }
+
+                @Override
+                public void controlVideoInfoHeight(double height) {
+                    settings.videoInfoMinWidth.set(0);
+                    settings.videoInfoMinHeight.set(Math.max(height, 0));
+                }
+
+                @Override
+                public void controlVideoInfoHeightPlus(double height) {
+                    settings.videoInfoMinWidth.set(0);
+                    settings.videoInfoMinHeight.set(Math.max(settings.videoInfoMinHeight.get()
+                            + height, 0));
+                }
+
+                @Override
+                public void controlVideoInfoHeightMinus(double height) {
+                    controlVideoInfoHeightPlus(height * -1);
                 }
 
                 @Override
@@ -1737,6 +1940,15 @@ public class PlayList implements Initializable {
                 @Override
                 public void controlPause() {
                     PlayList.this.controlPause();
+                }
+
+                @Override
+                public void controlRepeat(NextMode next) {
+                    if (next == null) {
+                        settings.toggleNextMode();
+                    } else {
+                        settings.nextMode.setValue(next);
+                    }
                 }
 
                 @Override
@@ -1774,16 +1986,21 @@ public class PlayList implements Initializable {
                 }
 
                 @Override
+                public void controlMute() {
+                    PlayList.this.controlMute();
+                }
+
+                @Override
                 public void controlVolume(int volume) {
                     double value = volume / 100d;
-                    controlVolume.setValue(Math.max(controlVolume.getMin(),
+                    settings.volume.set(Math.max(controlVolume.getMin(),
                             Math.min(value, controlVolume.getMax())));
                 }
 
                 @Override
                 public void controlVolumePlus(int volume) {
-                    double value = controlVolume.getValue() + (volume / 100d);
-                    controlVolume.setValue(Math.max(controlVolume.getMin(),
+                    double value = settings.volume.get() + (volume / 100d);
+                    settings.volume.set(Math.max(controlVolume.getMin(),
                             Math.min(value, controlVolume.getMax())));
                 }
 
@@ -1889,10 +2106,19 @@ public class PlayList implements Initializable {
                 public void controlOther(String[] args) {
                     String arg0 = (0 < args.length) ? args[0] : null;
                     if (arg0 != null) {
-                        if (arg0.equals("ytn")) {
-                            movePageIfYoutube(1, false);
-                        } else if (arg0.equals("ytb")) {
-                            movePageIfYoutube(-1, false);
+                        switch (arg0) {
+                            case "ytn":
+                                movePageIfYoutube(1, false);
+                                break;
+                            case "ytb":
+                                movePageIfYoutube(-1, false);
+                                break;
+                            case "reset":
+                                settings.reset();
+                                break;
+                            case "video":
+                                settings.setVideoMode();
+                                break;
                         }
                     }
                 }
@@ -1906,7 +2132,7 @@ public class PlayList implements Initializable {
 
     private boolean movePageIfYoutube(int inc, boolean autoStart) {
         String text = pathText.getText().trim();
-        if (text.indexOf("youtube.com/results") != -1) {
+        if (text.contains("youtube.com/results")) {
             String url = null;
             Matcher matcher = pagePattern.matcher(text);
             if (matcher.find()) {
@@ -1922,10 +2148,10 @@ public class PlayList implements Initializable {
             } else {
                 int page = 1 + inc;
                 if (1 < page) {
-                    if (text.indexOf('?') < 0) {
-                        url = text + "?page=" + page;
-                    } else {
+                    if (text.contains("?")) {
                         url = text + "&page=" + page;
+                    } else {
+                        url = text + "?page=" + page;
                     }
                 }
             }
@@ -1969,6 +2195,8 @@ public class PlayList implements Initializable {
     }
 
     private void log(LogType type, String str) {
-        logStage.appendLog(String.format("%1$tH:%1$tM:%1$tS:%1$tL - %2$s%n", new Date(), str));
+        if (logging) {
+            logStage.appendLog(String.format("%1$tH:%1$tM:%1$tS:%1$tL - %2$s%n", new Date(), str));
+        }
     }
 }
