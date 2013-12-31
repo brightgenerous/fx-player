@@ -138,22 +138,22 @@
           <HBox id="control-line" alignment="CENTER" HBox.hgrow="ALWAYS">
             <ToggleButton fx:id="controlPlayPause" id="button-control" onAction="#controlPlayPause"
                 text="%control.play" ellipsisString="%control.play.ellipsis" mnemonicParsing="true"
-                prefWidth="75" />
-            <Label fx:id="repeatText" id="repeat-text" text="%control.repeat.none" minWidth="25" alignment="CENTER_RIGHT" />
+                prefWidth="60" />
+            <Label fx:id="repeatText" id="repeat-text" text="%control.repeat.none" minWidth="40" alignment="CENTER" />
             <Button onAction="#controlHead"
                 text="%control.head" ellipsisString="%control.head.ellipsis" mnemonicParsing="true"
-                prefWidth="75" />
+                prefWidth="60" />
             <Button onAction="#controlBack" id="button-control"
                 text="%control.back" ellipsisString="%control.back.ellipsis" mnemonicParsing="true"
-                prefWidth="75" />
+                prefWidth="60" />
             <Button onAction="#controlNext" id="button-control"
                 text="%control.next" ellipsisString="%control.next.ellipsis" mnemonicParsing="true"
-                prefWidth="75" />
+                prefWidth="60" />
             <Region minWidth="5" maxWidth="5" />
             <ToggleButton fx:id="controlMute" text="%control.mute.off" mnemonicParsing="true"
                 minWidth="45" maxWidth="45" onAction="#controlMute" />
             <Slider fx:id="controlVolume" min="0.0" max="1.0" value="0.5" minWidth="80" maxWidth="200" />
-            <Label fx:id="volumeText" id="volume-text" minWidth="25" alignment="CENTER_RIGHT" />
+            <Label fx:id="volumeText" id="volume-text" minWidth="30" alignment="CENTER_RIGHT" />
           </HBox>
         </HBox>
       </GridPane>

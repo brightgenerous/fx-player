@@ -117,8 +117,12 @@ public class Settings {
         return ret;
     }
 
-    public boolean thresholdTime(double oldMillis, double newMillis) {
+    public boolean thresholdTimeSeek(double oldMillis, double newMillis) {
         return SEEK_TIME_DEF < Math.abs(oldMillis - newMillis);
+    }
+
+    public boolean thresholdTimeCurrent(double oldMillis, double newMillis) {
+        return 50 < Math.abs(oldMillis - newMillis);
     }
 
     private Boolean toggleVisibleVideoInfo() {

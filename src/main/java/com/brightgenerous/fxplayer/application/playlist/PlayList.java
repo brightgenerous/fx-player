@@ -515,20 +515,30 @@ public class PlayList implements Initializable {
                 @Override
                 public void changed(ObservableValue<? extends Number> observable, Number oldValue,
                         Number newValue) {
-                    MediaPlayer mp = playerProperty.getValue();
-                    if (mp == null) {
-                        return;
-                    }
-                    if (mp.getStatus() == Status.UNKNOWN) {
-                        return;
-                    }
-                    double oldMillis = mp.getCurrentTime().toMillis();
                     double newMillis = newValue.doubleValue();
-                    if (settings.thresholdTime(oldMillis, newMillis)) {
-                        if (newMillis < mp.getBufferProgressTime().toMillis()) {
-                            mp.seek(Duration.millis(newMillis));
+                    double oldMillis = oldValue.doubleValue();
+                    if (!controlTime.isValueChanging() && (Math.abs(newMillis - oldMillis) < 5000)) {
+                        // fired event does not start from this control
+                        //   chained event is.
+                        // but...
+                        //   when click this control, "isValueChanging()" returns "false"
+                        //   so, if the difference is greater 5000, to be considered to have been clicked.
+                        return;
+                    }
+                    MediaPlayer player = playerProperty.getValue();
+                    if (player == null) {
+                        return;
+                    }
+                    Status status = player.getStatus();
+                    if ((status == Status.UNKNOWN) || (status == Status.DISPOSED)) {
+                        return;
+                    }
+                    double curMillis = player.getCurrentTime().toMillis();
+                    if (settings.thresholdTimeSeek(curMillis, newMillis)) {
+                        if (newMillis < player.getBufferProgressTime().toMillis()) {
+                            player.seek(Duration.millis(newMillis));
 
-                            String oldTime = LabelUtils.milliSecToTime(oldMillis);
+                            String oldTime = LabelUtils.milliSecToTime(curMillis);
                             String newTime = LabelUtils.milliSecToTime(newMillis);
                             if (!oldTime.equals(newTime)) {
                                 log("Control Time : old => " + oldTime + " , new => " + newTime);
@@ -553,17 +563,18 @@ public class PlayList implements Initializable {
                 public void changed(ObservableValue<? extends Number> observable, Number oldValue,
                         Number newValue) {
                     player: {
-                        MediaPlayer mp = playerProperty.getValue();
-                        if (mp == null) {
+                        MediaPlayer player = playerProperty.getValue();
+                        if (player == null) {
                             break player;
                         }
-                        if (mp.getStatus() == Status.UNKNOWN) {
+                        Status status = player.getStatus();
+                        if ((status == Status.UNKNOWN) || (status == Status.DISPOSED)) {
                             break player;
                         }
-                        double oldVol = mp.getVolume();
+                        double oldVol = player.getVolume();
                         double newVol = newValue.doubleValue();
                         if (0.01 <= Math.abs(oldVol - newVol)) {
-                            mp.setVolume(newVol);
+                            player.setVolume(newVol);
                         }
                     }
                     {
@@ -595,21 +606,21 @@ public class PlayList implements Initializable {
                 @Override
                 public void changed(ObservableValue<? extends Boolean> observable,
                         Boolean oldValue, Boolean newValue) {
-                    MediaPlayer player = playerProperty.get();
+                    MediaPlayer player = playerProperty.getValue();
                     if (newValue.booleanValue()) {
                         if ((player != null) && !player.isMute()) {
                             player.setMute(true);
                         }
                         controlMute.setSelected(true);
 
-                        log("Control Mute : on ");
+                        log("Control Volume : off ");
                     } else {
                         if ((player != null) && player.isMute()) {
                             player.setMute(false);
                         }
                         controlMute.setSelected(false);
 
-                        log("Control Mute : off ");
+                        log("Control Volume : on ");
                     }
                 }
             });
@@ -808,7 +819,13 @@ public class PlayList implements Initializable {
 
     @FXML
     protected void controlHead() {
-        controlTime.setValue(0);
+        MediaPlayer player = playerProperty.getValue();
+        if (player != null) {
+            Status status = player.getStatus();
+            if ((status != Status.UNKNOWN) && (status != Status.DISPOSED)) {
+                player.seek(Duration.millis(0));
+            }
+        }
     }
 
     @FXML
@@ -904,9 +921,7 @@ public class PlayList implements Initializable {
 
             // now loading ...
             if (player != null) {
-                MediaException me = player.getError();
-                boolean unknown = player.getStatus() == Status.UNKNOWN;
-                if (unknown && (me == null)) {
+                if ((player.getError() == null) && (player.getStatus() == Status.UNKNOWN)) {
 
                     log("Now Loading ... Please wait a minute.");
 
@@ -1097,17 +1112,20 @@ public class PlayList implements Initializable {
                                     return;
                                 }
                                 if (controlTime.isValueChanging()) {
+                                    // fired event does not start from currentTimeProperty.changed
+                                    //   chained event is.
                                     return;
                                 }
                                 double newMillis = newValue.toMillis();
-                                if (settings.thresholdTime(controlTime.getValue(), newMillis)) {
+                                if (settings.thresholdTimeCurrent(controlTime.getValue(), newMillis)) {
                                     controlTime.setValue(newMillis);
-                                }
-                                String newText = LabelUtils.milliSecsToTime(newMillis, mp
-                                        .getTotalDuration().toMillis(), mp.getBufferProgressTime()
-                                        .toMillis());
-                                if (!newText.equals(timeText.getText())) {
-                                    timeText.setText(newText);
+
+                                    String newText = LabelUtils.milliSecsToTime(newMillis, mp
+                                            .getTotalDuration().toMillis(), mp
+                                            .getBufferProgressTime().toMillis());
+                                    if (!newText.equals(timeText.getText())) {
+                                        timeText.setText(newText);
+                                    }
                                 }
                             }
                         });
