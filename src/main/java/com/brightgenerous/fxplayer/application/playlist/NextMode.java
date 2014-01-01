@@ -1,6 +1,10 @@
 package com.brightgenerous.fxplayer.application.playlist;
 
-public enum NextMode {
+enum NextMode {
 
-    NONE, SAME, OTHER;
+    NONE,
+
+    SAME,
+
+    OTHER;
 }

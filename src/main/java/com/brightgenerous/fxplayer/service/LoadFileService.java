@@ -3,7 +3,7 @@ package com.brightgenerous.fxplayer.service;
 import java.io.File;
 import java.util.List;
 
-import javafx.beans.property.ReadOnlyProperty;
+import javafx.beans.value.ObservableValue;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import javafx.stage.FileChooser;
@@ -28,13 +28,13 @@ public class LoadFileService extends Service<List<MediaInfo>> {
         }
     }
 
-    private final ReadOnlyProperty<? extends Window> owner;
+    private final ObservableValue<? extends Window> owner;
 
     private final MetaChangeListener metaChangeListener;
 
     private final ICallback callback;
 
-    public LoadFileService(ReadOnlyProperty<? extends Window> owner,
+    public LoadFileService(ObservableValue<? extends Window> owner,
             MetaChangeListener metaChangeListener, ICallback callback) {
         this.owner = owner;
         this.metaChangeListener = metaChangeListener;
@@ -47,11 +47,15 @@ public class LoadFileService extends Service<List<MediaInfo>> {
 
             @Override
             protected List<MediaInfo> call() throws Exception {
-                File file = fileChooser.showOpenDialog(owner.getValue());
-                if (file == null) {
+                if (isCancelled()) {
                     return null;
                 }
+
+                File file = fileChooser.showOpenDialog(owner.getValue());
                 if (isCancelled()) {
+                    return null;
+                }
+                if (file == null) {
                     return null;
                 }
                 {
@@ -61,6 +65,11 @@ public class LoadFileService extends Service<List<MediaInfo>> {
                     }
                 }
                 List<MediaInfo> infos = MediaInfoLoader.fromFile(file, metaChangeListener);
+
+                if (isCancelled()) {
+                    return null;
+                }
+
                 callback.callback(file, infos);
                 return infos;
             }

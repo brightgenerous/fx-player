@@ -5,14 +5,25 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.ThreadFactory;
 
 public class UrlResolver {
 
     private static final UrlResolver instance = new UrlResolver();
 
-    private final ExecutorService youtubeES = Executors.newFixedThreadPool(1);
+    private final ThreadFactory threadFactory = new ThreadFactory() {
 
-    private final ExecutorService xvideosES = Executors.newFixedThreadPool(1);
+        @Override
+        public Thread newThread(Runnable r) {
+            Thread ret = Executors.defaultThreadFactory().newThread(r);
+            ret.setDaemon(true);
+            return ret;
+        }
+    };
+
+    private final ExecutorService youtubeES = Executors.newFixedThreadPool(1, threadFactory);
+
+    private final ExecutorService xvideosES = Executors.newFixedThreadPool(1, threadFactory);
 
     private UrlResolver() {
     }

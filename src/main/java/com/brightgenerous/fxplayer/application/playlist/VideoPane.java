@@ -4,8 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
@@ -30,6 +32,13 @@ public class VideoPane extends Pane {
     private TableView<?> infoList;
 
     private final BooleanProperty visibleInfoList = new SimpleBooleanProperty();
+
+    private final ObjectProperty<InfoSide> infoSide = new SimpleObjectProperty<>();
+
+    private final DoubleProperty videoInfoMaxWidth = new SimpleDoubleProperty();
+
+    private final DoubleProperty videoInfoMaxHeight = new SimpleDoubleProperty();
+
     {
         visibleInfoList.addListener(new ChangeListener<Boolean>() {
 
@@ -52,15 +61,30 @@ public class VideoPane extends Pane {
                 requestLayout();
             }
         });
-    }
 
-    private final ObjectProperty<InfoSide> infoSideProperty = new SimpleObjectProperty<>();
-    {
-        infoSideProperty.addListener(new ChangeListener<InfoSide>() {
+        infoSide.addListener(new ChangeListener<InfoSide>() {
 
             @Override
             public void changed(ObservableValue<? extends InfoSide> observable, InfoSide oldValue,
                     InfoSide newValue) {
+                requestLayout();
+            }
+        });
+
+        videoInfoMaxWidth.addListener(new ChangeListener<Number>() {
+
+            @Override
+            public void changed(ObservableValue<? extends Number> observable, Number oldValue,
+                    Number newValue) {
+                requestLayout();
+            }
+        });
+
+        videoInfoMaxHeight.addListener(new ChangeListener<Number>() {
+
+            @Override
+            public void changed(ObservableValue<? extends Number> observable, Number oldValue,
+                    Number newValue) {
                 requestLayout();
             }
         });
@@ -124,72 +148,96 @@ public class VideoPane extends Pane {
             return;
         }
 
-        double listWidth = actualWidth;
-        double listHeight = actualHeight;
-        boolean horizon = true;
+        double listWidth;
+        double listHeight;
+        boolean horizon;
         {
             double widthSpace = actualWidth - videoWidth;
             double heightSpace = actualHeight - videoHeight;
-            if ((heightSpace / actualHeight) <= (widthSpace / actualWidth)) {
-                listWidth = widthSpace;
-            } else {
+            double maxWidth = videoInfoMaxWidth.get();
+            double maxHeight = videoInfoMaxHeight.get();
+            boolean widthNan = Double.isNaN(maxWidth);
+            boolean heightNan = Double.isNaN(maxHeight);
+            if (!widthNan) {
+                widthSpace = Math.min(widthSpace, maxWidth);
+            }
+            if (!heightNan) {
+                heightSpace = Math.min(heightSpace, maxHeight);
+            }
+            if (widthNan == heightNan) {
+                // (widthNan, heightNan) => (true, true) or (false, false)
+                if ((heightSpace / actualHeight) <= (widthSpace / actualWidth)) {
+                    listWidth = widthSpace;
+                    listHeight = actualHeight;
+                    horizon = true;
+                } else {
+                    listWidth = actualWidth;
+                    listHeight = heightSpace;
+                    horizon = false;
+                }
+            } else if (widthNan) {
+                // (widthNan, heightNan) => (true, false)
+                listWidth = actualWidth;
                 listHeight = heightSpace;
                 horizon = false;
+            } else {
+                // (widthNan, heightNan) => (false, true)
+                listWidth = widthSpace;
+                listHeight = actualHeight;
+                horizon = true;
             }
         }
 
-        double horizontalTopInset = (actualHeight - videoHeight) / 2;
-        double verticalLeftInset = (actualWidth - videoWidth) / 2;
+        double videoLeftInset;
+        double videoTopInset;
+        {
+            if (horizon) {
+                videoLeftInset = (actualWidth - listWidth - videoWidth) / 2;
+                videoTopInset = (actualHeight - videoHeight) / 2;
+            } else {
+                videoLeftInset = (actualWidth - videoWidth) / 2;
+                videoTopInset = (actualHeight - listHeight - videoHeight) / 2;
+            }
+        }
 
-        if (side == InfoSide.LEFT_TOP) {
-            if (horizon) {
-                layoutInArea(video, leftInset + listWidth, topInset + horizontalTopInset,
-                        videoWidth, videoHeight, 0, HPos.CENTER, VPos.CENTER);
+        double videoLeft;
+        double videoTop;
+        double listLeft;
+        double listTop;
+
+        if (horizon) {
+            if ((side == InfoSide.LEFT_TOP) || (side == InfoSide.LEFT_BOTTOM)) {
+                // video => right , info => left
+                videoLeft = leftInset + listWidth + videoLeftInset;
+                videoTop = topInset + videoTopInset;
+                listLeft = leftInset;
+                listTop = topInset;
             } else {
-                layoutInArea(video, leftInset + verticalLeftInset, topInset + listHeight,
-                        videoWidth, videoHeight, 0, HPos.CENTER, VPos.CENTER);
-            }
-            layoutInArea(list, leftInset, topInset, listWidth, listHeight, 0, HPos.CENTER,
-                    VPos.CENTER);
-        } else if (side == InfoSide.RIGHT_BOTTOM) {
-            if (horizon) {
-                layoutInArea(video, leftInset, topInset + horizontalTopInset, videoWidth,
-                        videoHeight, 0, HPos.CENTER, VPos.CENTER);
-                layoutInArea(list, leftInset + videoWidth, topInset, listWidth, listHeight, 0,
-                        HPos.CENTER, VPos.CENTER);
-            } else {
-                layoutInArea(video, leftInset + verticalLeftInset, topInset, videoWidth,
-                        videoHeight, 0, HPos.CENTER, VPos.CENTER);
-                layoutInArea(list, leftInset, topInset + videoHeight, listWidth, listHeight, 0,
-                        HPos.CENTER, VPos.CENTER);
-            }
-        } else if (side == InfoSide.LEFT_BOTTOM) {
-            if (horizon) {
-                layoutInArea(video, leftInset + listWidth, topInset + horizontalTopInset,
-                        videoWidth, videoHeight, 0, HPos.CENTER, VPos.CENTER);
-                layoutInArea(list, leftInset, topInset, listWidth, listHeight, 0, HPos.CENTER,
-                        VPos.CENTER);
-            } else {
-                layoutInArea(video, leftInset + verticalLeftInset, topInset, videoWidth,
-                        videoHeight, 0, HPos.CENTER, VPos.CENTER);
-                layoutInArea(list, leftInset, topInset + videoHeight, listWidth, listHeight, 0,
-                        HPos.CENTER, VPos.CENTER);
-            }
-        } else if (side == InfoSide.RIGHT_TOP) {
-            if (horizon) {
-                layoutInArea(video, leftInset, topInset + horizontalTopInset, videoWidth,
-                        videoHeight, 0, HPos.CENTER, VPos.CENTER);
-                layoutInArea(list, leftInset + videoWidth, topInset, listWidth, listHeight, 0,
-                        HPos.CENTER, VPos.CENTER);
-            } else {
-                layoutInArea(video, leftInset + verticalLeftInset, topInset + listHeight,
-                        videoWidth, videoHeight, 0, HPos.CENTER, VPos.CENTER);
-                layoutInArea(list, leftInset, topInset, listWidth, listHeight, 0, HPos.CENTER,
-                        VPos.CENTER);
+                // video => left , info => right
+                videoLeft = leftInset + videoLeftInset;
+                videoTop = topInset + videoTopInset;
+                listLeft = leftInset + videoWidth + (videoLeftInset * 2);
+                listTop = topInset;
             }
         } else {
-            throw new IllegalStateException();
+            if ((side == InfoSide.LEFT_TOP) || (side == InfoSide.RIGHT_TOP)) {
+                // video => bottom , info => top
+                videoLeft = leftInset + videoLeftInset;
+                videoTop = topInset + listHeight + videoTopInset;
+                listLeft = leftInset;
+                listTop = topInset;
+            } else {
+                // video => top , info => bottom
+                videoLeft = leftInset + videoLeftInset;
+                videoTop = topInset + videoTopInset;
+                listLeft = leftInset;
+                listTop = topInset + videoHeight + (videoTopInset * 2);
+            }
         }
+
+        layoutInArea(video, videoLeft, videoTop, videoWidth, videoHeight, 0, HPos.CENTER,
+                VPos.CENTER);
+        layoutInArea(list, listLeft, listTop, listWidth, listHeight, 0, HPos.CENTER, VPos.CENTER);
     }
 
     public MediaView getMediaView() {
@@ -268,14 +316,38 @@ public class VideoPane extends Pane {
     }
 
     public ObjectProperty<InfoSide> infoSideProperty() {
-        return infoSideProperty;
+        return infoSide;
     }
 
     public InfoSide getInfoSide() {
-        return infoSideProperty.getValue();
+        return infoSide.getValue();
     }
 
-    public void setInfoSide(InfoSide infoSide) {
-        infoSideProperty.setValue(infoSide);
+    public void setInfoSide(InfoSide value) {
+        infoSide.setValue(value);
+    }
+
+    public DoubleProperty videoInfoMaxWidthProperty() {
+        return videoInfoMaxWidth;
+    }
+
+    public double getVideoInfoMaxWidth() {
+        return videoInfoMaxWidth.get();
+    }
+
+    public void setVideoInfoMaxWidth(double width) {
+        videoInfoMaxWidth.set(width);
+    }
+
+    public DoubleProperty videoInfoMaxHeightProperty() {
+        return videoInfoMaxHeight;
+    }
+
+    public double getVideoInfoMaxHeight() {
+        return videoInfoMaxHeight.get();
+    }
+
+    public void setVideoInfoMaxHeight(double height) {
+        videoInfoMaxHeight.set(height);
     }
 }

@@ -1,7 +1,7 @@
 package com.brightgenerous.fxplayer.service;
 
 import javafx.application.Platform;
-import javafx.beans.property.ObjectProperty;
+import javafx.beans.value.ObservableValue;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
@@ -19,7 +19,7 @@ import com.brightgenerous.fxplayer.application.FxUtils.LoadData;
 
 public class StageCloseService extends Service<Void> {
 
-    private final ObjectProperty<Stage> owner;
+    private final ObservableValue<Stage> owner;
 
     private Stage dialog;
 
@@ -76,7 +76,7 @@ public class StageCloseService extends Service<Void> {
         }
     };
 
-    public StageCloseService(ObjectProperty<Stage> stage) {
+    public StageCloseService(ObservableValue<Stage> stage) {
         owner = stage;
     }
 
@@ -89,6 +89,7 @@ public class StageCloseService extends Service<Void> {
                 if (isCancelled()) {
                     return null;
                 }
+
                 if (Platform.isFxApplicationThread()) {
                     runnable.run();
                 } else {

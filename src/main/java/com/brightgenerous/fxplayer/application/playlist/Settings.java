@@ -18,10 +18,13 @@ import javafx.beans.value.ObservableNumberValue;
 import javafx.geometry.Side;
 
 import com.brightgenerous.fxplayer.application.playlist.VideoPane.InfoSide;
+import com.brightgenerous.fxplayer.service.LoadDirection;
 
-public class Settings {
+class Settings {
 
-    private static final double SEEK_TIME_DEF = 100; // milliseconds
+    private static final double SEEK_TIME_DEFF = 100; // milliseconds
+
+    private static final double CURRENT_TIME_DEFF = 100; // milliseconds
 
     public final BooleanProperty visibleTab = new SimpleBooleanProperty();
 
@@ -46,16 +49,23 @@ public class Settings {
 
     public final DoubleProperty videoInfoMinWidth = new SimpleDoubleProperty();
 
+    public final DoubleProperty videoInfoMaxWidth = new SimpleDoubleProperty();
+
     public final DoubleProperty videoInfoMinHeight = new SimpleDoubleProperty();
 
-    public final BooleanProperty timesVolumesHorizontal = new SimpleBooleanProperty();
+    public final DoubleProperty videoInfoMaxHeight = new SimpleDoubleProperty();
 
     public final BooleanProperty visibleSpectrums = new SimpleBooleanProperty();
 
+    public final BooleanProperty timesVolumesHorizontal = new SimpleBooleanProperty();
+
     public final ObjectProperty<NextMode> nextMode = new SimpleObjectProperty<>(NextMode.OTHER);
 
-    public final ReadOnlyObjectProperty<Boolean> direction = new SimpleObjectProperty<>(
-            Boolean.TRUE);
+    public final ObjectProperty<OtherDirection> otherDirection = new SimpleObjectProperty<>(
+            OtherDirection.FORWARD);
+
+    public final ReadOnlyObjectProperty<LoadDirection> loadDirection = new SimpleObjectProperty<>(
+            LoadDirection.ALTERNATELY);
 
     public final DoubleProperty volume = new SimpleDoubleProperty();
 
@@ -105,6 +115,62 @@ public class Settings {
         }
     }
 
+    public void setVideoInfoWidth(double width) {
+        videoInfoMinHeight.set(0);
+        videoInfoMaxHeight.set(Double.NaN);
+        if (Double.isNaN(width)) {
+            videoInfoMinWidth.set(0);
+            videoInfoMaxWidth.set(Double.NaN);
+        } else {
+            videoInfoMinWidth.set(Math.max(width, 0));
+            videoInfoMaxWidth.set(videoInfoMinWidth.get());
+        }
+    }
+
+    public void setVideoInfoWidthPlus(double width) {
+        videoInfoMinHeight.set(0);
+        videoInfoMaxHeight.set(Double.NaN);
+        if (Double.isNaN(width)) {
+            videoInfoMinWidth.set(0);
+            videoInfoMaxWidth.set(Double.NaN);
+        } else {
+            double current = videoInfoMinWidth.get();
+            if (Double.isNaN(current)) {
+                current = 0;
+            }
+            videoInfoMinWidth.set(Math.max(current + width, 0));
+            videoInfoMaxWidth.set(videoInfoMinWidth.get());
+        }
+    }
+
+    public void setVideoInfoHeight(double height) {
+        videoInfoMinWidth.set(0);
+        videoInfoMaxWidth.set(Double.NaN);
+        if (Double.isNaN(height)) {
+            videoInfoMinHeight.set(0);
+            videoInfoMaxHeight.set(Double.NaN);
+        } else {
+            videoInfoMinHeight.set(Math.max(height, 0));
+            videoInfoMaxHeight.set(videoInfoMinHeight.get());
+        }
+    }
+
+    public void setVideoInfoHeightPlus(double height) {
+        videoInfoMinWidth.set(0);
+        videoInfoMaxWidth.set(Double.NaN);
+        if (Double.isNaN(height)) {
+            videoInfoMinHeight.set(0);
+            videoInfoMaxHeight.set(Double.NaN);
+        } else {
+            double current = videoInfoMinHeight.get();
+            if (Double.isNaN(current)) {
+                current = 0;
+            }
+            videoInfoMinHeight.set(Math.max(current + height, 0));
+            videoInfoMaxHeight.set(videoInfoMinHeight.get());
+        }
+    }
+
     public Boolean toggleVisibleSpectrums() {
         Boolean ret = visibleSpectrums.getValue();
         visibleSpectrums.set(!ret.booleanValue());
@@ -118,11 +184,11 @@ public class Settings {
     }
 
     public boolean thresholdTimeSeek(double oldMillis, double newMillis) {
-        return SEEK_TIME_DEF < Math.abs(oldMillis - newMillis);
+        return SEEK_TIME_DEFF < Math.abs(oldMillis - newMillis);
     }
 
     public boolean thresholdTimeCurrent(double oldMillis, double newMillis) {
-        return 50 < Math.abs(oldMillis - newMillis);
+        return CURRENT_TIME_DEFF < Math.abs(oldMillis - newMillis);
     }
 
     private Boolean toggleVisibleVideoInfo() {
@@ -188,6 +254,23 @@ public class Settings {
         return ret;
     }
 
+    public OtherDirection toggleOtherDirection() {
+        OtherDirection ret = otherDirection.getValue();
+        if (ret == null) {
+            otherDirection.setValue(OtherDirection.FORWARD);
+        } else {
+            switch (ret) {
+                case FORWARD:
+                    otherDirection.setValue(OtherDirection.BACK);
+                    break;
+                case BACK:
+                    otherDirection.setValue(OtherDirection.FORWARD);
+                    break;
+            }
+        }
+        return ret;
+    }
+
     public void reset() {
         visibleTab.set(false);
         visibleTab.set(true);
@@ -201,10 +284,8 @@ public class Settings {
         videoInfoSide.setValue(InfoSide.RIGHT_BOTTOM);
         videoInfoSide.setValue(InfoSide.OVERLAY);
 
-        videoInfoMinWidth.set(1);
-        videoInfoMinWidth.set(0);
-        videoInfoMinHeight.set(1);
-        videoInfoMinHeight.set(0);
+        setVideoInfoWidth(0);
+        setVideoInfoWidth(Double.NaN);
 
         timesVolumesHorizontal.set(true);
         timesVolumesHorizontal.set(false);
@@ -232,10 +313,9 @@ public class Settings {
 
         visibleVideoInfo.set(true);
 
-        videoInfoSide.setValue(InfoSide.LEFT_BOTTOM);
+        videoInfoSide.setValue(InfoSide.LEFT_TOP);
 
-        videoInfoMinWidth.set(360);
-        videoInfoMinHeight.set(0);
+        setVideoInfoWidth(360);
 
         timesVolumesHorizontal.set(true);
 

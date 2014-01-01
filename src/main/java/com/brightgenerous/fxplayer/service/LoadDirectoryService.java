@@ -3,7 +3,7 @@ package com.brightgenerous.fxplayer.service;
 import java.io.File;
 import java.util.List;
 
-import javafx.beans.property.ReadOnlyProperty;
+import javafx.beans.value.ObservableValue;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import javafx.stage.DirectoryChooser;
@@ -28,13 +28,13 @@ public class LoadDirectoryService extends Service<List<MediaInfo>> {
         }
     }
 
-    private final ReadOnlyProperty<? extends Window> owner;
+    private final ObservableValue<? extends Window> owner;
 
     private final MetaChangeListener metaChangeListener;
 
     private final ICallback callback;
 
-    public LoadDirectoryService(ReadOnlyProperty<? extends Window> owner,
+    public LoadDirectoryService(ObservableValue<? extends Window> owner,
             MetaChangeListener metaChangeListener, ICallback callback) {
         this.owner = owner;
         this.metaChangeListener = metaChangeListener;
@@ -47,11 +47,15 @@ public class LoadDirectoryService extends Service<List<MediaInfo>> {
 
             @Override
             protected List<MediaInfo> call() throws Exception {
-                File dir = directoryChooser.showDialog(owner.getValue());
-                if (dir == null) {
+                if (isCancelled()) {
                     return null;
                 }
+
+                File dir = directoryChooser.showDialog(owner.getValue());
                 if (isCancelled()) {
+                    return null;
+                }
+                if (dir == null) {
                     return null;
                 }
                 {
@@ -63,6 +67,11 @@ public class LoadDirectoryService extends Service<List<MediaInfo>> {
                     }
                 }
                 List<MediaInfo> infos = MediaInfoLoader.fromDirectory(dir, metaChangeListener);
+
+                if (isCancelled()) {
+                    return null;
+                }
+
                 callback.callback(dir, infos);
                 return infos;
             }

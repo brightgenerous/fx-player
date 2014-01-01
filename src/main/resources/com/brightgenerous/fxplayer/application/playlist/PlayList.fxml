@@ -140,6 +140,7 @@
                 text="%control.play" ellipsisString="%control.play.ellipsis" mnemonicParsing="true"
                 prefWidth="60" />
             <Label fx:id="repeatText" id="repeat-text" text="%control.repeat.none" minWidth="40" alignment="CENTER" />
+            <Label fx:id="directionText" id="direction-text" text="%control.direction.forward" minWidth="15" alignment="CENTER" />
             <Button onAction="#controlHead"
                 text="%control.head" ellipsisString="%control.head.ellipsis" mnemonicParsing="true"
                 prefWidth="60" />

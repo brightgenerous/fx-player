@@ -2,7 +2,7 @@ package com.brightgenerous.fxplayer.service;
 
 import java.util.List;
 
-import javafx.beans.property.ReadOnlyProperty;
+import javafx.beans.value.ObservableValue;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 
@@ -16,16 +16,20 @@ public class LoadUrlService extends Service<List<MediaInfo>> {
         void callback(String url, List<MediaInfo> infos);
     }
 
-    private final ReadOnlyProperty<String> textProperty;
+    private final ObservableValue<String> textProperty;
 
     private final MetaChangeListener metaChangeListener;
 
+    private final ObservableValue<LoadDirection> loadDirectionProperty;
+
     private final ICallback callback;
 
-    public LoadUrlService(ReadOnlyProperty<String> textProperty,
-            MetaChangeListener metaChangeListener, ICallback callback) {
+    public LoadUrlService(ObservableValue<String> textProperty,
+            MetaChangeListener metaChangeListener,
+            ObservableValue<LoadDirection> loadDirectionProperty, ICallback callback) {
         this.textProperty = textProperty;
         this.metaChangeListener = metaChangeListener;
+        this.loadDirectionProperty = loadDirectionProperty;
         this.callback = callback;
     }
 
@@ -35,6 +39,10 @@ public class LoadUrlService extends Service<List<MediaInfo>> {
 
             @Override
             protected List<MediaInfo> call() throws Exception {
+                if (isCancelled()) {
+                    return null;
+                }
+
                 String url = textProperty.getValue();
                 if (url == null) {
                     return null;
@@ -43,7 +51,13 @@ public class LoadUrlService extends Service<List<MediaInfo>> {
                 if (url.isEmpty()) {
                     return null;
                 }
-                List<MediaInfo> infos = MediaInfoLoader.fromURL(url, metaChangeListener);
+                List<MediaInfo> infos = MediaInfoLoader.fromURL(url, metaChangeListener,
+                        loadDirectionProperty.getValue());
+
+                if (isCancelled()) {
+                    return null;
+                }
+
                 callback.callback(url, infos);
                 return infos;
             }

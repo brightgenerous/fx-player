@@ -27,6 +27,8 @@ import com.brightgenerous.fxplayer.media.MediaInfo.MetaChangeListener;
 import com.brightgenerous.fxplayer.media.MediaInfoFactory;
 import com.brightgenerous.fxplayer.util.HttpUtils;
 import com.brightgenerous.fxplayer.util.IData;
+import com.brightgenerous.fxplayer.util.ListUtils;
+import com.brightgenerous.fxplayer.util.ListUtils.IConverter;
 import com.brightgenerous.fxplayer.util.UrlResolver;
 import com.brightgenerous.fxplayer.util.XvideosUtils;
 import com.brightgenerous.fxplayer.util.YoutubeUtils;
@@ -189,7 +191,8 @@ class MediaInfoLoader {
         return ret;
     }
 
-    public static List<MediaInfo> fromURL(String str, MetaChangeListener metaChangeListener) {
+    public static List<MediaInfo> fromURL(String str, MetaChangeListener metaChangeListener,
+            LoadDirection loadDirection) {
         if (str == null) {
             return null;
         }
@@ -247,19 +250,29 @@ class MediaInfoLoader {
         if (YoutubeUtils.isPlaylistUrl(str)) {
             List<VideoInfo> infos = YoutubeUtils.parsePlaylist(text);
             if (infos != null) {
-                for (VideoInfo info : infos) {
-                    String desc = (info.getTitle() == null) ? info.getUrl() : info.getTitle();
-                    ret.add(factory.create(info.getUrl(), desc, metaChangeListener));
+                if (loadDirection == null) {
+                    loadDirection = LoadDirection.ALTERNATELY;
+                }
+                switch (loadDirection) {
+                    case FORWARD:
+                        ret.addAll(ListUtils.converts(infos, new Converter(metaChangeListener)));
+                        break;
+                    case BACK:
+                        ret.addAll(ListUtils.convertsReversely(infos, new Converter(
+                                metaChangeListener)));
+                        break;
+                    case ALTERNATELY:
+                        ret.addAll(ListUtils.convertsAlternately(infos, new Converter(
+                                metaChangeListener)));
+                        break;
                 }
             }
         } else if (YoutubeUtils.isVideoUrl(str)) {
             String title = YoutubeUtils.extractTitle(text);
-            String desc = ((title == null) || title.isEmpty()) ? str : title;
-            ret.add(factory.create(str, desc, metaChangeListener));
+            ret.add(createMediaInfo(str, title, metaChangeListener));
         } else if (XvideosUtils.isVideoUrl(str)) {
             String title = XvideosUtils.extractTitle(text);
-            String desc = ((title == null) || title.isEmpty()) ? str : title;
-            ret.add(factory.create(str, desc, metaChangeListener));
+            ret.add(createMediaInfo(str, title, metaChangeListener));
         } else {
             try (BufferedReader br = new BufferedReader(new StringReader(text))) {
                 String line;
@@ -288,13 +301,23 @@ class MediaInfoLoader {
                     }
                     {
                         String desc = (strs[1] == null) ? strs[0] : strs[1];
-                        ret.add(factory.create(path, desc, metaChangeListener));
+                        ret.add(createMediaInfo(path, desc, metaChangeListener));
                     }
                 }
             } catch (IOException e) {
             }
         }
         return ret;
+    }
+
+    private static MediaInfo createMediaInfo(VideoInfo info, MetaChangeListener metaChangeListener) {
+        return createMediaInfo(info.getUrl(), info.getTitle(), metaChangeListener);
+    }
+
+    private static MediaInfo createMediaInfo(String url, String desc,
+            MetaChangeListener metaChangeListener) {
+        desc = ((desc == null) || desc.isEmpty()) ? url : desc;
+        return factory.create(url, desc, metaChangeListener);
     }
 
     private static String[] lineToStrs(String line) {
@@ -313,5 +336,19 @@ class MediaInfoLoader {
             }
         }
         return ret;
+    }
+
+    private static class Converter implements IConverter<MediaInfo, VideoInfo> {
+
+        private final MetaChangeListener metaChangeListener;
+
+        public Converter(MetaChangeListener metaChangeListener) {
+            this.metaChangeListener = metaChangeListener;
+        }
+
+        @Override
+        public MediaInfo convert(VideoInfo obj) {
+            return createMediaInfo(obj, metaChangeListener);
+        }
     }
 }

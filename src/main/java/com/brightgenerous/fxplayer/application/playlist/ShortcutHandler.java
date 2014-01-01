@@ -56,6 +56,8 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
         void controlRepeat(NextMode next);
 
+        void controlDirection(OtherDirection direction);
+
         void controlHead();
 
         void controlBack();
@@ -85,6 +87,8 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
         void controlSaveFile();
 
         void controlSaveImage();
+
+        void controlSaveSnapshot();
 
         void controlWindowScreen();
 
@@ -151,6 +155,9 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
     private static final Pattern repeatPattern = Pattern
             .compile("^(?:.*\\s+)?(?:r|rp|repeat)\\s*(none|same|other|)$");
 
+    private static final Pattern directionPattern = Pattern
+            .compile("^(?:.*\\s+)?(?:dr|drct|direction)\\s*(forward|back|)$");
+
     // see "time volume horizontal"
     private static final Pattern headPattern = Pattern.compile("^(?:.*\\s+)?(?:h|hd|head)$");
 
@@ -174,6 +181,9 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
     private static final Pattern saveImagePattern = Pattern
             .compile("^(?:.*\\s+)?(?:si|svim|svig|svimg|saveimage)$");
+
+    private static final Pattern saveSnapshotPattern = Pattern
+            .compile("^(?:.*\\s+)?(?:ss|svsn|svss|savesnapshot)$");
 
     private static final Pattern windowScreenPattern = Pattern
             .compile("^(?:.*\\s+)?(?:wm|wnm|wdm|wndm|windowm)$");
@@ -297,8 +307,8 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
                     if (matcher.find()) {
                         String mg1 = matcher.group(1);
                         String mg2 = matcher.group(2);
-                        int value = mg2.isEmpty() ? 0 : ((9 < mg2.length()) ? Integer.MAX_VALUE
-                                : Integer.parseInt(mg2));
+                        double value = mg2.isEmpty() ? Double.NaN
+                                : ((9 < mg2.length()) ? Integer.MAX_VALUE : Double.parseDouble(mg2));
                         if (mg1.equals("+")) {
                             adapter.controlVideoInfoWidthPlus(value);
                         } else if (mg1.equals("-")) {
@@ -314,8 +324,8 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
                     if (matcher.find()) {
                         String mg1 = matcher.group(1);
                         String mg2 = matcher.group(2);
-                        int value = mg2.isEmpty() ? 0 : ((9 < mg2.length()) ? Integer.MAX_VALUE
-                                : Integer.parseInt(mg2));
+                        double value = mg2.isEmpty() ? Double.NaN
+                                : ((9 < mg2.length()) ? Integer.MAX_VALUE : Double.parseDouble(mg2));
                         if (mg1.equals("+")) {
                             adapter.controlVideoInfoHeightPlus(value);
                         } else if (mg1.equals("-")) {
@@ -359,6 +369,20 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
                             next = NextMode.OTHER;
                         }
                         adapter.controlRepeat(next);
+                        break parse;
+                    }
+                }
+                {
+                    Matcher matcher = directionPattern.matcher(in);
+                    if (matcher.find()) {
+                        String mg1 = matcher.group(1);
+                        OtherDirection direction = null;
+                        if (mg1.startsWith("f")) {
+                            direction = OtherDirection.FORWARD;
+                        } else if (mg1.startsWith("b")) {
+                            direction = OtherDirection.BACK;
+                        }
+                        adapter.controlDirection(direction);
                         break parse;
                     }
                 }
@@ -454,6 +478,10 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
                 }
                 if (saveImagePattern.matcher(in).find()) {
                     adapter.controlSaveImage();
+                    break parse;
+                }
+                if (saveSnapshotPattern.matcher(in).find()) {
+                    adapter.controlSaveSnapshot();
                     break parse;
                 }
                 if (windowScreenPattern.matcher(in).find()) {
@@ -607,6 +635,10 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
         }
 
         @Override
+        public void controlDirection(OtherDirection direction) {
+        }
+
+        @Override
         public void controlHead() {
         }
 
@@ -664,6 +696,10 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
         @Override
         public void controlSaveImage() {
+        }
+
+        @Override
+        public void controlSaveSnapshot() {
         }
 
         @Override

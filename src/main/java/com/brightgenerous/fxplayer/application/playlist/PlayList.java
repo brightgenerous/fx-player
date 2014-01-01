@@ -35,6 +35,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.SnapshotResult;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.SingleSelectionModel;
@@ -73,11 +74,14 @@ import com.brightgenerous.fxplayer.media.MediaInfo;
 import com.brightgenerous.fxplayer.media.MediaInfo.MetaChangeListener;
 import com.brightgenerous.fxplayer.media.MediaLoadException;
 import com.brightgenerous.fxplayer.media.MediaStatus;
+import com.brightgenerous.fxplayer.service.LoadDirection;
 import com.brightgenerous.fxplayer.service.LoadDirectoryService;
 import com.brightgenerous.fxplayer.service.LoadFileService;
 import com.brightgenerous.fxplayer.service.LoadUrlService;
 import com.brightgenerous.fxplayer.service.SaveImageService;
+import com.brightgenerous.fxplayer.service.SaveImageService.ImageInfo;
 import com.brightgenerous.fxplayer.service.StageCloseService;
+import com.brightgenerous.fxplayer.util.ListUtils;
 
 public class PlayList implements Initializable {
 
@@ -129,9 +133,9 @@ public class PlayList implements Initializable {
     @FXML
     private Tab videoTab;
 
-    private NumberBinding mediaViewWidth;
+    private NumberBinding mediaViewFitWidth;
 
-    private NumberBinding mediaViewHeight;
+    private NumberBinding mediaViewFitHeight;
 
     @FXML
     private VideoPane videoPane;
@@ -163,6 +167,9 @@ public class PlayList implements Initializable {
 
     @FXML
     private Label repeatText;
+
+    @FXML
+    private Label directionText;
 
     // control - time
 
@@ -292,20 +299,35 @@ public class PlayList implements Initializable {
                 }
             });
 
-            BooleanBinding infoHashSize = settings.visibleVideoInfo.and(settings.videoInfoSide
-                    .isNotEqualTo(InfoSide.OVERLAY));
-            NumberBinding videoInfoMinWidth = Bindings
-                    .when(infoHashSize)
-                    .then(Bindings.min(settings.videoInfoMinWidth, videoTab.getTabPane()
-                            .widthProperty().divide(2))).otherwise(0);
-            NumberBinding videoInfoMinHeight = Bindings
-                    .when(infoHashSize)
-                    .then(Bindings.min(settings.videoInfoMinHeight, videoTab.getTabPane()
-                            .heightProperty().divide(2))).otherwise(0);
-            mediaViewWidth = videoTab.getTabPane().widthProperty()
-                    .subtract(settings.tabMarginWidth).subtract(videoInfoMinWidth);
-            mediaViewHeight = videoTab.getTabPane().heightProperty()
-                    .subtract(settings.tabMarginHeight).subtract(videoInfoMinHeight);
+            videoPane.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+
+                @Override
+                public void handle(MouseEvent event) {
+                    int count = event.getClickCount();
+                    if ((1 < count) && ((count % 2) == 0)) {
+                        controlSaveSnapshot();
+                    }
+                }
+            });
+            {
+                BooleanBinding infoHashSize = settings.visibleVideoInfo.and(settings.videoInfoSide
+                        .isNotEqualTo(InfoSide.OVERLAY));
+                NumberBinding videoInfoMinWidth = Bindings
+                        .when(infoHashSize)
+                        .then(Bindings.min(settings.videoInfoMinWidth, videoTab.getTabPane()
+                                .widthProperty().divide(2))).otherwise(0);
+                NumberBinding videoInfoMinHeight = Bindings
+                        .when(infoHashSize)
+                        .then(Bindings.min(settings.videoInfoMinHeight, videoTab.getTabPane()
+                                .heightProperty().divide(2))).otherwise(0);
+                mediaViewFitWidth = videoTab.getTabPane().widthProperty()
+                        .subtract(settings.tabMarginWidth).subtract(videoInfoMinWidth);
+                mediaViewFitHeight = videoTab.getTabPane().heightProperty()
+                        .subtract(settings.tabMarginHeight).subtract(videoInfoMinHeight);
+
+                videoPane.videoInfoMaxWidthProperty().bind(settings.videoInfoMaxWidth);
+                videoPane.videoInfoMaxHeightProperty().bind(settings.videoInfoMaxHeight);
+            }
 
             timeText.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
 
@@ -487,6 +509,32 @@ public class PlayList implements Initializable {
                     }
                 }
             });
+
+            settings.otherDirection.addListener(new ChangeListener<OtherDirection>() {
+
+                @Override
+                public void changed(ObservableValue<? extends OtherDirection> observable,
+                        OtherDirection oldValue, OtherDirection newValue) {
+                    switch (newValue) {
+                        case FORWARD:
+                            directionText.setText(bundle.getString("control.direction.forward"));
+                            break;
+                        case BACK:
+                            directionText.setText(bundle.getString("control.direction.back"));
+                            break;
+                    }
+                }
+            });
+            directionText.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+
+                @Override
+                public void handle(MouseEvent event) {
+                    int count = event.getClickCount();
+                    if ((1 < count) && ((count % 2) == 0)) {
+                        settings.toggleOtherDirection();
+                    }
+                }
+            });
         }
 
         // control times volumes
@@ -634,9 +682,7 @@ public class PlayList implements Initializable {
                 public void handle(MouseEvent event) {
                     int count = event.getClickCount();
                     if ((1 < count) && ((count % 2) == 0)) {
-                        if (!saveImageService.isRunning()) {
-                            saveImageService.restart();
-                        }
+                        controlSaveImage();
                     }
                 }
             });
@@ -965,7 +1011,11 @@ public class PlayList implements Initializable {
                         }
                     }
                 } else {
-                    index = 0;
+                    if (control == Control.BACK) {
+                        index = items.size() - 1;
+                    } else {
+                        index = 0;
+                    }
                 }
                 targetInfo = items.get(index);
             }
@@ -1002,17 +1052,19 @@ public class PlayList implements Initializable {
 
                     targetInfo.releaseMedia(true);
                     if (0 < skipOnError) {
-                        Boolean dir = settings.direction.getValue();
-                        if (dir == null) {
-                            // random ?
-                            controlPlayerLater(Control.NEXT, targetInfo, forceResolve,
-                                    skipOnError - 1, true);
-                        } else if (dir.booleanValue()) {
-                            controlPlayerLater(Control.NEXT, targetInfo, forceResolve,
-                                    skipOnError - 1, true);
-                        } else {
-                            controlPlayerLater(Control.BACK, targetInfo, forceResolve,
-                                    skipOnError - 1, true);
+                        OtherDirection otherDirection = settings.otherDirection.getValue();
+                        if (otherDirection == null) {
+                            otherDirection = OtherDirection.FORWARD;
+                        }
+                        switch (otherDirection) {
+                            case FORWARD:
+                                controlPlayerLater(Control.NEXT, targetInfo, forceResolve,
+                                        skipOnError - 1, true);
+                                break;
+                            case BACK:
+                                controlPlayerLater(Control.BACK, targetInfo, forceResolve,
+                                        skipOnError - 1, true);
+                                break;
                         }
                     }
 
@@ -1022,13 +1074,19 @@ public class PlayList implements Initializable {
                 onMediaLoadError(e, targetInfo);
 
                 if (0 < skipOnError) {
-                    Boolean dir = settings.direction.getValue();
-                    if ((dir == null) || dir.booleanValue()) {
-                        controlPlayerLater(Control.NEXT, targetInfo, forceResolve, skipOnError - 1,
-                                true);
-                    } else {
-                        controlPlayerLater(Control.BACK, targetInfo, forceResolve, skipOnError - 1,
-                                true);
+                    OtherDirection otherDirection = settings.otherDirection.getValue();
+                    if (otherDirection == null) {
+                        otherDirection = OtherDirection.FORWARD;
+                    }
+                    switch (otherDirection) {
+                        case FORWARD:
+                            controlPlayerLater(Control.NEXT, targetInfo, forceResolve,
+                                    skipOnError - 1, true);
+                            break;
+                        case BACK:
+                            controlPlayerLater(Control.BACK, targetInfo, forceResolve,
+                                    skipOnError - 1, true);
+                            break;
                     }
                 }
 
@@ -1251,17 +1309,19 @@ public class PlayList implements Initializable {
                                 controlPlayerLater(Control.SPECIFY, targetInfo, forceResolve,
                                         skipOnError - 1, true);
                             } else {
-                                Boolean dir = settings.direction.getValue();
-                                if (dir == null) {
-                                    // random ? 
-                                    controlPlayer(Control.NEXT, targetInfo, forceResolve,
-                                            skipOnError - 1, true);
-                                } else if (dir.booleanValue()) {
-                                    controlPlayer(Control.NEXT, targetInfo, forceResolve,
-                                            skipOnError - 1, true);
-                                } else {
-                                    controlPlayer(Control.BACK, targetInfo, forceResolve,
-                                            skipOnError - 1, true);
+                                OtherDirection otherDirection = settings.otherDirection.getValue();
+                                if (otherDirection == null) {
+                                    otherDirection = OtherDirection.FORWARD;
+                                }
+                                switch (otherDirection) {
+                                    case FORWARD:
+                                        controlPlayer(Control.NEXT, targetInfo, forceResolve,
+                                                skipOnError - 1, true);
+                                        break;
+                                    case BACK:
+                                        controlPlayer(Control.BACK, targetInfo, forceResolve,
+                                                skipOnError - 1, true);
+                                        break;
                                 }
                             }
                         }
@@ -1297,17 +1357,19 @@ public class PlayList implements Initializable {
                                         settings.skipOnError.get(), true);
                                 break;
                             case OTHER:
-                                Boolean dir = settings.direction.getValue();
-                                if (dir == null) {
-                                    // TODO random
-                                    controlPlayer(Control.NEXT, targetInfo, true,
-                                            settings.skipOnError.get(), true);
-                                } else if (dir.booleanValue()) {
-                                    controlPlayer(Control.NEXT, targetInfo, true,
-                                            settings.skipOnError.get(), true);
-                                } else {
-                                    controlPlayer(Control.BACK, targetInfo, true,
-                                            settings.skipOnError.get(), true);
+                                OtherDirection otherDirection = settings.otherDirection.getValue();
+                                if (otherDirection == null) {
+                                    otherDirection = OtherDirection.FORWARD;
+                                }
+                                switch (otherDirection) {
+                                    case FORWARD:
+                                        controlPlayer(Control.NEXT, targetInfo, true,
+                                                settings.skipOnError.get(), true);
+                                        break;
+                                    case BACK:
+                                        controlPlayer(Control.BACK, targetInfo, true,
+                                                settings.skipOnError.get(), true);
+                                        break;
                                 }
                                 break;
                         }
@@ -1520,8 +1582,8 @@ public class PlayList implements Initializable {
         MediaView mediaView = new MediaView(player);
         mediaView.setSmooth(true);
         mediaView.setPreserveRatio(true);
-        mediaView.fitWidthProperty().bind(mediaViewWidth);
-        mediaView.fitHeightProperty().bind(mediaViewHeight);
+        mediaView.fitWidthProperty().bind(mediaViewFitWidth);
+        mediaView.fitHeightProperty().bind(mediaViewFitHeight);
         mediaView.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
 
             @Override
@@ -1672,20 +1734,42 @@ public class PlayList implements Initializable {
                 @Override
                 protected Boolean call() throws Exception {
                     outer: for (int times = 2; 0 < times; times--) {
+                        if (isCancelled()) {
+                            break outer;
+                        }
+
                         List<MediaInfo> items = getItemsSnapshot();
+                        LoadDirection loadDirection = settings.loadDirection.getValue();
+                        if (loadDirection == null) {
+                            loadDirection = LoadDirection.ALTERNATELY;
+                        }
+                        switch (loadDirection) {
+                            case FORWARD:
+                                break;
+                            case BACK:
+                                items = ListUtils.toReverse(items);
+                                break;
+                            case ALTERNATELY:
+                                items = ListUtils.toAlternate(items);
+                                break;
+                        }
                         for (int i = 0; i < items.size(); i++) {
                             MediaInfo info = items.get(i);
                             if (info.loaded()) {
                                 continue;
                             }
+
                             if (isCancelled()) {
                                 break outer;
                             }
+
                             try {
                                 if (info.load()) {
+
                                     if (isCancelled()) {
                                         break outer;
                                     }
+
                                     try {
                                         Thread.sleep(Math.max(
                                                 settings.loadMediaStepMilliseconds.get(), 0));
@@ -1708,6 +1792,43 @@ public class PlayList implements Initializable {
     };
 
     //----------------------------------------------------------------------------------
+    // other controls
+    // ------------------------
+
+    private void controlSaveImage() {
+        if (!saveTagImageService.isRunning()) {
+            saveTagImageService.restart();
+        }
+    }
+
+    private void controlSaveSnapshot() {
+        MediaView mediaView = videoPane.getMediaView();
+        if (mediaView == null) {
+            return;
+        }
+        MediaInfo mediaInfo = currentInfoProperty.getValue();
+        if (mediaInfo == null) {
+            return;
+        }
+        final String title = mediaInfo.titleDescProperty().getValue();
+        mediaView.snapshot(new Callback<SnapshotResult, Void>() {
+
+            @Override
+            public Void call(SnapshotResult result) {
+                Image image = result.getImage();
+                if (image == null) {
+                    return null;
+                }
+                if (!saveSnapshotService.isRunning()) {
+                    snapshotImageInfoProperty.setValue(new ImageInfo(image, title));
+                    saveSnapshotService.restart();
+                }
+                return null;
+            }
+        }, null, null);
+    }
+
+    //----------------------------------------------------------------------------------
     // load list, save image services
     //-------------------------
 
@@ -1717,9 +1838,15 @@ public class PlayList implements Initializable {
 
     private final Service<List<MediaInfo>> loadUrlService;
 
-    private final Service<List<MediaInfo>> loadUrlAutoStartService;
+    private final Service<List<MediaInfo>> loadUrlAutoStartHeadService;
 
-    private final Service<File> saveImageService;
+    private final Service<List<MediaInfo>> loadUrlAutoStartTailService;
+
+    private final Service<File> saveTagImageService;
+
+    private final ObjectProperty<ImageInfo> snapshotImageInfoProperty = new SimpleObjectProperty<>();
+
+    private final Service<File> saveSnapshotService;
 
     private final Service<Void> stageCloseService;
 
@@ -1775,7 +1902,7 @@ public class PlayList implements Initializable {
                     }
                 });
         loadUrlService = new LoadUrlService(pathTextProperty, metaChangeListener,
-                new LoadUrlService.ICallback() {
+                settings.loadDirection, new LoadUrlService.ICallback() {
 
                     @Override
                     public void callback(String url, List<MediaInfo> infos) {
@@ -1788,8 +1915,8 @@ public class PlayList implements Initializable {
                         loadMedia();
                     }
                 });
-        loadUrlAutoStartService = new LoadUrlService(pathTextProperty, metaChangeListener,
-                new LoadUrlService.ICallback() {
+        loadUrlAutoStartHeadService = new LoadUrlService(pathTextProperty, metaChangeListener,
+                settings.loadDirection, new LoadUrlService.ICallback() {
 
                     @Override
                     public void callback(String url, List<MediaInfo> infos) {
@@ -1804,11 +1931,39 @@ public class PlayList implements Initializable {
                                 true);
                     }
                 });
-        saveImageService = new SaveImageService(currentInfoProperty, stageProperty,
+        loadUrlAutoStartTailService = new LoadUrlService(pathTextProperty, metaChangeListener,
+                settings.loadDirection, new LoadUrlService.ICallback() {
+
+                    @Override
+                    public void callback(String url, List<MediaInfo> infos) {
+                        if (infos == null) {
+                            log("Load URL Failure : " + url);
+                            return;
+                        }
+                        log("Load URL : " + url);
+                        updateItems(url, infos);
+                        loadMedia();
+                        controlPlayerLater(Control.BACK, null, true, settings.skipOnError.get(),
+                                true);
+                    }
+                });
+        ObservableValue<ImageInfo> tagImageInfoProperty = new SimpleObjectProperty<ImageInfo>() {
+
+            @Override
+            public ImageInfo getValue() {
+                MediaInfo info = currentInfoProperty.getValue();
+                if (info == null) {
+                    return null;
+                }
+                return new ImageInfo(info.imageProperty().getValue(), info.titleDescProperty()
+                        .getValue());
+            }
+        };
+        saveTagImageService = new SaveImageService(tagImageInfoProperty, stageProperty,
                 new SaveImageService.ICallback() {
 
                     @Override
-                    public void callback(File in, File out, MediaInfo info) {
+                    public void callback(File in, File out, ImageInfo info) {
                         if (out == null) {
                             log("Save Image Failure : " + in.getAbsolutePath());
                             return;
@@ -1816,12 +1971,25 @@ public class PlayList implements Initializable {
                         log("Save Image : " + out.getAbsolutePath());
                     }
                 });
+        saveSnapshotService = new SaveImageService(snapshotImageInfoProperty, stageProperty,
+                new SaveImageService.ICallback() {
+
+                    @Override
+                    public void callback(File in, File out, ImageInfo info) {
+                        if (out == null) {
+                            log("Save Snapshot Failure : " + in.getAbsolutePath());
+                            return;
+                        }
+                        log("Save Snapshot : " + out.getAbsolutePath());
+                    }
+                });
         stageCloseService = new StageCloseService(stageProperty);
     }
 
     private boolean loadRunning() {
         return loadDirectoryService.isRunning() || loadFileService.isRunning()
-                || loadUrlService.isRunning() || loadUrlAutoStartService.isRunning();
+                || loadUrlService.isRunning() || loadUrlAutoStartHeadService.isRunning()
+                || loadUrlAutoStartTailService.isRunning();
     }
 
     //----------------------------------------------------------------------------------
@@ -1901,38 +2069,32 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void controlVideoInfoWidth(double width) {
-                    settings.videoInfoMinHeight.set(0);
-                    settings.videoInfoMinWidth.set(Math.max(width, 0));
+                    settings.setVideoInfoWidth(width);
                 }
 
                 @Override
                 public void controlVideoInfoWidthPlus(double width) {
-                    settings.videoInfoMinHeight.set(0);
-                    settings.videoInfoMinWidth.set(Math.max(settings.videoInfoMinWidth.get()
-                            + width, 0));
+                    settings.setVideoInfoWidthPlus(width);
                 }
 
                 @Override
                 public void controlVideoInfoWidthMinus(double width) {
-                    controlVideoInfoWidthPlus(width * -1);
+                    controlVideoInfoWidthPlus(Double.isNaN(width) ? width : width * -1);
                 }
 
                 @Override
                 public void controlVideoInfoHeight(double height) {
-                    settings.videoInfoMinWidth.set(0);
-                    settings.videoInfoMinHeight.set(Math.max(height, 0));
+                    settings.setVideoInfoHeight(height);
                 }
 
                 @Override
                 public void controlVideoInfoHeightPlus(double height) {
-                    settings.videoInfoMinWidth.set(0);
-                    settings.videoInfoMinHeight.set(Math.max(settings.videoInfoMinHeight.get()
-                            + height, 0));
+                    settings.setVideoInfoHeightPlus(height);
                 }
 
                 @Override
                 public void controlVideoInfoHeightMinus(double height) {
-                    controlVideoInfoHeightPlus(height * -1);
+                    controlVideoInfoHeightPlus(Double.isNaN(height) ? height : height * -1);
                 }
 
                 @Override
@@ -1966,6 +2128,15 @@ public class PlayList implements Initializable {
                         settings.toggleNextMode();
                     } else {
                         settings.nextMode.setValue(next);
+                    }
+                }
+
+                @Override
+                public void controlDirection(OtherDirection direction) {
+                    if (direction == null) {
+                        settings.toggleOtherDirection();
+                    } else {
+                        settings.otherDirection.setValue(direction);
                     }
                 }
 
@@ -2069,9 +2240,12 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void controlSaveImage() {
-                    if (!saveImageService.isRunning()) {
-                        saveImageService.restart();
-                    }
+                    PlayList.this.controlSaveImage();
+                }
+
+                @Override
+                public void controlSaveSnapshot() {
+                    PlayList.this.controlSaveSnapshot();
                 }
 
                 @Override
@@ -2162,10 +2336,12 @@ public class PlayList implements Initializable {
                     page = Integer.parseInt(_p) + inc;
                 } catch (NumberFormatException e) {
                 }
-                url = _u1 + Math.max(page, 1) + _u2;
+                if (0 < page) {
+                    url = _u1 + page + _u2;
+                }
             } else {
                 int page = 1 + inc;
-                if (1 < page) {
+                if (0 < page) {
                     if (text.contains("?")) {
                         url = text + "&page=" + page;
                     } else {
@@ -2177,7 +2353,11 @@ public class PlayList implements Initializable {
                 pathText.setText(url);
                 if (!loadRunning()) {
                     if (autoStart) {
-                        loadUrlAutoStartService.restart();
+                        if (0 <= inc) {
+                            loadUrlAutoStartHeadService.restart();
+                        } else {
+                            loadUrlAutoStartTailService.restart();
+                        }
                     } else {
                         loadUrlService.restart();
                     }

@@ -2,23 +2,42 @@ package com.brightgenerous.fxplayer.service;
 
 import java.io.File;
 
-import javafx.beans.property.ReadOnlyProperty;
+import javafx.beans.value.ObservableValue;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import javafx.scene.image.Image;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
-import com.brightgenerous.fxplayer.media.MediaInfo;
 import com.brightgenerous.fxplayer.util.ImageSaveUtils;
 import com.brightgenerous.fxplayer.util.ImageSaveUtils.Type;
 import com.brightgenerous.fxplayer.util.Utils;
 
 public class SaveImageService extends Service<File> {
 
+    public static class ImageInfo {
+
+        private final Image image;
+
+        private final String name;
+
+        public ImageInfo(Image image, String name) {
+            this.image = image;
+            this.name = name;
+        }
+
+        public Image getImage() {
+            return image;
+        }
+
+        public String getName() {
+            return name;
+        }
+    }
+
     public static interface ICallback {
 
-        void callback(File in, File out, MediaInfo info);
+        void callback(File in, File out, ImageInfo info);
     }
 
     private final FileChooser saveChooser = new FileChooser();
@@ -32,15 +51,15 @@ public class SaveImageService extends Service<File> {
                         .getExtensions()));
     }
 
-    private final ReadOnlyProperty<MediaInfo> infoProperty;
+    private final ObservableValue<ImageInfo> imageInfoProperty;
 
-    private final ReadOnlyProperty<? extends Window> owner;
+    private final ObservableValue<? extends Window> owner;
 
     private final ICallback callback;
 
-    public SaveImageService(ReadOnlyProperty<MediaInfo> infoProperty,
-            ReadOnlyProperty<? extends Window> owner, ICallback callback) {
-        this.infoProperty = infoProperty;
+    public SaveImageService(ObservableValue<ImageInfo> imageInfoProperty,
+            ObservableValue<? extends Window> owner, ICallback callback) {
+        this.imageInfoProperty = imageInfoProperty;
         this.owner = owner;
         this.callback = callback;
     }
@@ -51,32 +70,38 @@ public class SaveImageService extends Service<File> {
 
             @Override
             protected File call() throws Exception {
-                MediaInfo info = infoProperty.getValue();
+                if (isCancelled()) {
+                    return null;
+                }
+
+                ImageInfo info = imageInfoProperty.getValue();
                 if (info == null) {
                     return null;
                 }
 
-                Image image = info.imageProperty().getValue();
+                Image image = info.getImage();
                 if (image == null) {
                     return null;
                 }
 
                 File file;
                 {
-                    String title = info.titleProperty().getValue();
-                    if ((title == null) || title.isEmpty()) {
+                    String name = info.getName();
+                    if ((name == null) || name.isEmpty()) {
                         saveChooser.setInitialFileName("");
                     } else {
                         Type type = ImageSaveUtils.suggestType();
-                        saveChooser.setInitialFileName(ImageSaveUtils.escapeFileName(title
+                        saveChooser.setInitialFileName(ImageSaveUtils.escapeFileName(name
                                 + type.getExtension()));
                     }
                     file = saveChooser.showSaveDialog(owner.getValue());
                 }
-                if (file == null) {
+
+                if (isCancelled()) {
                     return null;
                 }
-                if (isCancelled()) {
+
+                if (file == null) {
                     return null;
                 }
                 {
