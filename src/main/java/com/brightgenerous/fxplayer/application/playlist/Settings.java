@@ -26,8 +26,9 @@ class Settings {
 
     private static final double CURRENT_TIME_DEFF = 100; // milliseconds
 
-    public final ObjectProperty<ScreenMode> screenMode = new SimpleObjectProperty<>(this,
-            "screenMode", ScreenMode.NORMAL);
+    public final BooleanProperty hideHeader = new SimpleBooleanProperty(this, "hideHeader");
+
+    public final BooleanProperty hideFooter = new SimpleBooleanProperty(this, "hideFooter");
 
     public final BooleanProperty visibleTab = new SimpleBooleanProperty(this, "visibleTab");
 
@@ -90,28 +91,21 @@ class Settings {
     public final ReadOnlyIntegerProperty skipOnError = new SimpleIntegerProperty(this,
             "skipOnError", 3);
 
-    public ScreenMode toggleScreenMode() {
-        ScreenMode ret = screenMode.getValue();
-        if (ret == null) {
-            screenMode.setValue(ScreenMode.NORMAL);
-        } else {
-            switch (ret) {
-                case NORMAL:
-                    screenMode.setValue(ScreenMode.HIDE_HEADER);
-                    break;
-                case HIDE_HEADER:
-                case HIDE_FOOTER:
-                case HIDE_ALL:
-                    screenMode.setValue(ScreenMode.NORMAL);
-                    break;
-            }
-        }
+    public Boolean toggleHideHeader() {
+        Boolean ret = hideHeader.getValue();
+        hideHeader.set((ret == null) ? true : !ret.booleanValue());
+        return ret;
+    }
+
+    public Boolean toggleHideFooter() {
+        Boolean ret = hideFooter.getValue();
+        hideFooter.set((ret == null) ? true : !ret.booleanValue());
         return ret;
     }
 
     private Boolean toggleVisibleTab() {
         Boolean ret = visibleTab.getValue();
-        visibleTab.set(!ret.booleanValue());
+        visibleTab.set((ret == null) ? true : !ret.booleanValue());
         return ret;
     }
 
@@ -207,13 +201,13 @@ class Settings {
 
     public Boolean toggleVisibleSpectrums() {
         Boolean ret = visibleSpectrums.getValue();
-        visibleSpectrums.set(!ret.booleanValue());
+        visibleSpectrums.set((ret == null) ? true : !ret.booleanValue());
         return ret;
     }
 
     public Boolean toggleTimesVolumesHorizontal() {
         Boolean ret = timesVolumesHorizontal.getValue();
-        timesVolumesHorizontal.set(!ret.booleanValue());
+        timesVolumesHorizontal.set((ret == null) ? true : !ret.booleanValue());
         return ret;
     }
 
@@ -227,7 +221,7 @@ class Settings {
 
     private Boolean toggleVisibleVideoInfo() {
         Boolean ret = visibleVideoInfo.getValue();
-        visibleVideoInfo.set(!ret.booleanValue());
+        visibleVideoInfo.set((ret == null) ? true : !ret.booleanValue());
         return ret;
     }
 
@@ -306,8 +300,10 @@ class Settings {
     }
 
     public void reset() {
-        screenMode.setValue(ScreenMode.HIDE_HEADER);
-        screenMode.setValue(ScreenMode.NORMAL);
+        hideHeader.set(true);
+        hideHeader.set(false);
+        hideFooter.set(true);
+        hideFooter.set(false);
 
         visibleTab.set(false);
         visibleTab.set(true);
@@ -344,7 +340,8 @@ class Settings {
     }
 
     public void setVideoMode() {
-        screenMode.setValue(ScreenMode.HIDE_HEADER);
+        hideHeader.set(true);
+        hideFooter.set(false);
 
         visibleTab.set(false);
 

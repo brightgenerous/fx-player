@@ -90,7 +90,9 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
         void controlSaveSnapshot();
 
-        void controlScreenMode();
+        void controlHideHeader();
+
+        void controlHideFooter();
 
         void controlWindowScreen();
 
@@ -187,8 +189,11 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
     private static final Pattern saveSnapshotPattern = Pattern
             .compile("^(?:.*\\s+)?(?:ss|svsn|svss|savesnapshot)$");
 
-    private static final Pattern screenModePattern = Pattern
-            .compile("^(?:.*\\s+)?(?:wh|wnhd|wndhd|wndhide)$");
+    private static final Pattern hideHeaderPattern = Pattern
+            .compile("^(?:.*\\s+)?(?:wh|wnhd|wndhd|wndhead)$");
+
+    private static final Pattern hideFooterPattern = Pattern
+            .compile("^(?:.*\\s+)?(?:wf|wnft|wndft|wndfoot)$");
 
     private static final Pattern windowScreenPattern = Pattern
             .compile("^(?:.*\\s+)?(?:wm|wnm|wdm|wndm|windowm)$");
@@ -489,8 +494,12 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
                     adapter.controlSaveSnapshot();
                     break parse;
                 }
-                if (screenModePattern.matcher(in).find()) {
-                    adapter.controlScreenMode();
+                if (hideHeaderPattern.matcher(in).find()) {
+                    adapter.controlHideHeader();
+                    break parse;
+                }
+                if (hideFooterPattern.matcher(in).find()) {
+                    adapter.controlHideFooter();
                     break parse;
                 }
                 if (windowScreenPattern.matcher(in).find()) {
@@ -712,7 +721,11 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
         }
 
         @Override
-        public void controlScreenMode() {
+        public void controlHideHeader() {
+        }
+
+        @Override
+        public void controlHideFooter() {
         }
 
         @Override

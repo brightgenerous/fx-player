@@ -31,9 +31,9 @@
         <ToggleButton fx:id="controlLog" onAction="#controlLog"
             text="%control.log" ellipsisString="%control.log.ellipsis" mnemonicParsing="true" />
         <Button onAction="#controlLogSnap" />
-        <ToggleButton fx:id="controlScreenMode" selected="true"
-            text="%control.screenMode.on" ellipsisString="control.screenMode.ellipsis.on"
-            onAction="#controlScreenMode" />
+        <ToggleButton fx:id="controlHideHeader" selected="true"
+            text="%control.hideHeader.off" ellipsisString="control.hideHeader.ellipsis.off"
+            onAction="#controlHideHeader" />
       </HBox>
     </VBox>
   </header>
@@ -138,7 +138,7 @@
             <StackPane HBox.hgrow="ALWAYS">
               <ProgressBar fx:id="controlTimeCurrent" progress="0" prefWidth="9999" />
               <ProgressBar fx:id="controlTimeBuffer" progress="0" prefWidth="9999" opacity="0.3" />
-              <Slider fx:id="controlTime" id="control-time" min="0" max="0" prefWidth="9999" />
+              <Slider fx:id="controlTime" id="control-time" min="0" max="0" blockIncrement="10000" prefWidth="9999" />
             </StackPane>
             <Label fx:id="timeText" id="time-text" minWidth="190" alignment="CENTER_RIGHT" />
           </HBox>
@@ -165,7 +165,7 @@
               <ToggleButton fx:id="controlMute"
                   text="%control.mute.off" ellipsisString="control.mute.off.ellipsis" mnemonicParsing="true"
                   minWidth="45" maxWidth="45" onAction="#controlMute" />
-              <Slider fx:id="controlVolume" min="0.0" max="1.0" value="0.5" minWidth="80" maxWidth="200" />
+              <Slider fx:id="controlVolume" min="0.0" max="1.0" value="0.5" blockIncrement="0.05" minWidth="80" maxWidth="200" />
               <Label fx:id="volumeText" id="volume-text" minWidth="30" alignment="CENTER_RIGHT" />
             </HBox>
           </HBox>
@@ -173,6 +173,10 @@
       </VBox>
       <Region minWidth="5" maxWidth="5" />
       <ImageView fx:id="imageView" id="meta-image" fitWidth="100" preserveRatio="true" smooth="true" />
+      <Region minWidth="5" maxWidth="5" />
+      <ToggleButton fx:id="controlHideFooter" selected="true"
+          text="%control.hideFooter.off" ellipsisString="control.hideFooter.ellipsis.off"
+          onAction="#controlHideFooter" />
     </HBox>
   </footer>
 </StoreVBox>

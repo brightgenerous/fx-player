@@ -113,7 +113,10 @@ public class PlayList implements Initializable {
     private LoggStage logStage;
 
     @FXML
-    private ToggleButton controlScreenMode;
+    private ToggleButton controlHideHeader;
+
+    @FXML
+    private ToggleButton controlHideFooter;
 
     // tab
 
@@ -252,28 +255,41 @@ public class PlayList implements Initializable {
         {
             final BooleanProperty mouseOnHeader = new SimpleBooleanProperty(false);
             final BooleanProperty mouseOnFooter = new SimpleBooleanProperty(false);
-            BooleanBinding hideAll = settings.screenMode.isEqualTo(ScreenMode.HIDE_ALL);
-            BooleanBinding hideHeader = settings.screenMode.isEqualTo(ScreenMode.HIDE_HEADER).or(
-                    hideAll);
-            BooleanBinding hideHeaderDyna = Bindings.when(hideHeader).then(mouseOnHeader.not())
-                    .otherwise(false);
-            BooleanBinding hideFooter = settings.screenMode.isEqualTo(ScreenMode.HIDE_FOOTER).or(
-                    hideAll);
-            BooleanBinding hideFooterDyna = Bindings.when(hideFooter).then(mouseOnFooter.not())
-                    .otherwise(false);
-            rootPane.hideHeaderProperty().bind(hideHeaderDyna);
-            rootPane.hideFooterProperty().bind(hideFooterDyna);
+            rootPane.hideHeaderProperty().bind(
+                    Bindings.when(settings.hideHeader).then(mouseOnHeader.not()).otherwise(false));
+            rootPane.hideFooterProperty().bind(
+                    Bindings.when(settings.hideFooter).then(mouseOnFooter.not()).otherwise(false));
 
-            controlScreenMode.textProperty().bind(
-                    Bindings.when(controlScreenMode.selectedProperty())
-                            .then(bundle.getString("control.screenMode.on"))
-                            .otherwise(bundle.getString("control.screenMode.off")));
-            hideHeader.addListener(new ChangeListener<Boolean>() {
+            controlHideHeader.textProperty().bind(
+                    Bindings.when(controlHideHeader.selectedProperty())
+                            .then(bundle.getString("control.hideHeader.on"))
+                            .otherwise(bundle.getString("control.hideHeader.off")));
+            controlHideHeader.ellipsisStringProperty().bind(
+                    Bindings.when(controlHideHeader.selectedProperty())
+                            .then(bundle.getString("control.hideHeader.ellipsis.on"))
+                            .otherwise(bundle.getString("control.hideHeader.ellipsis.off")));
+            settings.hideHeader.addListener(new ChangeListener<Boolean>() {
 
                 @Override
                 public void changed(ObservableValue<? extends Boolean> observable,
                         Boolean oldValue, Boolean newValue) {
-                    controlScreenMode.setSelected(!newValue.booleanValue());
+                    controlHideHeader.setSelected(!newValue.booleanValue());
+                }
+            });
+            controlHideFooter.textProperty().bind(
+                    Bindings.when(controlHideFooter.selectedProperty())
+                            .then(bundle.getString("control.hideFooter.on"))
+                            .otherwise(bundle.getString("control.hideFooter.off")));
+            controlHideFooter.ellipsisStringProperty().bind(
+                    Bindings.when(controlHideFooter.selectedProperty())
+                            .then(bundle.getString("control.hideFooter.ellipsis.on"))
+                            .otherwise(bundle.getString("control.hideFooter.ellipsis.off")));
+            settings.hideFooter.addListener(new ChangeListener<Boolean>() {
+
+                @Override
+                public void changed(ObservableValue<? extends Boolean> observable,
+                        Boolean oldValue, Boolean newValue) {
+                    controlHideFooter.setSelected(!newValue.booleanValue());
                 }
             });
 
@@ -281,8 +297,20 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void handle(MouseEvent event) {
-                    if (event.getSceneY() < Math.max(rootPane.getHeaderHeight(), 20)) {
+                    double y = event.getSceneY();
+                    if (y < Math.max(rootPane.getHeaderHeight(), 20)) {
                         mouseOnHeader.set(true);
+                    } else {
+                        mouseOnHeader.set(false);
+                    }
+                    double height = rootPane.getHeight();
+                    if (Double.isNaN(height) || (height < 0)) {
+                        return;
+                    }
+                    if ((height - y) <= Math.max(rootPane.getFooterHeight(), 20)) {
+                        mouseOnFooter.set(true);
+                    } else {
+                        mouseOnFooter.set(false);
                     }
                 }
             });
@@ -292,6 +320,14 @@ public class PlayList implements Initializable {
                         @Override
                         public void handle(MouseEvent event) {
                             mouseOnHeader.set(false);
+                        }
+                    });
+            rootPane.getFooter().addEventHandler(MouseEvent.MOUSE_EXITED,
+                    new EventHandler<MouseEvent>() {
+
+                        @Override
+                        public void handle(MouseEvent event) {
+                            mouseOnFooter.set(false);
                         }
                     });
         }
@@ -891,8 +927,13 @@ public class PlayList implements Initializable {
     }
 
     @FXML
-    protected void controlScreenMode() {
-        settings.toggleScreenMode();
+    protected void controlHideHeader() {
+        settings.toggleHideHeader();
+    }
+
+    @FXML
+    protected void controlHideFooter() {
+        settings.toggleHideFooter();
     }
 
     @FXML
@@ -2305,8 +2346,13 @@ public class PlayList implements Initializable {
                 }
 
                 @Override
-                public void controlScreenMode() {
-                    settings.toggleScreenMode();
+                public void controlHideHeader() {
+                    PlayList.this.controlHideHeader();
+                }
+
+                @Override
+                public void controlHideFooter() {
+                    PlayList.this.controlHideFooter();
                 }
 
                 @Override
