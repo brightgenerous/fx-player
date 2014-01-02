@@ -29,15 +29,16 @@ public class VideoPane extends Pane {
         getStyleClass().add("video-pane");
     }
 
-    private TableView<?> infoList;
+    private final BooleanProperty visibleInfoList = new SimpleBooleanProperty(this,
+            "visibleInfoList");
 
-    private final BooleanProperty visibleInfoList = new SimpleBooleanProperty();
+    private final ObjectProperty<InfoSide> infoSide = new SimpleObjectProperty<>(this, "infoSide");
 
-    private final ObjectProperty<InfoSide> infoSide = new SimpleObjectProperty<>();
+    private final DoubleProperty videoInfoMaxWidth = new SimpleDoubleProperty(this,
+            "videoInfoMaxWidth");
 
-    private final DoubleProperty videoInfoMaxWidth = new SimpleDoubleProperty();
-
-    private final DoubleProperty videoInfoMaxHeight = new SimpleDoubleProperty();
+    private final DoubleProperty videoInfoMaxHeight = new SimpleDoubleProperty(this,
+            "videoInfoMaxHeight");
 
     {
         visibleInfoList.addListener(new ChangeListener<Boolean>() {
@@ -45,19 +46,6 @@ public class VideoPane extends Pane {
             @Override
             public void changed(ObservableValue<? extends Boolean> observable, Boolean oldValue,
                     Boolean newValue) {
-                if (infoList == null) {
-                    return;
-                }
-                List<Node> children = getChildren();
-                if (newValue.booleanValue()) {
-                    if (!children.contains(infoList)) {
-                        children.add(infoList);
-                    }
-                } else {
-                    if (children.contains(infoList)) {
-                        children.remove(infoList);
-                    }
-                }
                 requestLayout();
             }
         });
@@ -94,25 +82,31 @@ public class VideoPane extends Pane {
     protected void layoutChildren() {
 
         Node video = getMediaView(true);
-        Node list = getVisibleInfoList() ? getInfoList(true) : null;
+        Node list = getInfoList(true);
 
         if ((video == null) && (list == null)) {
             // video is null and list is null
             return;
         }
 
-        double rightInset = snapSpace(getInsets().getRight());
         double leftInset = snapSpace(getInsets().getLeft());
         double topInset = snapSpace(getInsets().getTop());
-        double bottomInset = snapSpace(getInsets().getBottom());
 
-        double actualWidth = getWidth() - leftInset - rightInset;
-        double actualHeight = getHeight() - topInset - bottomInset;
+        double width = getWidth();
+        double actualWidth = width - leftInset - snapSpace(getInsets().getRight());
+        double actualHeight = getHeight() - topInset - snapSpace(getInsets().getBottom());
 
+        if ((list != null) && !getVisibleInfoList()) {
+            // list is invisible
+            layoutInArea(list, width, topInset, 0, 0, 0, HPos.LEFT, VPos.CENTER);
+            list = null;
+        }
         if (video == null) {
-            // video is null and list is not null
-            layoutInArea(list, leftInset, topInset, actualWidth, actualHeight, 0, HPos.CENTER,
-                    VPos.CENTER);
+            if (list != null) {
+                // video is null and list is not null
+                layoutInArea(list, leftInset, topInset, actualWidth, actualHeight, 0, HPos.CENTER,
+                        VPos.CENTER);
+            }
             return;
         }
 
@@ -297,8 +291,7 @@ public class VideoPane extends Pane {
         if (!dels.isEmpty()) {
             children.removeAll(dels);
         }
-        infoList = view;
-        if ((view != null) && visibleInfoList.get()) {
+        if (view != null) {
             children.add(view);
         }
     }

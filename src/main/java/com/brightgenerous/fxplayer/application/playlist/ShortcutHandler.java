@@ -90,6 +90,8 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
         void controlSaveSnapshot();
 
+        void controlScreenMode();
+
         void controlWindowScreen();
 
         void controlWindowScreenMin();
@@ -184,6 +186,9 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
     private static final Pattern saveSnapshotPattern = Pattern
             .compile("^(?:.*\\s+)?(?:ss|svsn|svss|savesnapshot)$");
+
+    private static final Pattern screenModePattern = Pattern
+            .compile("^(?:.*\\s+)?(?:wh|wnhd|wndhd|wndhide)$");
 
     private static final Pattern windowScreenPattern = Pattern
             .compile("^(?:.*\\s+)?(?:wm|wnm|wdm|wndm|windowm)$");
@@ -484,6 +489,10 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
                     adapter.controlSaveSnapshot();
                     break parse;
                 }
+                if (screenModePattern.matcher(in).find()) {
+                    adapter.controlScreenMode();
+                    break parse;
+                }
                 if (windowScreenPattern.matcher(in).find()) {
                     adapter.controlWindowScreen();
                     break parse;
@@ -700,6 +709,10 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
         @Override
         public void controlSaveSnapshot() {
+        }
+
+        @Override
+        public void controlScreenMode() {
         }
 
         @Override

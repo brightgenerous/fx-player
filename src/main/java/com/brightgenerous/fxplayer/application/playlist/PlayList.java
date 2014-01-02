@@ -16,9 +16,11 @@ import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.binding.NumberBinding;
+import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.LongProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.Property;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleLongProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -96,7 +98,7 @@ public class PlayList implements Initializable {
     private ResourceBundle bundle;
 
     @FXML
-    private Pane rootPane;
+    private StoreVBox rootPane;
 
     // top control
 
@@ -105,12 +107,13 @@ public class PlayList implements Initializable {
 
     private final Property<String> pathTextProperty = new SimpleStringProperty();
 
-    // log
-
     @FXML
     private ToggleButton controlLog;
 
     private LoggStage logStage;
+
+    @FXML
+    private ToggleButton controlScreenMode;
 
     // tab
 
@@ -243,6 +246,54 @@ public class PlayList implements Initializable {
         {
             stageProperty.setValue(stage);
             pathTextProperty.bind(pathText.textProperty());
+        }
+
+        // screen
+        {
+            final BooleanProperty mouseOnHeader = new SimpleBooleanProperty(false);
+            final BooleanProperty mouseOnFooter = new SimpleBooleanProperty(false);
+            BooleanBinding hideAll = settings.screenMode.isEqualTo(ScreenMode.HIDE_ALL);
+            BooleanBinding hideHeader = settings.screenMode.isEqualTo(ScreenMode.HIDE_HEADER).or(
+                    hideAll);
+            BooleanBinding hideHeaderDyna = Bindings.when(hideHeader).then(mouseOnHeader.not())
+                    .otherwise(false);
+            BooleanBinding hideFooter = settings.screenMode.isEqualTo(ScreenMode.HIDE_FOOTER).or(
+                    hideAll);
+            BooleanBinding hideFooterDyna = Bindings.when(hideFooter).then(mouseOnFooter.not())
+                    .otherwise(false);
+            rootPane.hideHeaderProperty().bind(hideHeaderDyna);
+            rootPane.hideFooterProperty().bind(hideFooterDyna);
+
+            controlScreenMode.textProperty().bind(
+                    Bindings.when(controlScreenMode.selectedProperty())
+                            .then(bundle.getString("control.screenMode.on"))
+                            .otherwise(bundle.getString("control.screenMode.off")));
+            hideHeader.addListener(new ChangeListener<Boolean>() {
+
+                @Override
+                public void changed(ObservableValue<? extends Boolean> observable,
+                        Boolean oldValue, Boolean newValue) {
+                    controlScreenMode.setSelected(!newValue.booleanValue());
+                }
+            });
+
+            rootPane.addEventFilter(MouseEvent.MOUSE_MOVED, new EventHandler<MouseEvent>() {
+
+                @Override
+                public void handle(MouseEvent event) {
+                    if (event.getSceneY() < Math.max(rootPane.getHeaderHeight(), 20)) {
+                        mouseOnHeader.set(true);
+                    }
+                }
+            });
+            rootPane.getHeader().addEventHandler(MouseEvent.MOUSE_EXITED,
+                    new EventHandler<MouseEvent>() {
+
+                        @Override
+                        public void handle(MouseEvent event) {
+                            mouseOnHeader.set(false);
+                        }
+                    });
         }
 
         // tab
@@ -837,6 +888,11 @@ public class PlayList implements Initializable {
         if (logStage.isShowing()) {
             logStage.toFront();
         }
+    }
+
+    @FXML
+    protected void controlScreenMode() {
+        settings.toggleScreenMode();
     }
 
     @FXML
@@ -2246,6 +2302,11 @@ public class PlayList implements Initializable {
                 @Override
                 public void controlSaveSnapshot() {
                     PlayList.this.controlSaveSnapshot();
+                }
+
+                @Override
+                public void controlScreenMode() {
+                    settings.toggleScreenMode();
                 }
 
                 @Override

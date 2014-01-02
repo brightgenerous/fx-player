@@ -22,9 +22,10 @@ public class TabWrapPane extends Pane {
         getStyleClass().add("tab-wrap-pane");
     }
 
-    private final DoubleProperty tabHeight = new SimpleDoubleProperty(31);
+    private final DoubleProperty tabHeight = new SimpleDoubleProperty(this, "tabHeight", 31);
 
-    private final BooleanProperty visibleTab = new SimpleBooleanProperty();
+    private final BooleanProperty visibleTab = new SimpleBooleanProperty(this, "visibleTab");
+
     {
         tabHeight.addListener(new ChangeListener<Number>() {
 

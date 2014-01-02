@@ -80,17 +80,22 @@
 #time-text {
   -fx-fill: #333;
   -fx-font: 15 Consolas;
-  -fx-text-alignment: right;
   -fx-padding: 6 0 0 0;
 }
 
 #volume-text {
   -fx-fill: #333;
   -fx-font: 15 Consolas;
-  -fx-text-alignment: right;
   -fx-padding: 3 0 0 0;
 }
 
+#repeat-text {
+  -fx-fill: #333;
+}
+
+#direction-text {
+  -fx-fill: #333;
+}
 
 #meta-image {
   -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.8), 3, 0, 0, 0);

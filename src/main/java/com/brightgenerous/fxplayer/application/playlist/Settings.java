@@ -26,14 +26,18 @@ class Settings {
 
     private static final double CURRENT_TIME_DEFF = 100; // milliseconds
 
-    public final BooleanProperty visibleTab = new SimpleBooleanProperty();
+    public final ObjectProperty<ScreenMode> screenMode = new SimpleObjectProperty<>(this,
+            "screenMode", ScreenMode.NORMAL);
 
-    public final ObjectProperty<Side> tabSide = new SimpleObjectProperty<>(Side.BOTTOM);
+    public final BooleanProperty visibleTab = new SimpleBooleanProperty(this, "visibleTab");
+
+    public final ObjectProperty<Side> tabSide = new SimpleObjectProperty<>(this, "tabSide",
+            Side.BOTTOM);
 
     private final ObservableBooleanValue tabLeftRight = tabSide.isEqualTo(Side.LEFT).or(
             tabSide.isEqualTo(Side.RIGHT));
 
-    public final DoubleProperty tabHeight = new SimpleDoubleProperty(24);
+    public final DoubleProperty tabHeight = new SimpleDoubleProperty(this, "tabHeight", 24);
 
     public final DoubleBinding tabSpaceHeight = tabHeight.add(7);
 
@@ -43,37 +47,67 @@ class Settings {
     public final ObservableNumberValue tabMarginHeight = Bindings.when(tabLeftRight).then(0)
             .otherwise(tabSpaceHeight);
 
-    public final BooleanProperty visibleVideoInfo = new SimpleBooleanProperty();
+    public final BooleanProperty visibleVideoInfo = new SimpleBooleanProperty(this,
+            "visibleVideoInfo");
 
-    public final ObjectProperty<InfoSide> videoInfoSide = new SimpleObjectProperty<>();
+    public final ObjectProperty<InfoSide> videoInfoSide = new SimpleObjectProperty<>(this,
+            "videoInfoSide");
 
-    public final DoubleProperty videoInfoMinWidth = new SimpleDoubleProperty();
+    public final DoubleProperty videoInfoMinWidth = new SimpleDoubleProperty(this,
+            "videoInfoMinWidth");
 
-    public final DoubleProperty videoInfoMaxWidth = new SimpleDoubleProperty();
+    public final DoubleProperty videoInfoMaxWidth = new SimpleDoubleProperty(this,
+            "videoInfoMaxWidth");
 
-    public final DoubleProperty videoInfoMinHeight = new SimpleDoubleProperty();
+    public final DoubleProperty videoInfoMinHeight = new SimpleDoubleProperty(this,
+            "videoInfoMinHeight");
 
-    public final DoubleProperty videoInfoMaxHeight = new SimpleDoubleProperty();
+    public final DoubleProperty videoInfoMaxHeight = new SimpleDoubleProperty(this,
+            "videoInfoMaxHeight");
 
-    public final BooleanProperty visibleSpectrums = new SimpleBooleanProperty();
+    public final BooleanProperty visibleSpectrums = new SimpleBooleanProperty(this,
+            "visibleSpectrums");
 
-    public final BooleanProperty timesVolumesHorizontal = new SimpleBooleanProperty();
+    public final BooleanProperty timesVolumesHorizontal = new SimpleBooleanProperty(this,
+            "timesVolumesHorizontal");
 
-    public final ObjectProperty<NextMode> nextMode = new SimpleObjectProperty<>(NextMode.OTHER);
+    public final ObjectProperty<NextMode> nextMode = new SimpleObjectProperty<>(this, "nextMode",
+            NextMode.OTHER);
 
-    public final ObjectProperty<OtherDirection> otherDirection = new SimpleObjectProperty<>(
-            OtherDirection.FORWARD);
+    public final ObjectProperty<OtherDirection> otherDirection = new SimpleObjectProperty<>(this,
+            "otherDirection", OtherDirection.FORWARD);
 
     public final ReadOnlyObjectProperty<LoadDirection> loadDirection = new SimpleObjectProperty<>(
-            LoadDirection.ALTERNATELY);
+            this, "loadDirection", LoadDirection.ALTERNATELY);
 
-    public final DoubleProperty volume = new SimpleDoubleProperty();
+    public final DoubleProperty volume = new SimpleDoubleProperty(this, "volume");
 
-    public final BooleanProperty mute = new SimpleBooleanProperty();
+    public final BooleanProperty mute = new SimpleBooleanProperty(this, "mute");
 
-    public final ReadOnlyLongProperty loadMediaStepMilliseconds = new SimpleLongProperty(500);
+    public final ReadOnlyLongProperty loadMediaStepMilliseconds = new SimpleLongProperty(this,
+            "loadMediaStepMilliseconds", 500);
 
-    public final ReadOnlyIntegerProperty skipOnError = new SimpleIntegerProperty(3);
+    public final ReadOnlyIntegerProperty skipOnError = new SimpleIntegerProperty(this,
+            "skipOnError", 3);
+
+    public ScreenMode toggleScreenMode() {
+        ScreenMode ret = screenMode.getValue();
+        if (ret == null) {
+            screenMode.setValue(ScreenMode.NORMAL);
+        } else {
+            switch (ret) {
+                case NORMAL:
+                    screenMode.setValue(ScreenMode.HIDE_HEADER);
+                    break;
+                case HIDE_HEADER:
+                case HIDE_FOOTER:
+                case HIDE_ALL:
+                    screenMode.setValue(ScreenMode.NORMAL);
+                    break;
+            }
+        }
+        return ret;
+    }
 
     private Boolean toggleVisibleTab() {
         Boolean ret = visibleTab.getValue();
@@ -272,6 +306,9 @@ class Settings {
     }
 
     public void reset() {
+        screenMode.setValue(ScreenMode.HIDE_HEADER);
+        screenMode.setValue(ScreenMode.NORMAL);
+
         visibleTab.set(false);
         visibleTab.set(true);
 
@@ -307,6 +344,8 @@ class Settings {
     }
 
     public void setVideoMode() {
+        screenMode.setValue(ScreenMode.HIDE_HEADER);
+
         visibleTab.set(false);
 
         tabSide.setValue(Side.LEFT);
