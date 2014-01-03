@@ -51,13 +51,13 @@ public class SaveImageService extends Service<File> {
                         .getExtensions()));
     }
 
-    private final ObservableValue<ImageInfo> imageInfoProperty;
+    private final ObservableValue<? extends ImageInfo> imageInfoProperty;
 
     private final ObservableValue<? extends Window> owner;
 
     private final ICallback callback;
 
-    public SaveImageService(ObservableValue<ImageInfo> imageInfoProperty,
+    public SaveImageService(ObservableValue<? extends ImageInfo> imageInfoProperty,
             ObservableValue<? extends Window> owner, ICallback callback) {
         this.imageInfoProperty = imageInfoProperty;
         this.owner = owner;

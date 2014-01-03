@@ -123,7 +123,34 @@ class MediaInfoLoader {
         return ret;
     }
 
-    public static List<MediaInfo> fromFile(File file, MetaChangeListener metaChangeListener) {
+    public static List<MediaInfo> fromFiles(List<File> files, MetaChangeListener metaChangeListener) {
+        if (files == null) {
+            return null;
+        }
+        List<MediaInfo> ret = new ArrayList<>();
+        for (File file : files) {
+            if (file.exists() && file.isFile() && file.canRead()) {
+                String path = null;
+                try {
+                    path = file.toURI().toURL().toString();
+                } catch (MalformedURLException e) {
+                }
+                if (path != null) {
+                    ret.add(factory.create(path, file.getName(), metaChangeListener));
+                }
+            }
+        }
+        Collections.sort(ret, new Comparator<MediaInfo>() {
+
+            @Override
+            public int compare(MediaInfo o1, MediaInfo o2) {
+                return o1.getSource().getUrl().compareTo(o2.getSource().getUrl());
+            }
+        });
+        return ret;
+    }
+
+    public static List<MediaInfo> fromListFile(File file, MetaChangeListener metaChangeListener) {
         if ((file == null) || !file.exists() || !file.canRead()) {
             return null;
         }

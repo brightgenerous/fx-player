@@ -3,6 +3,7 @@ package com.brightgenerous.fxplayer.application.playlist;
 import java.io.File;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.ResourceBundle;
@@ -53,9 +54,12 @@ import javafx.scene.control.ToggleButton;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.DragEvent;
+import javafx.scene.input.Dragboard;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
@@ -79,7 +83,8 @@ import com.brightgenerous.fxplayer.media.MediaLoadException;
 import com.brightgenerous.fxplayer.media.MediaStatus;
 import com.brightgenerous.fxplayer.service.LoadDirection;
 import com.brightgenerous.fxplayer.service.LoadDirectoryService;
-import com.brightgenerous.fxplayer.service.LoadFileService;
+import com.brightgenerous.fxplayer.service.LoadFilesService;
+import com.brightgenerous.fxplayer.service.LoadListFileService;
 import com.brightgenerous.fxplayer.service.LoadUrlService;
 import com.brightgenerous.fxplayer.service.SaveImageService;
 import com.brightgenerous.fxplayer.service.SaveImageService.ImageInfo;
@@ -565,6 +570,27 @@ public class PlayList implements Initializable {
             infoListClone.opacityProperty().bind(
                     Bindings.when(settings.videoInfoSide.isEqualTo(InfoSide.OVERLAY)).then(0.3)
                             .otherwise(0.7));
+
+            // dod
+            infoList.setOnDragOver(new EventHandler<DragEvent>() {
+
+                @Override
+                public void handle(DragEvent event) {
+                    event.acceptTransferModes(TransferMode.LINK);
+                }
+            });
+            infoList.setOnDragDropped(new EventHandler<DragEvent>() {
+
+                @Override
+                public void handle(DragEvent event) {
+                    Dragboard dragboard = event.getDragboard();
+                    if (dragboard != null) {
+                        controlAppendFiles(dragboard.getFiles());
+                    }
+                }
+            });
+            infoListClone.setOnDragOver(infoList.getOnDragOver());
+            infoListClone.setOnDragDropped(infoList.getOnDragDropped());
         }
 
         // control play
@@ -899,7 +925,7 @@ public class PlayList implements Initializable {
     @FXML
     protected void controlFileChooser() {
         if (!loadRunning()) {
-            loadFileService.restart();
+            loadListFileService.restart();
         }
     }
 
@@ -1626,18 +1652,32 @@ public class PlayList implements Initializable {
     }
 
     private void updateItems(String path, List<MediaInfo> items) {
+        updateItems(path, items, false);
+    }
+
+    private void appendItems(List<MediaInfo> items) {
+        updateItems(null, items, true);
+    }
+
+    private void updateItems(String path, List<MediaInfo> items, boolean append) {
         List<MediaInfo> dels = new ArrayList<>();
         Lock lock = infoListLock.writeLock();
         try {
             lock.lock();
-            pathText.setText(path);
+            if (path != null) {
+                pathText.setText(path);
+            }
             {
-                dels.addAll(infoList.getItems());
-                infoList.getItems().clear();
+                if (!append) {
+                    dels.addAll(infoList.getItems());
+                    infoList.getItems().clear();
+                }
                 infoList.getItems().addAll(items);
             }
             {
-                infoListClone.getItems().clear();
+                if (!append) {
+                    infoListClone.getItems().clear();
+                }
                 infoListClone.getItems().addAll(items);
             }
         } finally {
@@ -1897,6 +1937,16 @@ public class PlayList implements Initializable {
     // other controls
     // ------------------------
 
+    private void controlAppendFiles(List<File> files) {
+        if ((files == null) || files.isEmpty()) {
+            return;
+        }
+        if (!loadFilesService.isRunning()) {
+            filesProperty.setValue(files);
+            loadFilesService.restart();
+        }
+    }
+
     private void controlSaveImage() {
         if (!saveTagImageService.isRunning()) {
             saveTagImageService.restart();
@@ -1936,7 +1986,11 @@ public class PlayList implements Initializable {
 
     private final Service<List<MediaInfo>> loadDirectoryService;
 
-    private final Service<List<MediaInfo>> loadFileService;
+    private final Service<List<MediaInfo>> loadFilesService;
+
+    private final ObjectProperty<List<File>> filesProperty = new SimpleObjectProperty<>();
+
+    private final Service<List<MediaInfo>> loadListFileService;
 
     private final Service<List<MediaInfo>> loadUrlService;
 
@@ -1989,8 +2043,22 @@ public class PlayList implements Initializable {
                         loadMedia();
                     }
                 });
-        loadFileService = new LoadFileService(stageProperty, metaChangeListener,
-                new LoadFileService.ICallback() {
+        loadFilesService = new LoadFilesService(filesProperty, metaChangeListener,
+                new LoadFilesService.ICallback() {
+
+                    @Override
+                    public void callback(List<File> files, List<MediaInfo> infos) {
+                        if (infos == null) {
+                            log("Load Files Failure : " + Arrays.toString(files.toArray()));
+                            return;
+                        }
+                        log("Load Files : " + Arrays.toString(files.toArray()));
+                        appendItems(infos);
+                        loadMedia();
+                    }
+                });
+        loadListFileService = new LoadListFileService(stageProperty, metaChangeListener,
+                new LoadListFileService.ICallback() {
 
                     @Override
                     public void callback(File file, List<MediaInfo> infos) {
@@ -2089,7 +2157,7 @@ public class PlayList implements Initializable {
     }
 
     private boolean loadRunning() {
-        return loadDirectoryService.isRunning() || loadFileService.isRunning()
+        return loadDirectoryService.isRunning() || loadListFileService.isRunning()
                 || loadUrlService.isRunning() || loadUrlAutoStartHeadService.isRunning()
                 || loadUrlAutoStartTailService.isRunning();
     }
@@ -2277,6 +2345,13 @@ public class PlayList implements Initializable {
                 }
 
                 @Override
+                public void controlTimeTail(long seconds) {
+                    double value = controlTime.getMax() - (seconds * 1000);
+                    controlTime.setValue(Math.max(controlTime.getMin(),
+                            Math.min(value, controlTime.getMax() - 1)));
+                }
+
+                @Override
                 public void controlMute() {
                     PlayList.this.controlMute();
                 }
@@ -2298,6 +2373,13 @@ public class PlayList implements Initializable {
                 @Override
                 public void controlVolumeMinus(int volume) {
                     controlVolumePlus(volume * -1);
+                }
+
+                @Override
+                public void controlVolumeTail(int volume) {
+                    double value = controlVolume.getMax() - (volume / 100d);
+                    settings.volume.set(Math.max(controlVolume.getMin(),
+                            Math.min(value + 0.001, controlVolume.getMax())));
                 }
 
                 @Override
@@ -2421,7 +2503,7 @@ public class PlayList implements Initializable {
                                 settings.reset();
                                 break;
                             case "video":
-                                settings.setVideoMode();
+                                settings.setVideoMode(videoTab);
                                 break;
                         }
                     }

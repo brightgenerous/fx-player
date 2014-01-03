@@ -70,6 +70,8 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
         void controlTimeMinus(long seconds);
 
+        void controlTimeTail(long seconds);
+
         void controlMute();
 
         void controlVolume(int volume);
@@ -77,6 +79,8 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
         void controlVolumePlus(int volume);
 
         void controlVolumeMinus(int volume);
+
+        void controlVolumeTail(int volume);
 
         void controlJump(int value);
 
@@ -170,12 +174,12 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
     private static final Pattern nextPattern = Pattern.compile("^(?:.*\\s+)?(?:n|nxt|next)$");
 
     private static final Pattern timePattern = Pattern
-            .compile("^(?:.*\\s+)?(?:t|tm|time)\\s*(\\+|\\-|)\\s*(?:(\\d*)\\s*(?::)?\\s*(\\d*))$");
+            .compile("^(?:.*\\s+)?(?:t|tm|time)\\s*(\\+|\\-|)\\s*(?:(\\d*)\\s*(?::)?\\s*(\\d*))\\s*(\\-|)$");
 
     private static final Pattern mutePattern = Pattern.compile("^(?:.*\\s+)?(?:m|mt|mute)$");
 
     private static final Pattern volPattern = Pattern
-            .compile("^(?:.*\\s+)?(?:v|vl|volume)\\s*(\\+|\\-|)\\s*(\\d*)$");
+            .compile("^(?:.*\\s+)?(?:v|vl|volume)\\s*(\\+|\\-|)\\s*(\\d*)\\s*(\\-|)$");
 
     private static final Pattern jumpPattern = Pattern
             .compile("^(?:.*\\s+)?(?:j|jmp|jump)\\s*(\\+|\\-|)\\s*(\\d*)$");
@@ -416,6 +420,7 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
                         String mg1 = matcher.group(1);
                         String mg2 = matcher.group(2);
                         String mg3 = matcher.group(3);
+                        String mg4 = matcher.group(4);
                         int mg2i = mg2.isEmpty() ? 0 : ((9 < mg2.length()) ? Integer.MAX_VALUE
                                 : Integer.parseInt(mg2));
                         int mg3i = mg3.isEmpty() ? 0 : ((9 < mg3.length()) ? Integer.MAX_VALUE
@@ -434,12 +439,18 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
                             secondPart = mg3i;
                         }
                         long value = (minutePart * 60) + secondPart;
-                        if (mg1.equals("+")) {
-                            adapter.controlTimePlus(value);
-                        } else if (mg1.equals("-")) {
-                            adapter.controlTimeMinus(value);
+                        if (mg4.isEmpty()) {
+                            if (mg1.equals("+")) {
+                                adapter.controlTimePlus(value);
+                            } else if (mg1.equals("-")) {
+                                adapter.controlTimeMinus(value);
+                            } else {
+                                adapter.controlTime(value);
+                            }
                         } else {
-                            adapter.controlTime(value);
+                            if (mg1.isEmpty()) {
+                                adapter.controlTimeTail(value);
+                            }
                         }
                         break parse;
                     }
@@ -453,14 +464,21 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
                     if (matcher.find()) {
                         String mg1 = matcher.group(1);
                         String mg2 = matcher.group(2);
+                        String mg3 = matcher.group(3);
                         int value = mg2.isEmpty() ? 0 : ((9 < mg2.length()) ? Integer.MAX_VALUE
                                 : Integer.parseInt(mg2));
-                        if (mg1.equals("+")) {
-                            adapter.controlVolumePlus(value);
-                        } else if (mg1.equals("-")) {
-                            adapter.controlVolumeMinus(value);
+                        if (mg3.isEmpty()) {
+                            if (mg1.equals("+")) {
+                                adapter.controlVolumePlus(value);
+                            } else if (mg1.equals("-")) {
+                                adapter.controlVolumeMinus(value);
+                            } else {
+                                adapter.controlVolume(value);
+                            }
                         } else {
-                            adapter.controlVolume(value);
+                            if (mg1.isEmpty()) {
+                                adapter.controlVolumeTail(value);
+                            }
                         }
                         break parse;
                     }
@@ -681,6 +699,10 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
         }
 
         @Override
+        public void controlTimeTail(long seconds) {
+        }
+
+        @Override
         public void controlMute() {
         }
 
@@ -694,6 +716,10 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
         @Override
         public void controlVolumeMinus(int volume) {
+        }
+
+        @Override
+        public void controlVolumeTail(int volume) {
         }
 
         @Override

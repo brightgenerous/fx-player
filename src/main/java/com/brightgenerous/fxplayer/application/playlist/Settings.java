@@ -16,6 +16,7 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ObservableBooleanValue;
 import javafx.beans.value.ObservableNumberValue;
 import javafx.geometry.Side;
+import javafx.scene.control.Tab;
 
 import com.brightgenerous.fxplayer.application.playlist.VideoPane.InfoSide;
 import com.brightgenerous.fxplayer.service.LoadDirection;
@@ -349,7 +350,7 @@ class Settings {
         volume.set(0.25d);
     }
 
-    public void setVideoMode() {
+    public void setVideoMode(Tab tab) {
         hideHeader.set(true);
         hideFooter.set(false);
 
@@ -372,5 +373,9 @@ class Settings {
 
         // direction.setValue(Boolean.FALSE);
         // direction.setValue(Boolean.TRUE);
+
+        if (tab != null) {
+            tab.getTabPane().getSelectionModel().select(tab);
+        }
     }
 }
