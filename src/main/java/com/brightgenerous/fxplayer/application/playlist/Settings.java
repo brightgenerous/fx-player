@@ -38,9 +38,19 @@ class Settings {
     private final ObservableBooleanValue tabLeftRight = tabSide.isEqualTo(Side.LEFT).or(
             tabSide.isEqualTo(Side.RIGHT));
 
-    public final DoubleProperty tabHeight = new SimpleDoubleProperty(this, "tabHeight", 24);
+    public final DoubleProperty tabHeight;
 
-    public final DoubleBinding tabSpaceHeight = tabHeight.add(7);
+    public final DoubleBinding tabSpaceHeight;
+
+    {
+        boolean win;
+        {
+            String os = System.getProperty("os.name");
+            win = (os != null) && os.toLowerCase().contains("windows");
+        }
+        tabHeight = new SimpleDoubleProperty(this, "tabHeight", 24);
+        tabSpaceHeight = tabHeight.add(win ? 7 : 10);
+    }
 
     public final ObservableNumberValue tabMarginWidth = Bindings.when(tabLeftRight)
             .then(tabSpaceHeight).otherwise(0);

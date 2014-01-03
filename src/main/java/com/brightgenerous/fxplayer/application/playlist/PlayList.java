@@ -20,6 +20,7 @@ import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.LongProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.Property;
+import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleLongProperty;
@@ -1288,7 +1289,8 @@ public class PlayList implements Initializable {
 
                     // time buffer
                     {
-                        mp.bufferProgressTimeProperty().addListener(new ChangeListener<Duration>() {
+                        ReadOnlyObjectProperty<Duration> bptp = mp.bufferProgressTimeProperty();
+                        bptp.addListener(new ChangeListener<Duration>() {
 
                             @Override
                             public void changed(ObservableValue<? extends Duration> observable,
@@ -1306,8 +1308,11 @@ public class PlayList implements Initializable {
                                         / mp.getTotalDuration().toMillis());
                             }
                         });
-                        controlTimeBuffer.setProgress(mp.getBufferProgressTime().toMillis()
-                                / mp.getTotalDuration().toMillis());
+                        Duration bpt = bptp.getValue();
+                        if (bpt != null) {
+                            controlTimeBuffer.setProgress(bpt.toMillis()
+                                    / mp.getTotalDuration().toMillis());
+                        }
                     }
 
                     // volume

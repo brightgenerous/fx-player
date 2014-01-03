@@ -62,7 +62,10 @@
       <artifactId>javafx</artifactId>
       <version>2.2</version>
       <scope>system</scope>
-      <systemPath>C:\Program Files\Java\jre7\lib\jfxrt.jar</systemPath>
+      <systemPath>D:\develop\workspace\develop\fx-player\bin\mac\jfxrt.jar</systemPath>
+<!--
+      <systemPath>D:\develop\workspace\develop\fx-player\bin\win\jfxrt.jar</systemPath>
+-->
     </dependency>
 
     <!-- JUNIT DEPENDENCIES -->
