@@ -3,16 +3,19 @@
 <?import javafx.scene.control.cell.*?>
 <?import javafx.scene.image.*?>
 <?import javafx.scene.layout.*?>
+<?import com.brightgenerous.fxplayer.application.playlist.BufferSlider?>
+<?import com.brightgenerous.fxplayer.application.playlist.DurationCellFactory?>
 <?import com.brightgenerous.fxplayer.application.playlist.InfoListPane?>
+<?import com.brightgenerous.fxplayer.application.playlist.MediaStatusCellFactory?>
+<?import com.brightgenerous.fxplayer.application.playlist.Spectrums?>
+<?import com.brightgenerous.fxplayer.application.playlist.StoreVBox?>
 <?import com.brightgenerous.fxplayer.application.playlist.TabWrapPane?>
 <?import com.brightgenerous.fxplayer.application.playlist.VideoPane?>
-<?import com.brightgenerous.fxplayer.application.playlist.StoreVBox?>
-<?import javafx.scene.control.ToggleButton?>
 <StoreVBox xmlns:fx="http://javafx.com/fxml"
     stylesheets="com/brightgenerous/fxplayer/application/FxPlayer.css,
         com/brightgenerous/fxplayer/application/playlist/PlayList.css"
     fx:id="rootPane"
-    prefWidth="480" minWidth="320" maxWidth="480" prefHeight="360" minHeight="240" maxHeight="360" 
+    prefWidth="580" minWidth="320" maxWidth="580" prefHeight="360" minHeight="240" maxHeight="360" 
     onKeyTyped="#keyTypedHandle">
   <header>
     <VBox id="control-pane">
@@ -48,16 +51,18 @@
                   <infoList>
                     <TableView fx:id="infoList" tableMenuButtonVisible="true" opacity="0.95">
                       <columns>
-                        <TableColumn fx:id="infoListColumnIndex" text="%media.index"
+                        <TableColumn text="%media.index"
                             sortable="false" prefWidth="40">
+                          <cellFactory><MediaStatusCellFactory /></cellFactory>
                           <cellValueFactory><PropertyValueFactory property="mediaStatus" /></cellValueFactory>
                         </TableColumn>
                         <TableColumn text="%media.titleDesc"
                             sortable="false" prefWidth="260">
                           <cellValueFactory><PropertyValueFactory property="titleDesc" /></cellValueFactory>
                         </TableColumn>
-                        <TableColumn fx:id="infoListColumnDuration" text="%media.duration"
+                        <TableColumn text="%media.duration"
                             sortable="false" prefWidth="60" minWidth="50">
+                          <cellFactory><DurationCellFactory /></cellFactory>
                           <cellValueFactory><PropertyValueFactory property="duration" /></cellValueFactory>
                         </TableColumn>
                         <TableColumn text="%media.artist"
@@ -88,16 +93,18 @@
                   <infoList>
                     <TableView fx:id="infoListClone" opacity="0.7">
                       <columns>
-                        <TableColumn fx:id="infoListCloneColumnIndex" text="%media.index"
+                        <TableColumn text="%media.index"
                             sortable="false" prefWidth="40">
+                          <cellFactory><MediaStatusCellFactory /></cellFactory>
                           <cellValueFactory><PropertyValueFactory property="mediaStatus" /></cellValueFactory>
                         </TableColumn>
                         <TableColumn text="%media.titleDesc"
                             sortable="false" prefWidth="260">
                           <cellValueFactory><PropertyValueFactory property="titleDesc" /></cellValueFactory>
                         </TableColumn>
-                        <TableColumn fx:id="infoListCloneColumnDuration" text="%media.duration"
+                        <TableColumn text="%media.duration"
                             sortable="false" prefWidth="60" minWidth="50">
+                          <cellFactory><DurationCellFactory /></cellFactory>
                           <cellValueFactory><PropertyValueFactory property="duration" /></cellValueFactory>
                         </TableColumn>
                         <TableColumn text="%media.info"
@@ -124,22 +131,12 @@
       <VBox HBox.hgrow="ALWAYS">
         <Region VBox.vgrow="ALWAYS" />
         <HBox fx:id="spectrumsWrap">
-          <HBox fx:id="spectrums" id="control-line">
-            <Region minWidth="15" maxWidth="15" />
-            <ProgressBar fx:id="spectrumBar1" progress="0" prefWidth="9999" style="-fx-accent:mediumseagreen" opacity="0.7" />
-            <ProgressBar fx:id="spectrumBar2" progress="0" prefWidth="9999" style="-fx-accent:mediumseagreen" opacity="0.7" />
-            <ProgressBar fx:id="spectrumBar3" progress="0" prefWidth="9999" style="-fx-accent:blueviolet;" opacity="0.7" />
-            <ProgressBar fx:id="spectrumBar4" progress="0" prefWidth="9999" style="-fx-accent:blueviolet" opacity="0.7" />
-          </HBox>
+          <Spectrums fx:id="spectrums" id="control-line" style="-fx-padding:0 0 0 20" />
         </HBox>
         <GridPane fx:id="timesVolumesPane">
           <HBox fx:id="timesPane" id="control-line" GridPane.columnIndex="0" GridPane.rowIndex="0">
             <Region minWidth="15" maxWidth="15" />
-            <StackPane HBox.hgrow="ALWAYS">
-              <ProgressBar fx:id="controlTimeCurrent" progress="0" prefWidth="9999" />
-              <ProgressBar fx:id="controlTimeBuffer" progress="0" prefWidth="9999" opacity="0.3" />
-              <Slider fx:id="controlTime" id="control-time" min="0" max="0" blockIncrement="10000" prefWidth="9999" />
-            </StackPane>
+            <BufferSlider fx:id="bufferSlider" HBox.hgrow="ALWAYS" />
             <Label fx:id="timeText" id="time-text" minWidth="190" alignment="CENTER_RIGHT" />
           </HBox>
           <HBox fx:id="volumesPane" id="control-line" GridPane.columnIndex="0" GridPane.rowIndex="1">
@@ -162,10 +159,10 @@
                   text="%control.next" ellipsisString="%control.next.ellipsis" mnemonicParsing="true"
                   prefWidth="60" />
               <Region minWidth="5" maxWidth="5" />
-              <ToggleButton fx:id="controlMute"
-                  text="%control.mute.off" ellipsisString="control.mute.off.ellipsis" mnemonicParsing="true"
-                  minWidth="45" maxWidth="45" onAction="#controlMute" />
-              <Slider fx:id="controlVolume" min="0.0" max="1.0" value="0.5" blockIncrement="0.05" minWidth="80" maxWidth="200" />
+              <Label fx:id="muteText" id="mute-text"
+                  text="%control.mute.off" minWidth="30" alignment="CENTER_LEFT" />
+              <Slider fx:id="controlVolume" min="0.0" max="1.0" value="0.5" blockIncrement="0.05"
+                  minWidth="80" maxWidth="200" />
               <Label fx:id="volumeText" id="volume-text" minWidth="30" alignment="CENTER_RIGHT" />
             </HBox>
           </HBox>

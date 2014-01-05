@@ -12,6 +12,7 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -123,7 +124,15 @@ class MediaInfoLoader {
         return ret;
     }
 
-    public static List<MediaInfo> fromFiles(List<File> files, MetaChangeListener metaChangeListener) {
+    public static List<MediaInfo> fromFiles(File file, MetaChangeListener metaChangeListener) {
+        if (file == null) {
+            return null;
+        }
+        return fromFiles(Arrays.asList(file), metaChangeListener);
+    }
+
+    public static List<MediaInfo> fromFiles(List<? extends File> files,
+            MetaChangeListener metaChangeListener) {
         if (files == null) {
             return null;
         }

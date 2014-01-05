@@ -105,20 +105,6 @@ public class FxUtils {
                         } catch (IllegalArgumentException | IllegalAccessException e) {
                             throw new RuntimeException(e);
                         }
-                    } else if (field.getType().isAssignableFrom(ResourceBundle.class)) {
-                        ResourceBundle bundle = ResourceBundle.getBundle(clazz.getName(),
-                                Locale.getDefault());
-                        if (bundle != null) {
-                            try {
-                                if (!Modifier.isPublic(field.getModifiers())
-                                        && !field.isAccessible()) {
-                                    field.setAccessible(true);
-                                }
-                                field.set(controller, bundle);
-                            } catch (IllegalArgumentException | IllegalAccessException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }
                     }
                 }
             }

@@ -13,11 +13,11 @@ import com.brightgenerous.fxplayer.media.MediaInfo;
 import com.brightgenerous.fxplayer.media.MediaInfo.MetaChangeListener;
 import com.brightgenerous.fxplayer.util.Utils;
 
-public class LoadDirectoryService extends Service<List<MediaInfo>> {
+public class LoadDirectoryService extends Service<List<? extends MediaInfo>> {
 
     public static interface ICallback {
 
-        void callback(File dir, List<MediaInfo> infos);
+        void callback(File dir, List<? extends MediaInfo> infos);
     }
 
     private final DirectoryChooser directoryChooser = new DirectoryChooser();
@@ -42,8 +42,8 @@ public class LoadDirectoryService extends Service<List<MediaInfo>> {
     }
 
     @Override
-    protected Task<List<MediaInfo>> createTask() {
-        return new Task<List<MediaInfo>>() {
+    protected Task<List<? extends MediaInfo>> createTask() {
+        return new Task<List<? extends MediaInfo>>() {
 
             @Override
             protected List<MediaInfo> call() throws Exception {

@@ -1,6 +1,7 @@
 package com.brightgenerous.fxplayer.service;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 import javafx.beans.value.ObservableValue;
@@ -10,20 +11,20 @@ import javafx.concurrent.Task;
 import com.brightgenerous.fxplayer.media.MediaInfo;
 import com.brightgenerous.fxplayer.media.MediaInfo.MetaChangeListener;
 
-public class LoadFilesService extends Service<List<MediaInfo>> {
+public class LoadFilesService extends Service<List<? extends MediaInfo>> {
 
     public static interface ICallback {
 
-        void callback(List<File> files, List<MediaInfo> infos);
+        void callback(List<? extends File> files, List<? extends MediaInfo> infos);
     }
 
-    private final ObservableValue<List<File>> filesProperty;
+    private final ObservableValue<? extends List<? extends File>> filesProperty;
 
     private final MetaChangeListener metaChangeListener;
 
     private final ICallback callback;
 
-    public LoadFilesService(ObservableValue<List<File>> filesProperty,
+    public LoadFilesService(ObservableValue<? extends List<? extends File>> filesProperty,
             MetaChangeListener metaChangeListener, ICallback callback) {
         this.filesProperty = filesProperty;
         this.metaChangeListener = metaChangeListener;
@@ -31,8 +32,8 @@ public class LoadFilesService extends Service<List<MediaInfo>> {
     }
 
     @Override
-    protected Task<List<MediaInfo>> createTask() {
-        return new Task<List<MediaInfo>>() {
+    protected Task<List<? extends MediaInfo>> createTask() {
+        return new Task<List<? extends MediaInfo>>() {
 
             @Override
             protected List<MediaInfo> call() throws Exception {
@@ -40,19 +41,26 @@ public class LoadFilesService extends Service<List<MediaInfo>> {
                     return null;
                 }
 
-                List<File> files = filesProperty.getValue();
+                List<? extends File> files = filesProperty.getValue();
                 if (files == null) {
                     return null;
                 }
 
-                List<MediaInfo> infos = MediaInfoLoader.fromFiles(files, metaChangeListener);
+                List<MediaInfo> ret = new ArrayList<>();
+                for (File file : files) {
+                    if (file.isFile()) {
+                        ret.addAll(MediaInfoLoader.fromFiles(file, metaChangeListener));
+                    } else if (file.isDirectory()) {
+                        ret.addAll(MediaInfoLoader.fromDirectory(file, metaChangeListener));
+                    }
+                }
 
                 if (isCancelled()) {
                     return null;
                 }
 
-                callback.callback(files, infos);
-                return infos;
+                callback.callback(files, ret);
+                return ret;
             }
         };
     }

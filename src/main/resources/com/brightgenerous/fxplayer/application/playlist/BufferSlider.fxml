@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<fx:root xmlns:fx="http://javafx.com/fxml"
+    stylesheets="com/brightgenerous/fxplayer/application/playlist/BufferSlider.css"
+    type="com.brightgenerous.fxplayer.application.playlist.BufferSlider">
+  <children>
+    <ProgressBar fx:id="currentProgress" progress="0" prefWidth="9999" />
+    <ProgressBar fx:id="bufferProgress" progress="0" prefWidth="9999" opacity="0.3" />
+    <Slider fx:id="slider" id="buffer-slider-slider" min="0" max="0" prefWidth="9999" minWidth="80" />
+  </children>
+</fx:root>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<fx:root xmlns:fx="http://javafx.com/fxml"
+    type="com.brightgenerous.fxplayer.application.playlist.Spectrums">
+  <children>
+    <ProgressBar fx:id="spectrumBar1" progress="0" prefWidth="9999" style="-fx-accent:mediumseagreen" opacity="0.7" />
+    <ProgressBar fx:id="spectrumBar2" progress="0" prefWidth="9999" style="-fx-accent:mediumseagreen" opacity="0.7" />
+    <ProgressBar fx:id="spectrumBar3" progress="0" prefWidth="9999" style="-fx-accent:blueviolet" opacity="0.7" />
+    <ProgressBar fx:id="spectrumBar4" progress="0" prefWidth="9999" style="-fx-accent:blueviolet" opacity="0.7" />
+  </children>
+</fx:root>

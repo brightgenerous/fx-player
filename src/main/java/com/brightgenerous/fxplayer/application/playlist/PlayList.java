@@ -37,16 +37,12 @@ import javafx.event.EventHandler;
 import javafx.event.EventTarget;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.SnapshotResult;
 import javafx.scene.control.Label;
-import javafx.scene.control.ProgressBar;
 import javafx.scene.control.SingleSelectionModel;
 import javafx.scene.control.Slider;
 import javafx.scene.control.Tab;
-import javafx.scene.control.TableCell;
-import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
@@ -100,13 +96,20 @@ public class PlayList implements Initializable {
 
     private final ObjectProperty<Stage> stageProperty = new SimpleObjectProperty<>();
 
-    @Inject
     private ResourceBundle bundle;
+
+    // pane
 
     @FXML
     private StoreVBox rootPane;
 
-    // top control
+    @FXML
+    private ToggleButton controlHideHeader;
+
+    @FXML
+    private ToggleButton controlHideFooter;
+
+    // top - control
 
     @FXML
     private TextField pathText;
@@ -116,13 +119,7 @@ public class PlayList implements Initializable {
     @FXML
     private ToggleButton controlLog;
 
-    private LoggStage logStage;
-
-    @FXML
-    private ToggleButton controlHideHeader;
-
-    @FXML
-    private ToggleButton controlHideFooter;
+    private LogStage logStage;
 
     // tab
 
@@ -133,12 +130,6 @@ public class PlayList implements Initializable {
 
     @FXML
     private TableView<MediaInfo> infoList;
-
-    @FXML
-    private TableColumn<MediaInfo, MediaStatus> infoListColumnIndex;
-
-    @FXML
-    private TableColumn<MediaInfo, Duration> infoListColumnDuration;
 
     // tab - video
 
@@ -155,13 +146,7 @@ public class PlayList implements Initializable {
     @FXML
     private TableView<MediaInfo> infoListClone;
 
-    @FXML
-    private TableColumn<MediaInfo, MediaStatus> infoListCloneColumnIndex;
-
-    @FXML
-    private TableColumn<MediaInfo, Duration> infoListCloneColumnDuration;
-
-    // controls
+    // bottom - control
 
     @FXML
     private GridPane timesVolumesPane;
@@ -172,7 +157,7 @@ public class PlayList implements Initializable {
     @FXML
     private Pane volumesPane;
 
-    // control - play
+    // bottom - control - play
 
     @FXML
     private ToggleButton controlPlayPause;
@@ -183,16 +168,10 @@ public class PlayList implements Initializable {
     @FXML
     private Label directionText;
 
-    // control - time
+    // bottom - control - time
 
     @FXML
-    private Slider controlTime; // 0.0 - ...  milliseconds
-
-    @FXML
-    private ProgressBar controlTimeCurrent;
-
-    @FXML
-    private ProgressBar controlTimeBuffer;
+    private BufferSlider bufferSlider; // 0.0 - ...  milliseconds
 
     @FXML
     private Label timeText;
@@ -202,8 +181,10 @@ public class PlayList implements Initializable {
     @FXML
     private Slider controlVolume; // 0.0 - 1.0
 
+    //    @FXML
+    //    private ToggleButton controlMute;
     @FXML
-    private ToggleButton controlMute;
+    private Label muteText;
 
     @FXML
     private Label volumeText;
@@ -216,22 +197,10 @@ public class PlayList implements Initializable {
     // something
 
     @FXML
-    private Pane spectrums;
-
-    @FXML
     private Pane spectrumsWrap;
 
     @FXML
-    private ProgressBar spectrumBar1;
-
-    @FXML
-    private ProgressBar spectrumBar2;
-
-    @FXML
-    private ProgressBar spectrumBar3;
-
-    @FXML
-    private ProgressBar spectrumBar4;
+    private Spectrums spectrums;
 
     // other
 
@@ -253,6 +222,7 @@ public class PlayList implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         {
+            bundle = resources;
             stageProperty.setValue(stage);
             pathTextProperty.bind(pathText.textProperty());
         }
@@ -436,23 +406,24 @@ public class PlayList implements Initializable {
 
         // info list
         {
-            final EventHandler<MouseEvent> clickListener = new EventHandler<MouseEvent>() {
+            infoList.setRowFactory(new Callback<TableView<MediaInfo>, TableRow<MediaInfo>>() {
 
-                @Override
-                public void handle(MouseEvent event) {
-                    if (event.getClickCount() == 2) {
-                        Object source = event.getSource();
-                        if (source instanceof TableRow) {
-                            TableRow<?> row = (TableRow<?>) source;
-                            Object obj = row.getItem();
-                            if (obj instanceof MediaInfo) {
-                                controlPlayerForceWithoutSkip(Control.SPECIFY, (MediaInfo) obj);
+                private final EventHandler<MouseEvent> clickListener = new EventHandler<MouseEvent>() {
+
+                    @Override
+                    public void handle(MouseEvent event) {
+                        if (event.getClickCount() == 2) {
+                            Object source = event.getSource();
+                            if (source instanceof TableRow) {
+                                TableRow<?> row = (TableRow<?>) source;
+                                Object obj = row.getItem();
+                                if (obj instanceof MediaInfo) {
+                                    controlPlayerForceWithoutSkip(Control.SPECIFY, (MediaInfo) obj);
+                                }
                             }
                         }
                     }
-                }
-            };
-            infoList.setRowFactory(new Callback<TableView<MediaInfo>, TableRow<MediaInfo>>() {
+                };
 
                 @Override
                 public TableRow<MediaInfo> call(TableView<MediaInfo> param) {
@@ -487,91 +458,13 @@ public class PlayList implements Initializable {
                 }
             });
 
-            infoListColumnIndex
-                    .setCellFactory(new Callback<TableColumn<MediaInfo, MediaStatus>, TableCell<MediaInfo, MediaStatus>>() {
-
-                        @Override
-                        public TableCell<MediaInfo, MediaStatus> call(
-                                TableColumn<MediaInfo, MediaStatus> param) {
-                            return new TableCell<MediaInfo, MediaStatus>() {
-
-                                @Override
-                                protected void updateItem(MediaStatus item, boolean empty) {
-                                    super.updateItem(item, empty);
-
-                                    if (empty || (item == null)) {
-                                        setText(null);
-                                    } else {
-                                        String str;
-                                        switch (item) {
-                                            case MEDIA_YET:
-                                                str = String.format("- %d", Integer
-                                                        .valueOf(getTableRow().getIndex() + 1));
-                                                break;
-                                            case MEDIA_SUCCESS:
-                                                str = String.format("%d", Integer
-                                                        .valueOf(getTableRow().getIndex() + 1));
-                                                break;
-                                            case MEDIA_ERROR:
-                                                str = String.format("x %d", Integer
-                                                        .valueOf(getTableRow().getIndex() + 1));
-                                                break;
-                                            case PLAYER_LOADING:
-                                            case PLAYER_READY:
-                                            case PLAYER_PLAYING:
-                                            case PLAYER_PAUSE:
-                                                str = String.format("+ %d", Integer
-                                                        .valueOf(getTableRow().getIndex() + 1));
-                                                break;
-                                            case PLAYER_END:
-                                                str = String.format("%d", Integer
-                                                        .valueOf(getTableRow().getIndex() + 1));
-                                                break;
-                                            default:
-                                                str = "";
-                                                break;
-                                        }
-                                        setText(str);
-                                        setAlignment(Pos.CENTER_RIGHT);
-                                    }
-                                }
-                            };
-                        }
-                    });
-
-            infoListColumnDuration
-                    .setCellFactory(new Callback<TableColumn<MediaInfo, Duration>, TableCell<MediaInfo, Duration>>() {
-
-                        @Override
-                        public TableCell<MediaInfo, Duration> call(
-                                TableColumn<MediaInfo, Duration> param) {
-
-                            return new TableCell<MediaInfo, Duration>() {
-
-                                @Override
-                                protected void updateItem(Duration item, boolean empty) {
-                                    super.updateItem(item, empty);
-
-                                    if (empty || (item == null)) {
-                                        setText(null);
-                                    } else {
-                                        setText(LabelUtils.milliSecToTime(item.toMillis()));
-                                        setAlignment(Pos.CENTER_RIGHT);
-                                    }
-                                }
-                            };
-                        }
-                    });
-
             // clone
             infoListClone.setRowFactory(infoList.getRowFactory());
-            infoListCloneColumnIndex.setCellFactory(infoListColumnIndex.getCellFactory());
-            infoListCloneColumnDuration.setCellFactory(infoListColumnDuration.getCellFactory());
             infoListClone.opacityProperty().bind(
                     Bindings.when(settings.videoInfoSide.isEqualTo(InfoSide.OVERLAY)).then(0.3)
                             .otherwise(0.7));
 
-            // dod
+            // drag on drop
             infoList.setOnDragOver(new EventHandler<DragEvent>() {
 
                 @Override
@@ -672,6 +565,7 @@ public class PlayList implements Initializable {
 
         // control time
         {
+            final Slider controlTime = bufferSlider.getSlider();
             controlTime.valueProperty().addListener(new ChangeListener<Number>() {
 
                 @Override
@@ -710,10 +604,7 @@ public class PlayList implements Initializable {
                 }
             });
 
-            controlTimeCurrent.prefWidthProperty().bind(controlTime.prefWidthProperty());
-            controlTimeCurrent.progressProperty().bind(
-                    controlTime.valueProperty().divide(controlTime.maxProperty()));
-            controlTimeBuffer.prefWidthProperty().bind(controlTime.prefWidthProperty());
+            controlTime.setBlockIncrement(10_000);
         }
 
         // control volume
@@ -755,14 +646,6 @@ public class PlayList implements Initializable {
                 }
             });
 
-            controlMute.textProperty().bind(
-                    Bindings.when(controlMute.selectedProperty())
-                            .then(bundle.getString("control.mute.on"))
-                            .otherwise(bundle.getString("control.mute.off")));
-            controlMute.ellipsisStringProperty().bind(
-                    Bindings.when(controlMute.selectedProperty())
-                            .then(bundle.getString("control.mute.on.ellipsis"))
-                            .otherwise(bundle.getString("control.mute.off.ellipsis")));
             settings.mute.addListener(new ChangeListener<Boolean>() {
 
                 @Override
@@ -773,16 +656,28 @@ public class PlayList implements Initializable {
                         if ((player != null) && !player.isMute()) {
                             player.setMute(true);
                         }
-                        controlMute.setSelected(true);
+
+                        muteText.setText(bundle.getString("control.mute.on"));
 
                         log("Control Volume : off ");
                     } else {
                         if ((player != null) && player.isMute()) {
                             player.setMute(false);
                         }
-                        controlMute.setSelected(false);
+
+                        muteText.setText(bundle.getString("control.mute.off"));
 
                         log("Control Volume : on ");
+                    }
+                }
+            });
+            muteText.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+
+                @Override
+                public void handle(MouseEvent event) {
+                    int count = event.getClickCount();
+                    if ((1 < count) && ((count % 2) == 0)) {
+                        settings.toggleMute();
                     }
                 }
             });
@@ -864,8 +759,7 @@ public class PlayList implements Initializable {
 
         // log
         {
-            logStage = new LoggStage(stage, bundle.getString("log.title"), stage.getIcons(),
-                    shortCutHandler);
+            logStage = new LogStage(stageProperty, shortCutHandler);
             logStage.setOnHidden(new EventHandler<WindowEvent>() {
 
                 @Override
@@ -961,11 +855,6 @@ public class PlayList implements Initializable {
     @FXML
     protected void controlHideFooter() {
         settings.toggleHideFooter();
-    }
-
-    @FXML
-    protected void controlMute() {
-        settings.mute.set(!settings.mute.get());
     }
 
     @FXML
@@ -1243,6 +1132,8 @@ public class PlayList implements Initializable {
                         return;
                     }
 
+                    final Slider controlTime = bufferSlider.getSlider();
+
                     // reset seek 
                     {
                         // (should be before set max shorter)
@@ -1330,14 +1221,12 @@ public class PlayList implements Initializable {
                                 if (!newText.equals(timeText.getText())) {
                                     timeText.setText(newText);
                                 }
-                                controlTimeBuffer.setProgress(newMillis
-                                        / mp.getTotalDuration().toMillis());
+                                bufferSlider.setBuffer(newMillis);
                             }
                         });
                         Duration bpt = bptp.getValue();
                         if (bpt != null) {
-                            controlTimeBuffer.setProgress(bpt.toMillis()
-                                    / mp.getTotalDuration().toMillis());
+                            bufferSlider.setBuffer(bpt.toMillis());
                         }
                     }
 
@@ -1373,10 +1262,8 @@ public class PlayList implements Initializable {
                             @Override
                             public void spectrumDataUpdate(double timestamp, double duration,
                                     float[] magnitudes, float[] phases) {
-                                spectrumBar1.setProgress((magnitudes[0] + 60) / 60);
-                                spectrumBar2.setProgress((magnitudes[1] + 60) / 60);
-                                spectrumBar3.setProgress(phases[0] / Math.PI);
-                                spectrumBar4.setProgress(phases[1] / Math.PI);
+                                spectrums.spectrumDataUpdate(timestamp, duration, magnitudes,
+                                        phases);
                             }
                         });
                     }
@@ -1651,15 +1538,15 @@ public class PlayList implements Initializable {
         return ret;
     }
 
-    private void updateItems(String path, List<MediaInfo> items) {
+    private void updateItems(String path, List<? extends MediaInfo> items) {
         updateItems(path, items, false);
     }
 
-    private void appendItems(List<MediaInfo> items) {
+    private void appendItems(List<? extends MediaInfo> items) {
         updateItems(null, items, true);
     }
 
-    private void updateItems(String path, List<MediaInfo> items, boolean append) {
+    private void updateItems(String path, List<? extends MediaInfo> items, boolean append) {
         List<MediaInfo> dels = new ArrayList<>();
         Lock lock = infoListLock.writeLock();
         try {
@@ -1937,7 +1824,7 @@ public class PlayList implements Initializable {
     // other controls
     // ------------------------
 
-    private void controlAppendFiles(List<File> files) {
+    private void controlAppendFiles(List<? extends File> files) {
         if ((files == null) || files.isEmpty()) {
             return;
         }
@@ -1984,27 +1871,27 @@ public class PlayList implements Initializable {
     // load list, save image services
     //-------------------------
 
-    private final Service<List<MediaInfo>> loadDirectoryService;
+    private final Service<?> loadDirectoryService;
 
-    private final Service<List<MediaInfo>> loadFilesService;
+    private final Service<?> loadFilesService;
 
-    private final ObjectProperty<List<File>> filesProperty = new SimpleObjectProperty<>();
+    private final ObjectProperty<List<? extends File>> filesProperty = new SimpleObjectProperty<>();
 
-    private final Service<List<MediaInfo>> loadListFileService;
+    private final Service<?> loadListFileService;
 
-    private final Service<List<MediaInfo>> loadUrlService;
+    private final Service<?> loadUrlService;
 
-    private final Service<List<MediaInfo>> loadUrlAutoStartHeadService;
+    private final Service<?> loadUrlAutoStartHeadService;
 
-    private final Service<List<MediaInfo>> loadUrlAutoStartTailService;
+    private final Service<?> loadUrlAutoStartTailService;
 
-    private final Service<File> saveTagImageService;
+    private final Service<?> saveTagImageService;
 
     private final ObjectProperty<ImageInfo> snapshotImageInfoProperty = new SimpleObjectProperty<>();
 
-    private final Service<File> saveSnapshotService;
+    private final Service<?> saveSnapshotService;
 
-    private final Service<Void> stageCloseService;
+    private final Service<?> stageCloseService;
 
     {
         MetaChangeListener metaChangeListener = new MetaChangeListener() {
@@ -2033,7 +1920,7 @@ public class PlayList implements Initializable {
                 new LoadDirectoryService.ICallback() {
 
                     @Override
-                    public void callback(File dir, List<MediaInfo> infos) {
+                    public void callback(File dir, List<? extends MediaInfo> infos) {
                         if (infos == null) {
                             log("Load Directory Failure : " + dir.getAbsolutePath());
                             return;
@@ -2047,7 +1934,7 @@ public class PlayList implements Initializable {
                 new LoadFilesService.ICallback() {
 
                     @Override
-                    public void callback(List<File> files, List<MediaInfo> infos) {
+                    public void callback(List<? extends File> files, List<? extends MediaInfo> infos) {
                         if (infos == null) {
                             log("Load Files Failure : " + Arrays.toString(files.toArray()));
                             return;
@@ -2061,7 +1948,7 @@ public class PlayList implements Initializable {
                 new LoadListFileService.ICallback() {
 
                     @Override
-                    public void callback(File file, List<MediaInfo> infos) {
+                    public void callback(File file, List<? extends MediaInfo> infos) {
                         if (infos == null) {
                             log("Load File Failure : " + file.getAbsolutePath());
                             return;
@@ -2075,7 +1962,7 @@ public class PlayList implements Initializable {
                 settings.loadDirection, new LoadUrlService.ICallback() {
 
                     @Override
-                    public void callback(String url, List<MediaInfo> infos) {
+                    public void callback(String url, List<? extends MediaInfo> infos) {
                         if (infos == null) {
                             log("Load URL Failure : " + url);
                             return;
@@ -2089,7 +1976,7 @@ public class PlayList implements Initializable {
                 settings.loadDirection, new LoadUrlService.ICallback() {
 
                     @Override
-                    public void callback(String url, List<MediaInfo> infos) {
+                    public void callback(String url, List<? extends MediaInfo> infos) {
                         if (infos == null) {
                             log("Load URL Failure : " + url);
                             return;
@@ -2105,7 +1992,7 @@ public class PlayList implements Initializable {
                 settings.loadDirection, new LoadUrlService.ICallback() {
 
                     @Override
-                    public void callback(String url, List<MediaInfo> infos) {
+                    public void callback(String url, List<? extends MediaInfo> infos) {
                         if (infos == null) {
                             log("Load URL Failure : " + url);
                             return;
@@ -2327,6 +2214,7 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void controlTime(long seconds) {
+                    Slider controlTime = bufferSlider.getSlider();
                     double value = seconds * 1000;
                     controlTime.setValue(Math.max(controlTime.getMin(),
                             Math.min(value, controlTime.getMax() - 1)));
@@ -2334,6 +2222,7 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void controlTimePlus(long seconds) {
+                    Slider controlTime = bufferSlider.getSlider();
                     double value = controlTime.getValue() + (seconds * 1000);
                     controlTime.setValue(Math.max(controlTime.getMin(),
                             Math.min(value, controlTime.getMax() - 1)));
@@ -2346,6 +2235,7 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void controlTimeTail(long seconds) {
+                    Slider controlTime = bufferSlider.getSlider();
                     double value = controlTime.getMax() - (seconds * 1000);
                     controlTime.setValue(Math.max(controlTime.getMin(),
                             Math.min(value, controlTime.getMax() - 1)));
@@ -2353,7 +2243,7 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void controlMute() {
-                    PlayList.this.controlMute();
+                    settings.toggleMute();
                 }
 
                 @Override

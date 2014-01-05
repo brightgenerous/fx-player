@@ -9,11 +9,11 @@ import javafx.concurrent.Task;
 import com.brightgenerous.fxplayer.media.MediaInfo;
 import com.brightgenerous.fxplayer.media.MediaInfo.MetaChangeListener;
 
-public class LoadUrlService extends Service<List<MediaInfo>> {
+public class LoadUrlService extends Service<List<? extends MediaInfo>> {
 
     public static interface ICallback {
 
-        void callback(String url, List<MediaInfo> infos);
+        void callback(String url, List<? extends MediaInfo> infos);
     }
 
     private final ObservableValue<String> textProperty;
@@ -34,8 +34,8 @@ public class LoadUrlService extends Service<List<MediaInfo>> {
     }
 
     @Override
-    protected Task<List<MediaInfo>> createTask() {
-        return new Task<List<MediaInfo>>() {
+    protected Task<List<? extends MediaInfo>> createTask() {
+        return new Task<List<? extends MediaInfo>>() {
 
             @Override
             protected List<MediaInfo> call() throws Exception {

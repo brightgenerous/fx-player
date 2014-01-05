@@ -310,6 +310,12 @@ class Settings {
         return ret;
     }
 
+    public Boolean toggleMute() {
+        Boolean ret = mute.getValue();
+        mute.set((ret == null) ? true : !ret.booleanValue());
+        return ret;
+    }
+
     public void reset() {
         hideHeader.set(true);
         hideHeader.set(false);

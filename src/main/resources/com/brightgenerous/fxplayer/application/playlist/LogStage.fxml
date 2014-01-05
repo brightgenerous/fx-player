@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<VBox xmlns:fx="http://javafx.com/fxml"
+    stylesheets="com/brightgenerous/fxplayer/application/FxPlayer.css,
+        com/brightgenerous/fxplayer/application/playlist/LogStage.css"
+    fx:id="rootPane" spacing="5"
+    prefWidth="560" minWidth="320" maxWidth="560" prefHeight="320" minHeight="240" maxHeight="320">
+  <TextArea fx:id="logText" VBox.vgrow="ALWAYS"
+      editable="false" focusTraversable="false" wrapText="true" opacity="0.9" />
+  <CheckBox fx:id="autoFrontControl" text="_Auto Front" mnemonicParsing="true" />
+  <Label text="brigen fx-player 「Narudake Player」, Copyright(c) 2013 BrightGenerous, All Rights Reserved." />
+</VBox>
