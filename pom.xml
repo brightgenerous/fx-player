@@ -6,7 +6,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.brightgenerous</groupId>
   <artifactId>fx-player</artifactId>
-  <version>2.6.4-SNAPSHOT</version>
+  <version>2.7.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>fx-player</name>
@@ -35,6 +35,10 @@
   </developers>
 
   <properties>
+    <javafx.version>2.2</javafx.version>
+
+    <httpclient.version>[4.3,5.0)</httpclient.version>
+    <gson.version>[2.2.4,3.0)</gson.version>
 
     <junit.version>[4.11,5.0)</junit.version>
 
@@ -52,15 +56,9 @@
   <dependencies>
 
     <dependency>
-      <groupId>org.apache.httpcomponents</groupId>
-      <artifactId>httpclient</artifactId>
-      <version>[4.3,5.0)</version>
-    </dependency>
-
-    <dependency>
       <groupId>com.oracle</groupId>
       <artifactId>javafx</artifactId>
-      <version>2.2</version>
+      <version>${javafx.version}</version>
       <scope>system</scope>
 <!--
       <systemPath>D:\develop\workspace\develop\fx-player\bin\mac\jfxrt.jar</systemPath>
@@ -68,7 +66,19 @@
       <systemPath>D:\develop\workspace\develop\fx-player\bin\win\jfxrt.jar</systemPath>
     </dependency>
 
-    <!-- JUNIT DEPENDENCIES -->
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpclient</artifactId>
+      <version>${httpclient.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.code.gson</groupId>
+      <artifactId>gson</artifactId>
+      <version>${gson.version}</version>
+      <optional>true</optional>
+    </dependency>
+
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>

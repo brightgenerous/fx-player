@@ -1,15 +1,10 @@
 package com.brightgenerous.fxplayer.service;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.StringReader;
 import java.lang.ref.SoftReference;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,10 +25,11 @@ import com.brightgenerous.fxplayer.util.HttpUtils;
 import com.brightgenerous.fxplayer.util.IData;
 import com.brightgenerous.fxplayer.util.ListUtils;
 import com.brightgenerous.fxplayer.util.ListUtils.IConverter;
+import com.brightgenerous.fxplayer.util.MyServiceUtils;
 import com.brightgenerous.fxplayer.util.UrlResolver;
+import com.brightgenerous.fxplayer.util.VideoInfo;
 import com.brightgenerous.fxplayer.util.XvideosUtils;
 import com.brightgenerous.fxplayer.util.YoutubeUtils;
-import com.brightgenerous.fxplayer.util.YoutubeUtils.VideoInfo;
 
 class MediaInfoLoader {
 
@@ -159,7 +155,8 @@ class MediaInfoLoader {
         return ret;
     }
 
-    public static List<MediaInfo> fromListFile(File file, MetaChangeListener metaChangeListener) {
+    public static List<MediaInfo> fromListFile(File file, MetaChangeListener metaChangeListener,
+            LoadDirection loadDirection) {
         if ((file == null) || !file.exists() || !file.canRead()) {
             return null;
         }
@@ -175,54 +172,9 @@ class MediaInfoLoader {
         }
 
         List<MediaInfo> ret = new ArrayList<>();
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(
-                new FileInputStream(file), "UTF-8"))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                line = line.trim();
-                if (line.isEmpty() || line.startsWith("#")) {
-                    continue;
-                }
-                String[] strs = lineToStrs(line);
-                if ((strs == null) || (strs[0] == null)) {
-                    continue;
-                }
-                String path = null;
-                {
-                    String tmp = strs[0];
-                    {
-                        if (parent != null) {
-                            File f = new File(parent, tmp);
-                            if (f.exists()) {
-                                try {
-                                    path = f.toURI().toURL().toString();
-                                } catch (MalformedURLException e) {
-                                }
-                            }
-                        }
-                    }
-                    if (path == null) {
-                        File f = new File(tmp);
-                        if (f.exists()) {
-                            try {
-                                path = f.toURI().toURL().toString();
-                            } catch (MalformedURLException e) {
-                            }
-                        }
-                    }
-                    if (path == null) {
-                        try {
-                            path = new URL(tmp).toString();
-                        } catch (MalformedURLException e) {
-                        }
-                    }
-                }
-                if (path != null) {
-                    String desc = (strs[1] == null) ? strs[0] : strs[1];
-                    ret.add(factory.create(path, desc, metaChangeListener));
-                }
-            }
-        } catch (IOException e) {
+        List<VideoInfo> infos = MyServiceUtils.fromFile(file, parent);
+        if (infos != null) {
+            ret.addAll(convert(infos, metaChangeListener, loadDirection));
         }
         return ret;
     }
@@ -286,22 +238,7 @@ class MediaInfoLoader {
         if (YoutubeUtils.isPlaylistUrl(str)) {
             List<VideoInfo> infos = YoutubeUtils.parsePlaylist(text);
             if (infos != null) {
-                if (loadDirection == null) {
-                    loadDirection = LoadDirection.ALTERNATELY;
-                }
-                switch (loadDirection) {
-                    case FORWARD:
-                        ret.addAll(ListUtils.converts(infos, new Converter(metaChangeListener)));
-                        break;
-                    case BACK:
-                        ret.addAll(ListUtils.convertsReversely(infos, new Converter(
-                                metaChangeListener)));
-                        break;
-                    case ALTERNATELY:
-                        ret.addAll(ListUtils.convertsAlternately(infos, new Converter(
-                                metaChangeListener)));
-                        break;
-                }
+                ret.addAll(convert(infos, metaChangeListener, loadDirection));
             }
         } else if (YoutubeUtils.isVideoUrl(str)) {
             String title = YoutubeUtils.extractTitle(text);
@@ -310,37 +247,32 @@ class MediaInfoLoader {
             String title = XvideosUtils.extractTitle(text);
             ret.add(createMediaInfo(str, title, metaChangeListener));
         } else {
-            try (BufferedReader br = new BufferedReader(new StringReader(text))) {
-                String line;
-                while ((line = br.readLine()) != null) {
-                    line = line.trim();
-                    if (line.isEmpty() || line.startsWith("#")) {
-                        continue;
-                    }
-                    String[] strs = lineToStrs(line);
-                    if ((strs == null) || (strs[0] == null)) {
-                        continue;
-                    }
-                    String path = null;
-                    {
-                        String tmp = strs[0];
-                        if (tmp.startsWith("http://") || tmp.startsWith("https://")) {
-                            path = tmp;
-                        } else {
-                            if (tmp.startsWith("/")) {
-                                path = serverPath + tmp;
-                            } else {
-                                path = dirPath
-                                        + URLEncoder.encode(tmp, "UTF-8").replace("+", "%20");
-                            }
-                        }
-                    }
-                    {
-                        String desc = (strs[1] == null) ? strs[0] : strs[1];
-                        ret.add(createMediaInfo(path, desc, metaChangeListener));
-                    }
-                }
-            } catch (IOException e) {
+            List<VideoInfo> infos = MyServiceUtils.fromServer(text, serverPath, dirPath);
+            if (infos != null) {
+                ret.addAll(convert(infos, metaChangeListener, loadDirection));
+            }
+        }
+        return ret;
+    }
+
+    private static List<MediaInfo> convert(List<VideoInfo> infos,
+            MetaChangeListener metaChangeListener, LoadDirection loadDirection) {
+        List<MediaInfo> ret = null;
+        if (infos != null) {
+            if (loadDirection == null) {
+                loadDirection = LoadDirection.ALTERNATELY;
+            }
+            switch (loadDirection) {
+                case FORWARD:
+                    ret = ListUtils.converts(infos, new InfoConverter(metaChangeListener));
+                    break;
+                case BACK:
+                    ret = ListUtils.convertsReversely(infos, new InfoConverter(metaChangeListener));
+                    break;
+                case ALTERNATELY:
+                    ret = ListUtils.convertsAlternately(infos,
+                            new InfoConverter(metaChangeListener));
+                    break;
             }
         }
         return ret;
@@ -356,29 +288,11 @@ class MediaInfoLoader {
         return factory.create(url, desc, metaChangeListener);
     }
 
-    private static String[] lineToStrs(String line) {
-        String[] ret = new String[2];
-        if ((line != null)) {
-            String[] strs = line.trim().split("\t+");
-            ret[0] = strs[0].trim();
-            for (int i = 1; i < strs.length; i++) {
-                String str = strs[i].trim();
-                if (!str.isEmpty()) {
-                    if (!str.startsWith("#")) {
-                        ret[1] = str;
-                    }
-                    break;
-                }
-            }
-        }
-        return ret;
-    }
-
-    private static class Converter implements IConverter<MediaInfo, VideoInfo> {
+    private static class InfoConverter implements IConverter<MediaInfo, VideoInfo> {
 
         private final MetaChangeListener metaChangeListener;
 
-        public Converter(MetaChangeListener metaChangeListener) {
+        public InfoConverter(MetaChangeListener metaChangeListener) {
             this.metaChangeListener = metaChangeListener;
         }
 

@@ -32,12 +32,16 @@ public class LoadListFileService extends Service<List<? extends MediaInfo>> {
 
     private final MetaChangeListener metaChangeListener;
 
+    private final ObservableValue<LoadDirection> loadDirectionProperty;
+
     private final ICallback callback;
 
     public LoadListFileService(ObservableValue<? extends Window> owner,
-            MetaChangeListener metaChangeListener, ICallback callback) {
+            MetaChangeListener metaChangeListener,
+            ObservableValue<LoadDirection> loadDirectionProperty, ICallback callback) {
         this.owner = owner;
         this.metaChangeListener = metaChangeListener;
+        this.loadDirectionProperty = loadDirectionProperty;
         this.callback = callback;
     }
 
@@ -64,7 +68,8 @@ public class LoadListFileService extends Service<List<? extends MediaInfo>> {
                         fileChooser.setInitialDirectory(parent);
                     }
                 }
-                List<MediaInfo> infos = MediaInfoLoader.fromListFile(file, metaChangeListener);
+                List<MediaInfo> infos = MediaInfoLoader.fromListFile(file, metaChangeListener,
+                        loadDirectionProperty.getValue());
 
                 if (isCancelled()) {
                     return null;

@@ -1,9 +1,11 @@
 package com.brightgenerous.fxplayer.util;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -18,33 +20,52 @@ import java.util.regex.Pattern;
 
 public class YoutubeUtils {
 
-    public static class VideoInfo {
-
-        private final String url;
-
-        private String title;
-
-        VideoInfo(String url, String title) {
-            this.url = url;
-            this.title = title;
-        }
-
-        public String getUrl() {
-            return url;
-        }
-
-        public String getTitle() {
-            return title;
-        }
-
-        void setTitle(String title) {
-            this.title = title;
-        }
-    }
-
     private static final String URL_HOST = "http://www.youtube.com";
 
+    private static final Pattern pagePattern = Pattern.compile("(.*(?:\\?|&)page=)(\\d*)(.*)");
+
     private YoutubeUtils() {
+    }
+
+    public static String getQueryUrl(String word) throws UnsupportedEncodingException {
+        if (word == null) {
+            return null;
+        }
+        return URL_HOST + "/results?search_query=" + URLEncoder.encode(word, "UTF-8") + "&sm=3";
+    }
+
+    public static String getQueryPageUrl(String url, int inc) {
+        if (url == null) {
+            return null;
+        }
+        if (!url.contains("youtube.com/results")) {
+            return null;
+        }
+        String ret = null;
+        Matcher matcher = pagePattern.matcher(url);
+        if (matcher.find()) {
+            String _u1 = matcher.group(1);
+            String _p = matcher.group(2);
+            String _u2 = matcher.group(3);
+            int page = 1;
+            try {
+                page = Integer.parseInt(_p) + inc;
+            } catch (NumberFormatException e) {
+            }
+            if (0 < page) {
+                ret = _u1 + page + _u2;
+            }
+        } else {
+            int page = 1 + inc;
+            if (0 < page) {
+                if (url.contains("?")) {
+                    ret = url + "&page=" + page;
+                } else {
+                    ret = url + "?page=" + page;
+                }
+            }
+        }
+        return ret;
     }
 
     public static boolean isVideoUrl(String url) {
@@ -102,7 +123,7 @@ public class YoutubeUtils {
             + "(?:[^>]*\\stitle\\s*=\\s*\"([^\"]*)\")?"
             // [x] keep only first argument
             + "[^>]*\\shref\\s*=\\s*\"(/watch[^&\"]*)[^\"]*\""
-            + "(?:[^>]*\\stitle\\s*=\\s*\"([^\"]*)\")?" + "[^>]*>");
+            + "(?:[^>]*\\stitle\\s*=\\s*\"([^\"]*)\")?" + "[^>]*>" + "\\s*([^<]*)\\s*</a>");
 
     public static List<VideoInfo> parsePlaylist(String html) {
         if (html == null) {
@@ -114,6 +135,7 @@ public class YoutubeUtils {
         Map<String, VideoInfo> infos = new HashMap<>();
         Matcher matcher = anchor.matcher(html);
         while (matcher.find()) {
+            boolean notPL = matcher.group().contains("yt-uix-tile-link");
             String href = matcher.group(2);
             String title;
             {
@@ -132,6 +154,16 @@ public class YoutubeUtils {
                 } else {
                     title = title1;
                 }
+                {
+                    String title3 = matcher.group(4);
+                    if (title3 != null) {
+                        if (title == null) {
+                            title = title3;
+                        } else if (title.length() < title3.length()) {
+                            title = title3;
+                        }
+                    }
+                }
                 if (title != null) {
                     title = title.replace("&#39;", "'").replace("&quot;", "\"")
                             .replace("&amp;", "&").trim();
@@ -140,13 +172,15 @@ public class YoutubeUtils {
             String url = URL_HOST + href;
             VideoInfo info = infos.get(url);
             if (info == null) {
-                info = new VideoInfo(url, title);
-                infos.put(url, info);
-                ret.add(info);
+                if (notPL) {
+                    info = new VideoInfo(url, title);
+                    infos.put(url, info);
+                    ret.add(info);
+                }
             } else {
                 if (info.getTitle() == null) {
                     info.setTitle(title);
-                } else if ((title != null) && (info.getTitle().length() < title.length())) {
+                } else if (!notPL && (title != null)) {
                     info.setTitle(title);
                 }
             }

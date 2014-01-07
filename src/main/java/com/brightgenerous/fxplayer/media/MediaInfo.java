@@ -187,8 +187,8 @@ public class MediaInfo {
                     .concat(" , Height : ").concat(heightProperty).concat(" , Framerate : ")
                     .concat(framerateProperty.asString("%.2f")).concat(" , Duration : ")
                     .concat(durationTextProperty);
-            ObservableStringValue otherwiseInfo = Bindings.concat(titleDescProperty)
-                    .concat(" , Duration : ").concat(durationTextProperty);
+            ObservableStringValue otherwiseInfo = Bindings.concat("Duration : ").concat(
+                    durationTextProperty);
 
             StringBinding info = Bindings
                     .when(visibleVideoInfo)
@@ -520,5 +520,35 @@ public class MediaInfo {
 
     public ReadOnlyProperty<String> tooltipProperty() {
         return tooltipProperty;
+    }
+
+    private ChangeListener<Duration> durationChangeListener;
+
+    public void replaceDurationChangeListener(ChangeListener<Duration> listener) {
+        if (durationChangeListener != null) {
+            durationProperty.removeListener(durationChangeListener);
+        }
+        durationProperty.addListener(listener);
+        durationChangeListener = listener;
+    }
+
+    private ChangeListener<Image> imageChangeListener;
+
+    public void replaceImageChangeListener(ChangeListener<Image> listener) {
+        if (imageChangeListener != null) {
+            imageProperty.removeListener(imageChangeListener);
+        }
+        imageProperty.addListener(listener);
+        imageChangeListener = listener;
+    }
+
+    private ChangeListener<Boolean> visibleTooltipChangeListener;
+
+    public void replaceVisibleTooltipChangeListener(ChangeListener<Boolean> listener) {
+        if (visibleTooltipChangeListener != null) {
+            visibleTooltipProperty.removeListener(visibleTooltipChangeListener);
+        }
+        visibleTooltipProperty.addListener(listener);
+        visibleTooltipChangeListener = listener;
     }
 }

@@ -17,7 +17,7 @@ public class StageCloseService extends Service<Void> {
         @Override
         public void run() {
             if (dialog == null) {
-                dialog = new OwnerCloseStage(owner);
+                dialog = new CloseOwnerStage(owner);
             }
             dialog.showAndWait();
         }

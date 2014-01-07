@@ -45,7 +45,7 @@
       <content>
         <TabPane>
           <tabs>
-            <Tab text="%tab.list" closable="false">
+            <Tab fx:id="infoTab" text="%tab.list" closable="false">
               <content>
                 <InfoListPane>
                   <infoList>

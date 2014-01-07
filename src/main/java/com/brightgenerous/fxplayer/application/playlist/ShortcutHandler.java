@@ -88,6 +88,12 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
         void controlJumpMinus(int value);
 
+        void controlRemove(int value);
+
+        void controlRemovePlus(int value);
+
+        void controlRemoveMinus(int value);
+
         void controlSaveFile();
 
         void controlSaveImage();
@@ -152,16 +158,16 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
             .compile("^(?:.*\\s+)?(?:sn|sd|snd|sound)$");
 
     private static final Pattern timesVolumesPattern = Pattern
-            .compile("^(?:.*\\s+)?(?:hr|hrizon|hrizontal)$");
+            .compile("^(?:.*\\s+)?(?:hr|hrzn|hrizon|hrzntl|hrizontal)$");
 
     private static final Pattern playPausePattern = Pattern.compile("^(?:.*\\s+)?(?:p|pp|plps)$");
 
     private static final Pattern playPattern = Pattern.compile("^(?:.*\\s+)?(?:pl|ply|play)$");
 
-    private static final Pattern pausePattern = Pattern.compile("^(?:.*\\s+)?(?:ps|pse|pause)$");
+    private static final Pattern pausePattern = Pattern.compile("^(?:.*\\s+)?(?:ps|pause)$");
 
     private static final Pattern repeatPattern = Pattern
-            .compile("^(?:.*\\s+)?(?:r|rp|repeat)\\s*(none|same|other|)$");
+            .compile("^(?:.*\\s+)?(?:r|rp|rpt|repeat)\\s*(none|same|other|)$");
 
     private static final Pattern directionPattern = Pattern
             .compile("^(?:.*\\s+)?(?:dr|drct|direction)\\s*(forward|back|)$");
@@ -183,6 +189,9 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
     private static final Pattern jumpPattern = Pattern
             .compile("^(?:.*\\s+)?(?:j|jmp|jump)\\s*(\\+|\\-|)\\s*(\\d*)$");
+
+    private static final Pattern removePattern = Pattern
+            .compile("^(?:.*\\s+)?(?:rm|rmv|remove)\\s*(\\+|\\-|)\\s*(\\d*)$");
 
     private static final Pattern saveFilePattern = Pattern
             .compile("^(?:.*\\s+)?(?:s|sf|svfl|savefile)$");
@@ -500,6 +509,23 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
                         break parse;
                     }
                 }
+                {
+                    Matcher matcher = removePattern.matcher(in);
+                    if (matcher.find()) {
+                        String mg1 = matcher.group(1);
+                        String mg2 = matcher.group(2);
+                        int value = mg2.isEmpty() ? 0 : ((9 < mg2.length()) ? Integer.MAX_VALUE
+                                : Integer.parseInt(mg2));
+                        if (mg1.equals("+")) {
+                            adapter.controlRemovePlus(value);
+                        } else if (mg1.equals("-")) {
+                            adapter.controlRemoveMinus(value);
+                        } else {
+                            adapter.controlRemove(value);
+                        }
+                        break parse;
+                    }
+                }
                 if (saveFilePattern.matcher(in).find()) {
                     adapter.controlSaveFile();
                     break parse;
@@ -732,6 +758,18 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
 
         @Override
         public void controlJumpMinus(int value) {
+        }
+
+        @Override
+        public void controlRemove(int value) {
+        }
+
+        @Override
+        public void controlRemovePlus(int value) {
+        }
+
+        @Override
+        public void controlRemoveMinus(int value) {
         }
 
         @Override

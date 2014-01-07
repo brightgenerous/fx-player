@@ -4,14 +4,13 @@ import java.io.File;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.ResourceBundle;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -86,6 +85,7 @@ import com.brightgenerous.fxplayer.service.SaveImageService;
 import com.brightgenerous.fxplayer.service.SaveImageService.ImageInfo;
 import com.brightgenerous.fxplayer.service.StageCloseService;
 import com.brightgenerous.fxplayer.util.ListUtils;
+import com.brightgenerous.fxplayer.util.YoutubeUtils;
 
 public class PlayList implements Initializable {
 
@@ -127,6 +127,9 @@ public class PlayList implements Initializable {
     private TabWrapPane tabWrapPane;
 
     // tab - info
+
+    @FXML
+    private Tab infoTab;
 
     @FXML
     private TableView<MediaInfo> infoList;
@@ -181,8 +184,6 @@ public class PlayList implements Initializable {
     @FXML
     private Slider controlVolume; // 0.0 - 1.0
 
-    //    @FXML
-    //    private ToggleButton controlMute;
     @FXML
     private Label muteText;
 
@@ -346,10 +347,7 @@ public class PlayList implements Initializable {
                 @Override
                 public void changed(ObservableValue<? extends Boolean> observable,
                         Boolean oldValue, Boolean newValue) {
-                    boolean nv = newValue.booleanValue();
-                    if (nv != videoPane.getVisibleInfoList()) {
-                        videoPane.setVisibleInfoList(nv);
-                    }
+                    videoPane.setVisibleInfoList(newValue.booleanValue());
                 }
             });
 
@@ -418,7 +416,7 @@ public class PlayList implements Initializable {
                                 TableRow<?> row = (TableRow<?>) source;
                                 Object obj = row.getItem();
                                 if (obj instanceof MediaInfo) {
-                                    controlPlayerForceWithoutSkip(Control.SPECIFY, (MediaInfo) obj);
+                                    controlPlayerForceWithSkip(Control.SPECIFY, (MediaInfo) obj);
                                 }
                             }
                         }
@@ -573,7 +571,7 @@ public class PlayList implements Initializable {
                         Number newValue) {
                     double newMillis = newValue.doubleValue();
                     double oldMillis = oldValue.doubleValue();
-                    if (!controlTime.isValueChanging() && (Math.abs(newMillis - oldMillis) < 5000)) {
+                    if (!controlTime.isValueChanging() && (Math.abs(newMillis - oldMillis) < 5_000)) {
                         // fired event does not start from this control
                         //   chained event is.
                         // but...
@@ -859,31 +857,26 @@ public class PlayList implements Initializable {
 
     @FXML
     protected void controlPlayPause() {
-        if (!controlPlayerForceWithSkip(Control.PLAY_PAUSE, null)) {
-            //syncControlPlayPause();
-        }
+        controlPlayerForceWithSkip(Control.PLAY_PAUSE, null);
     }
 
     protected void controlPlay() {
-        if (!controlPlayerSoft(Control.PLAY, null)) {
-            //syncControlPlayPause();
-        }
+        controlPlayerSoft(Control.PLAY, null);
     }
 
     protected void controlPause() {
-        if (!controlPlayerSoft(Control.PAUSE, null)) {
-            //syncControlPlayPause();
-        }
+        controlPlayerSoft(Control.PAUSE, null);
     }
 
     @FXML
     protected void controlHead() {
         MediaPlayer player = playerProperty.getValue();
-        if (player != null) {
-            Status status = player.getStatus();
-            if ((status != Status.UNKNOWN) && (status != Status.DISPOSED)) {
-                player.seek(Duration.millis(0));
-            }
+        if (player == null) {
+            return;
+        }
+        Status status = player.getStatus();
+        if ((status != Status.UNKNOWN) && (status != Status.DISPOSED)) {
+            player.seek(Duration.millis(0));
         }
     }
 
@@ -903,10 +896,6 @@ public class PlayList implements Initializable {
 
     private boolean controlPlayerSoft(Control control, MediaInfo info) {
         return controlPlayer(control, info, false, 0, false);
-    }
-
-    private boolean controlPlayerForceWithoutSkip(Control control, MediaInfo info) {
-        return controlPlayer(control, info, true, 0, false);
     }
 
     private boolean controlPlayerForceWithSkip(Control control, MediaInfo info) {
@@ -1065,19 +1054,24 @@ public class PlayList implements Initializable {
 
                     targetInfo.releaseMedia(true);
                     if (0 < skipOnError) {
-                        OtherDirection otherDirection = settings.otherDirection.getValue();
-                        if (otherDirection == null) {
-                            otherDirection = OtherDirection.FORWARD;
-                        }
-                        switch (otherDirection) {
-                            case FORWARD:
-                                controlPlayerLater(Control.NEXT, targetInfo, forceResolve,
-                                        skipOnError - 1, true);
-                                break;
-                            case BACK:
-                                controlPlayerLater(Control.BACK, targetInfo, forceResolve,
-                                        skipOnError - 1, true);
-                                break;
+                        if (control == Control.SPECIFY) {
+                            controlPlayerLater(Control.SPECIFY, targetInfo, forceResolve,
+                                    skipOnError - 1, true);
+                        } else {
+                            OtherDirection otherDirection = settings.otherDirection.getValue();
+                            if (otherDirection == null) {
+                                otherDirection = OtherDirection.FORWARD;
+                            }
+                            switch (otherDirection) {
+                                case FORWARD:
+                                    controlPlayerLater(Control.NEXT, targetInfo, forceResolve,
+                                            skipOnError - 1, true);
+                                    break;
+                                case BACK:
+                                    controlPlayerLater(Control.BACK, targetInfo, forceResolve,
+                                            skipOnError - 1, true);
+                                    break;
+                            }
                         }
                     }
 
@@ -1151,8 +1145,8 @@ public class PlayList implements Initializable {
                                 totalDuration = new SimpleDoubleProperty(dur.toMillis());
                             } else {
                                 totalDuration = new SimpleDoubleProperty();
-                                targetInfo.durationProperty().addListener(
-                                        new ChangeListener<Duration>() {
+                                targetInfo
+                                        .replaceDurationChangeListener(new ChangeListener<Duration>() {
 
                                             @Override
                                             public void changed(
@@ -1237,7 +1231,7 @@ public class PlayList implements Initializable {
 
                     // image
                     {
-                        targetInfo.imageProperty().addListener(new ChangeListener<Image>() {
+                        targetInfo.replaceImageChangeListener(new ChangeListener<Image>() {
 
                             @Override
                             public void changed(ObservableValue<? extends Image> observable,
@@ -1281,7 +1275,7 @@ public class PlayList implements Initializable {
 
                         videoTab.setText(LabelUtils.toTabLabel(targetInfo.getDescription()));
                     } else {
-                        videoPane.getChildren().clear();
+                        videoPane.setMediaView(null);
 
                         videoTab.setText(bundle.getString("tab.video"));
                     }
@@ -1556,22 +1550,39 @@ public class PlayList implements Initializable {
             }
             {
                 if (!append) {
-                    dels.addAll(infoList.getItems());
-                    infoList.getItems().clear();
+                    ObservableList<MediaInfo> is = infoList.getItems();
+                    dels.addAll(is);
+                    is.setAll(items);
+                } else {
+                    infoList.getItems().addAll(items);
                 }
-                infoList.getItems().addAll(items);
             }
             {
                 if (!append) {
-                    infoListClone.getItems().clear();
+                    infoListClone.getItems().setAll(items);
+                } else {
+                    infoListClone.getItems().addAll(items);
                 }
-                infoListClone.getItems().addAll(items);
             }
         } finally {
             lock.unlock();
         }
         for (MediaInfo del : dels) {
             del.releaseMedia(false);
+        }
+    }
+
+    private void removeItems(Collection<MediaInfo> infos) {
+        if ((infos == null) || infos.isEmpty()) {
+            return;
+        }
+        Lock lock = infoListLock.writeLock();
+        try {
+            lock.lock();
+            infoList.getItems().removeAll(infos);
+            infoListClone.getItems().removeAll(infos);
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -1685,7 +1696,7 @@ public class PlayList implements Initializable {
                     if (!visible.getValue().booleanValue()) {
                         if (ret.getOpacity() != 0) {
                             ret.setOpacity(0);
-                            visible.addListener(new ChangeListener<Boolean>() {
+                            info.replaceVisibleTooltipChangeListener(new ChangeListener<Boolean>() {
 
                                 @Override
                                 public void changed(ObservableValue<? extends Boolean> observable,
@@ -1824,6 +1835,12 @@ public class PlayList implements Initializable {
     // other controls
     // ------------------------
 
+    private void controlRemove(MediaInfo info) {
+        if (info != null) {
+            removeItems(Arrays.asList(info));
+        }
+    }
+
     private void controlAppendFiles(List<? extends File> files) {
         if ((files == null) || files.isEmpty()) {
             return;
@@ -1945,7 +1962,7 @@ public class PlayList implements Initializable {
                     }
                 });
         loadListFileService = new LoadListFileService(stageProperty, metaChangeListener,
-                new LoadListFileService.ICallback() {
+                settings.loadDirection, new LoadListFileService.ICallback() {
 
                     @Override
                     public void callback(File file, List<? extends MediaInfo> infos) {
@@ -1962,13 +1979,13 @@ public class PlayList implements Initializable {
                 settings.loadDirection, new LoadUrlService.ICallback() {
 
                     @Override
-                    public void callback(String url, List<? extends MediaInfo> infos) {
+                    public void callback(String text, String url, List<? extends MediaInfo> infos) {
                         if (infos == null) {
                             log("Load URL Failure : " + url);
                             return;
                         }
                         log("Load URL : " + url);
-                        updateItems(url, infos);
+                        updateItems(text, infos);
                         loadMedia();
                     }
                 });
@@ -1976,13 +1993,13 @@ public class PlayList implements Initializable {
                 settings.loadDirection, new LoadUrlService.ICallback() {
 
                     @Override
-                    public void callback(String url, List<? extends MediaInfo> infos) {
+                    public void callback(String text, String url, List<? extends MediaInfo> infos) {
                         if (infos == null) {
                             log("Load URL Failure : " + url);
                             return;
                         }
                         log("Load URL : " + url);
-                        updateItems(url, infos);
+                        updateItems(text, infos);
                         loadMedia();
                         controlPlayerLater(Control.NEXT, null, true, settings.skipOnError.get(),
                                 true);
@@ -1992,13 +2009,13 @@ public class PlayList implements Initializable {
                 settings.loadDirection, new LoadUrlService.ICallback() {
 
                     @Override
-                    public void callback(String url, List<? extends MediaInfo> infos) {
+                    public void callback(String text, String url, List<? extends MediaInfo> infos) {
                         if (infos == null) {
                             log("Load URL Failure : " + url);
                             return;
                         }
                         log("Load URL : " + url);
-                        updateItems(url, infos);
+                        updateItems(text, infos);
                         loadMedia();
                         controlPlayerLater(Control.BACK, null, true, settings.skipOnError.get(),
                                 true);
@@ -2107,10 +2124,10 @@ public class PlayList implements Initializable {
                     if (selection.isEmpty()) {
                         return;
                     }
-                    int ci = selection.getSelectedIndex();
-                    selection.selectNext();
-                    if ((ci != 0) && (ci == selection.getSelectedIndex())) {
-                        selection.selectFirst();
+                    if (videoTab.isSelected()) {
+                        selection.select(infoTab);
+                    } else {
+                        selection.select(videoTab);
                     }
                 }
 
@@ -2280,7 +2297,7 @@ public class PlayList implements Initializable {
                         return;
                     }
                     int idx = Math.min(Math.max(value, 1), size) - 1;
-                    controlPlayerForceWithoutSkip(Control.SPECIFY, infos.get(idx));
+                    controlPlayerForceWithSkip(Control.SPECIFY, infos.get(idx));
                 }
 
                 @Override
@@ -2297,12 +2314,45 @@ public class PlayList implements Initializable {
                     while (idx < 0) {
                         idx += size;
                     }
-                    controlPlayerForceWithoutSkip(Control.SPECIFY, infos.get(idx));
+                    controlPlayerForceWithSkip(Control.SPECIFY, infos.get(idx));
                 }
 
                 @Override
                 public void controlJumpMinus(int value) {
                     controlJumpPlus(value * -1);
+                }
+
+                @Override
+                public void controlRemove(int value) {
+                    List<MediaInfo> infos = getItemsSnapshot();
+                    int size = infos.size();
+                    if (size == 0) {
+                        return;
+                    }
+                    int idx = Math.min(Math.max(value, 1), size) - 1;
+                    PlayList.this.controlRemove(infos.get(idx));
+                }
+
+                @Override
+                public void controlRemovePlus(int value) {
+                    List<MediaInfo> infos = getItemsSnapshot();
+                    int size = infos.size();
+                    if (size == 0) {
+                        return;
+                    }
+                    MediaInfo currentInfo = currentInfoProperty.getValue();
+                    int currentIdx = (currentInfo == null) ? -1 : infos.indexOf(currentInfo);
+                    int idx = Math.max(currentIdx, 0) + value;
+                    idx = idx % size;
+                    while (idx < 0) {
+                        idx += size;
+                    }
+                    PlayList.this.controlRemove(infos.get(idx));
+                }
+
+                @Override
+                public void controlRemoveMinus(int value) {
+                    controlRemovePlus(value * -1);
                 }
 
                 @Override
@@ -2393,7 +2443,13 @@ public class PlayList implements Initializable {
                                 settings.reset();
                                 break;
                             case "video":
-                                settings.setVideoMode(videoTab);
+                                settings.setVideoMode(videoTab, true);
+                                break;
+                            case "movie":
+                                settings.setVideoMode(videoTab, false);
+                                break;
+                            case "audio":
+                                settings.setAudioMode(infoTab);
                                 break;
                         }
                     }
@@ -2404,50 +2460,23 @@ public class PlayList implements Initializable {
     // ORETOKU funny functions.
     //-------------------------
 
-    private final Pattern pagePattern = Pattern.compile("(.*(?:\\?|&)page=)(\\d*)(.*)");
-
     private boolean movePageIfYoutube(int inc, boolean autoStart) {
         String text = pathText.getText().trim();
-        if (text.contains("youtube.com/results")) {
-            String url = null;
-            Matcher matcher = pagePattern.matcher(text);
-            if (matcher.find()) {
-                String _u1 = matcher.group(1);
-                String _p = matcher.group(2);
-                String _u2 = matcher.group(3);
-                int page = 1;
-                try {
-                    page = Integer.parseInt(_p) + inc;
-                } catch (NumberFormatException e) {
-                }
-                if (0 < page) {
-                    url = _u1 + page + _u2;
-                }
-            } else {
-                int page = 1 + inc;
-                if (0 < page) {
-                    if (text.contains("?")) {
-                        url = text + "&page=" + page;
+        String url = YoutubeUtils.getQueryPageUrl(text, inc);
+        if ((url != null) && !url.isEmpty() && !text.equals(url)) {
+            pathText.setText(url);
+            if (!loadRunning()) {
+                if (autoStart) {
+                    if (0 <= inc) {
+                        loadUrlAutoStartHeadService.restart();
                     } else {
-                        url = text + "?page=" + page;
+                        loadUrlAutoStartTailService.restart();
                     }
+                } else {
+                    loadUrlService.restart();
                 }
             }
-            if ((url != null) && !text.equals(url)) {
-                pathText.setText(url);
-                if (!loadRunning()) {
-                    if (autoStart) {
-                        if (0 <= inc) {
-                            loadUrlAutoStartHeadService.restart();
-                        } else {
-                            loadUrlAutoStartTailService.restart();
-                        }
-                    } else {
-                        loadUrlService.restart();
-                    }
-                }
-                return true;
-            }
+            return true;
         }
         return false;
     }

@@ -346,8 +346,8 @@ class Settings {
         nextMode.setValue(NextMode.NONE);
         nextMode.setValue(NextMode.OTHER);
 
-        // direction.setValue(Boolean.FALSE);
-        // direction.setValue(Boolean.TRUE);
+        otherDirection.setValue(OtherDirection.BACK);
+        otherDirection.setValue(OtherDirection.FORWARD);
 
         mute.set(true);
         mute.set(false);
@@ -356,7 +356,24 @@ class Settings {
         volume.set(0.25d);
     }
 
-    public void setVideoMode(Tab tab) {
+    public void setAudioMode(Tab tab) {
+        hideHeader.set(true);
+        hideFooter.set(false);
+
+        visibleTab.set(false);
+
+        tabSide.setValue(Side.LEFT);
+
+        timesVolumesHorizontal.set(false);
+
+        visibleSpectrums.set(true);
+
+        if (tab != null) {
+            tab.getTabPane().getSelectionModel().select(tab);
+        }
+    }
+
+    public void setVideoMode(Tab tab, boolean full) {
         hideHeader.set(true);
         hideFooter.set(false);
 
@@ -366,19 +383,21 @@ class Settings {
 
         visibleVideoInfo.set(true);
 
-        videoInfoSide.setValue(InfoSide.LEFT_TOP);
+        if (full) {
+            videoInfoSide.setValue(InfoSide.LEFT_TOP);
 
-        setVideoInfoWidth(360);
+            setVideoInfoWidth(360);
 
-        timesVolumesHorizontal.set(true);
+            timesVolumesHorizontal.set(true);
+        } else {
+            videoInfoSide.setValue(InfoSide.RIGHT_BOTTOM);
+
+            setVideoInfoWidth(Double.NaN);
+
+            timesVolumesHorizontal.set(false);
+        }
 
         visibleSpectrums.set(false);
-
-        // nextMode.setValue(NextMode.NONE);
-        // nextMode.setValue(NextMode.OTHER);
-
-        // direction.setValue(Boolean.FALSE);
-        // direction.setValue(Boolean.TRUE);
 
         if (tab != null) {
             tab.getTabPane().getSelectionModel().select(tab);
