@@ -9,6 +9,9 @@ import java.nio.charset.Charset;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpRequest;
@@ -37,6 +40,8 @@ import org.apache.http.protocol.HttpContext;
 import org.apache.http.util.EntityUtils;
 
 public class HttpUtils {
+
+    private static final ReadWriteLock cookieManagerLock = new ReentrantReadWriteLock();
 
     static {
         CookieManager manager = new CookieManager();
@@ -136,14 +141,20 @@ public class HttpUtils {
             if (handler instanceof CookieManager) {
                 CookieManager manager = (CookieManager) handler;
                 cookieStore = new BasicCookieStore();
-                for (HttpCookie httpCookie : manager.getCookieStore().getCookies()) {
-                    BasicClientCookie cookie = new BasicClientCookie(httpCookie.getName(),
-                            httpCookie.getValue());
-                    cookie.setComment(httpCookie.getComment());
-                    cookie.setDomain(httpCookie.getDomain());
-                    cookie.setPath(httpCookie.getPath());
-                    cookie.setSecure(httpCookie.getSecure());
-                    cookieStore.addCookie(cookie);
+                Lock lock = cookieManagerLock.readLock();
+                try {
+                    lock.lock();
+                    for (HttpCookie httpCookie : manager.getCookieStore().getCookies()) {
+                        BasicClientCookie cookie = new BasicClientCookie(httpCookie.getName(),
+                                httpCookie.getValue());
+                        cookie.setComment(httpCookie.getComment());
+                        cookie.setDomain(httpCookie.getDomain());
+                        cookie.setPath(httpCookie.getPath());
+                        cookie.setSecure(httpCookie.getSecure());
+                        cookieStore.addCookie(cookie);
+                    }
+                } finally {
+                    lock.unlock();
                 }
                 builder.setDefaultCookieStore(cookieStore);
             }
@@ -201,15 +212,22 @@ public class HttpUtils {
             CookieHandler handler = CookieHandler.getDefault();
             if (handler instanceof CookieManager) {
                 CookieManager manager = (CookieManager) handler;
-                for (Cookie cookie : cookieStore.getCookies()) {
-                    HttpCookie httpCookie = new HttpCookie(cookie.getName(), cookie.getValue());
-                    httpCookie.setComment(cookie.getComment());
-                    httpCookie.setCommentURL(cookie.getCommentURL());
-                    httpCookie.setDomain(cookie.getDomain());
-                    httpCookie.setPath(cookie.getPath());
-                    httpCookie.setSecure(cookie.isSecure());
-                    httpCookie.setVersion(cookie.getVersion());
-                    manager.getCookieStore().add(null, httpCookie);
+                Lock lock = cookieManagerLock.writeLock();
+                try {
+                    lock.lock();
+                    java.net.CookieStore cs = manager.getCookieStore();
+                    for (Cookie cookie : cookieStore.getCookies()) {
+                        HttpCookie httpCookie = new HttpCookie(cookie.getName(), cookie.getValue());
+                        httpCookie.setComment(cookie.getComment());
+                        httpCookie.setCommentURL(cookie.getCommentURL());
+                        httpCookie.setDomain(cookie.getDomain());
+                        httpCookie.setPath(cookie.getPath());
+                        httpCookie.setSecure(cookie.isSecure());
+                        httpCookie.setVersion(cookie.getVersion());
+                        cs.add(null, httpCookie);
+                    }
+                } finally {
+                    lock.unlock();
                 }
             }
         }

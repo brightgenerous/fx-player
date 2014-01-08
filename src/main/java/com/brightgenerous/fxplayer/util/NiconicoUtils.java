@@ -6,17 +6,20 @@ import java.net.URL;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class NiconicoUtils {
 
-    private static String mail;
+    private static volatile String mail;
 
-    private static String pass;
+    private static volatile String pass;
 
     private static final HttpUtils http = HttpUtilsBuilder.createDefault()
-            .contentType("application/x-www-form-urlencoded").build();
+            .contentType("application/x-www-form-urlencoded").syncCookie(true).build();
 
     private NiconicoUtils() {
     }
@@ -80,22 +83,24 @@ public class NiconicoUtils {
         }
 
         String ret = null;
+        String _mail = mail;
+        String _pass = pass;
         for (int i = 0; i < 2; i++) {
-            if ((mail == null) || (pass == null)) {
+            if ((_mail == null) || (_pass == null)) {
                 break;
             }
-            if (findFailed(mail, pass)) {
+            if (findFailed(_mail, _pass)) {
                 break;
             }
             if (0 < i) {
                 String html = http.execPost(
                         "https://secure.nicovideo.jp/secure/login?site=niconico",
-                        "next_url=&mail_tel=" + mail + "&password=" + pass);
+                        "next_url=&mail_tel=" + _mail + "&password=" + _pass);
                 if (html.matches("<form\\s*[^>]*\\s*action\\s*=\\s*\"https://secure.nicovideo.jp/secure/login")) {
-                    registFailed(mail, pass);
+                    registFailed(_mail, _pass);
                     break;
                 }
-                registSuccess(mail, pass);
+                registSuccess(_mail, _pass);
             }
             String info = http.execGet("http://flapi.nicovideo.jp/api/getflv/" + id);
             if (info != null) {
@@ -115,23 +120,52 @@ public class NiconicoUtils {
         return ret;
     }
 
+    private static final ReadWriteLock accountsLock = new ReentrantReadWriteLock();
+
     private static final List<Account> accounts = new ArrayList<>();
 
     private static boolean findFailed(String mail, String pass) {
-        return accounts.contains(new Account(mail, pass));
+        Lock lock = accountsLock.readLock();
+        try {
+            lock.lock();
+            return accounts.contains(new Account(mail, pass));
+        } finally {
+            lock.unlock();
+        }
     }
 
     private static void registSuccess(String mail, String pass) {
+        if (!findFailed(mail, pass)) {
+            return;
+        }
         Account account = new Account(mail, pass);
-        if (accounts.contains(account)) {
-            accounts.remove(account);
+        Lock lock = accountsLock.writeLock();
+        try {
+            lock.lock();
+            if (accounts.contains(account)) {
+                accounts.remove(account);
+            }
+        } finally {
+            lock.unlock();
         }
     }
 
     private static void registFailed(String mail, String pass) {
+        if (findFailed(mail, pass)) {
+            return;
+        }
         Account account = new Account(mail, pass);
-        if (!accounts.contains(account)) {
-            accounts.add(account);
+        Lock lock = accountsLock.writeLock();
+        try {
+            lock.lock();
+            if (!accounts.contains(account)) {
+                accounts.add(account);
+                if (100 < accounts.size()) {
+                    accounts.removeAll(accounts.subList(0, 50));
+                }
+            }
+        } finally {
+            lock.unlock();
         }
     }
 

@@ -22,8 +22,7 @@ public class HttpUtilsBuilder {
     }
 
     public static HttpUtilsBuilder createDefault() {
-        return create().userAgent("Mozilla/5.0 (Windows NT 6.1; WOW64; rv:8.0.1)").encode("UTF-8")
-                .syncCookie(true);
+        return create().userAgent("Mozilla/5.0 (Windows NT 6.1; WOW64; rv:8.0.1)").encode("UTF-8");
     }
 
     public HttpUtils build() {

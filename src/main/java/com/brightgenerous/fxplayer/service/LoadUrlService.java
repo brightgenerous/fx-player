@@ -37,9 +37,10 @@ public class LoadUrlService extends Service<List<? extends MediaInfo>> {
         this.callback = callback;
     }
 
-    private static final Pattern youtubePattern = Pattern.compile("\\s*yt\\s*=\\s*(.*)\\s*");
+    private static final Pattern youtubePattern = Pattern.compile("^\\s*yt\\s*=\\s*(.*)\\s*$");
 
-    private static final Pattern myServicePattern = Pattern.compile("\\s*(?:pl|)\\s*=\\s*(.*)\\s*");
+    private static final Pattern myServicePattern = Pattern
+            .compile("^\\s*(?:pl|)\\s*=\\s*(.*)\\s*$");
 
     @Override
     protected Task<List<? extends MediaInfo>> createTask() {
