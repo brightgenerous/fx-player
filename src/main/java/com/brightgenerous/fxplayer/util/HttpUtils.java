@@ -1,6 +1,10 @@
 package com.brightgenerous.fxplayer.util;
 
 import java.io.IOException;
+import java.net.CookieHandler;
+import java.net.CookieManager;
+import java.net.CookiePolicy;
+import java.net.HttpCookie;
 import java.nio.charset.Charset;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
@@ -11,6 +15,7 @@ import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.ProtocolException;
+import org.apache.http.client.CookieStore;
 import org.apache.http.client.RedirectStrategy;
 import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.methods.HttpGet;
@@ -20,42 +25,55 @@ import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.conn.ssl.SSLContextBuilder;
 import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
+import org.apache.http.cookie.Cookie;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.DefaultRedirectStrategy;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.cookie.BasicClientCookie;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.util.EntityUtils;
 
 public class HttpUtils {
 
-    private HttpUtils() {
+    static {
+        CookieManager manager = new CookieManager();
+        manager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+        CookieHandler.setDefault(manager);
     }
 
-    public static String execGet(String url, Charset encode) throws IOException {
-        return execGet(url, null, encode);
+    private final String userAgent;
+
+    private final String contentType;
+
+    private final Charset encode;
+
+    private final boolean selfSigned;
+
+    private final boolean syncCookie;
+
+    HttpUtils(String userAgent, String contentType, Charset encode, boolean selfSigned,
+            boolean syncCookie) {
+        this.userAgent = userAgent;
+        this.contentType = contentType;
+        this.encode = encode;
+        this.selfSigned = selfSigned;
+        this.syncCookie = syncCookie;
     }
 
-    public static String execGet(String url, String userAgent, Charset encode) throws IOException {
-        return exec(false, url, userAgent, null, null, encode, false);
+    public String execGet(String url) throws IOException {
+        return exec(false, url, userAgent, null, contentType, encode, selfSigned, syncCookie);
     }
 
-    public static String execPost(String url, Charset encode) throws IOException {
-        return execPost(url, null, encode);
-    }
-
-    public static String execPost(String url, String userAgent, Charset encode) throws IOException {
-        return execPost(url, userAgent, null, null, encode);
-    }
-
-    public static String execPost(String url, String userAgent, String body, String contentType,
-            Charset encode) throws IOException {
-        return exec(true, url, userAgent, body, contentType, encode, false);
+    public String execPost(String url, String body) throws IOException {
+        return exec(true, url, userAgent, body, contentType, encode, selfSigned, syncCookie);
     }
 
     private static String exec(boolean post, String url, String userAgent, String body,
-            String contentType, final Charset encode, boolean selfSigned) throws IOException {
+            String contentType, final Charset encode, boolean selfSigned, boolean syncCookie)
+            throws IOException {
 
         // context
         HttpClientContext context = HttpClientContext.create();
@@ -111,6 +129,26 @@ public class HttpUtils {
             }
         }
 
+        // cookie
+        CookieStore cookieStore = null;
+        if (syncCookie) {
+            CookieHandler handler = CookieHandler.getDefault();
+            if (handler instanceof CookieManager) {
+                CookieManager manager = (CookieManager) handler;
+                cookieStore = new BasicCookieStore();
+                for (HttpCookie httpCookie : manager.getCookieStore().getCookies()) {
+                    BasicClientCookie cookie = new BasicClientCookie(httpCookie.getName(),
+                            httpCookie.getValue());
+                    cookie.setComment(httpCookie.getComment());
+                    cookie.setDomain(httpCookie.getDomain());
+                    cookie.setPath(httpCookie.getPath());
+                    cookie.setSecure(httpCookie.getSecure());
+                    cookieStore.addCookie(cookie);
+                }
+                builder.setDefaultCookieStore(cookieStore);
+            }
+        }
+
         // define request
         HttpUriRequest request;
         if (post) {
@@ -157,6 +195,23 @@ public class HttpUtils {
                     return null;
                 }
             }, context);
+        }
+
+        if (syncCookie && (cookieStore != null)) {
+            CookieHandler handler = CookieHandler.getDefault();
+            if (handler instanceof CookieManager) {
+                CookieManager manager = (CookieManager) handler;
+                for (Cookie cookie : cookieStore.getCookies()) {
+                    HttpCookie httpCookie = new HttpCookie(cookie.getName(), cookie.getValue());
+                    httpCookie.setComment(cookie.getComment());
+                    httpCookie.setCommentURL(cookie.getCommentURL());
+                    httpCookie.setDomain(cookie.getDomain());
+                    httpCookie.setPath(cookie.getPath());
+                    httpCookie.setSecure(cookie.isSecure());
+                    httpCookie.setVersion(cookie.getVersion());
+                    manager.getCookieStore().add(null, httpCookie);
+                }
+            }
         }
 
         return ret;

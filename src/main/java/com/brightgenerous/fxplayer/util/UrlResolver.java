@@ -23,6 +23,8 @@ public class UrlResolver {
 
     private final ExecutorService youtubeES = Executors.newFixedThreadPool(1, threadFactory);
 
+    private final ExecutorService niconicoES = Executors.newFixedThreadPool(1, threadFactory);
+
     private final ExecutorService xvideosES = Executors.newFixedThreadPool(1, threadFactory);
 
     private UrlResolver() {
@@ -38,6 +40,8 @@ public class UrlResolver {
             ret = new DirectUrl(url);
         } else if (YoutubeUtils.isVideoUrl(url)) {
             ret = new YoutubeUrl(url);
+        } else if (NiconicoUtils.isVideoUrl(url)) {
+            ret = new NiconicoUrl(url);
         } else if (XvideosUtils.isVideoUrl(url)) {
             ret = new XvideosUrl(url);
         } else {
@@ -111,6 +115,59 @@ public class UrlResolver {
                     }
                 });
                 youtubeES.execute(ftr);
+                future = ftr;
+            }
+        }
+
+        @Override
+        public void cancel() {
+            future.cancel(true);
+        }
+    }
+
+    private class NiconicoUrl implements IData<String> {
+
+        private final String url;
+
+        private volatile FutureTask<String> future;
+
+        private final Object lock = new Object();
+
+        NiconicoUrl(String url) {
+            this.url = url;
+            request(false);
+        }
+
+        @Override
+        public String get() {
+            request(false);
+            try {
+                return future.get();
+            } catch (InterruptedException | ExecutionException e) {
+            }
+            return null;
+        }
+
+        @Override
+        public void request(boolean force) {
+            if (!force && (future != null)) {
+                return;
+            }
+            synchronized (lock) {
+                if (!force && (future != null)) {
+                    return;
+                }
+                if ((future != null) && !future.isDone()) {
+                    return;
+                }
+                FutureTask<String> ftr = new FutureTask<>(new Callable<String>() {
+
+                    @Override
+                    public String call() throws Exception {
+                        return NiconicoUtils.extractUrl(url);
+                    }
+                });
+                niconicoES.execute(ftr);
                 future = ftr;
             }
         }

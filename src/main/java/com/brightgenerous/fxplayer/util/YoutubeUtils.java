@@ -6,7 +6,6 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -444,6 +443,8 @@ public class YoutubeUtils {
         return videos;
     }
 
+    private static final HttpUtils http = HttpUtilsBuilder.createDefault().build();
+
     private static String getPageHtml(String url) throws IOException {
         if (url == null) {
             return null;
@@ -462,8 +463,7 @@ public class YoutubeUtils {
             }
         }
 
-        return HttpUtils.execGet(url, "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:8.0.1)",
-                Charset.forName("UTF-8"));
+        return http.execGet(url);
     }
 
     private static String convS2Sig(String str) {

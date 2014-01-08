@@ -85,6 +85,7 @@ import com.brightgenerous.fxplayer.service.SaveImageService;
 import com.brightgenerous.fxplayer.service.SaveImageService.ImageInfo;
 import com.brightgenerous.fxplayer.service.StageCloseService;
 import com.brightgenerous.fxplayer.util.ListUtils;
+import com.brightgenerous.fxplayer.util.NiconicoUtils;
 import com.brightgenerous.fxplayer.util.YoutubeUtils;
 
 public class PlayList implements Initializable {
@@ -895,26 +896,32 @@ public class PlayList implements Initializable {
     }
 
     private boolean controlPlayerSoft(Control control, MediaInfo info) {
-        return controlPlayer(control, info, false, 0, false);
+        return controlPlayer(control, info, false, 0, false, control);
     }
 
     private boolean controlPlayerForceWithSkip(Control control, MediaInfo info) {
-        return controlPlayer(control, info, true, settings.skipOnError.get(), false);
+        return controlPlayer(control, info, true, settings.skipOnError.get(), false, control);
+    }
+
+    private void controlPlayerLater(Control control, MediaInfo info, boolean forceResolve,
+            int skipOnError, boolean chain) {
+        controlPlayerLater(control, info, forceResolve, skipOnError, chain, control);
     }
 
     private void controlPlayerLater(final Control control, final MediaInfo info,
-            final boolean forceResolve, final int skipOnError, final boolean chain) {
+            final boolean forceResolve, final int skipOnError, final boolean chain,
+            final Control trigger) {
         Platform.runLater(new Runnable() {
 
             @Override
             public void run() {
-                controlPlayer(control, info, forceResolve, skipOnError, chain);
+                controlPlayer(control, info, forceResolve, skipOnError, chain, trigger);
             }
         });
     }
 
     private boolean controlPlayer(final Control control, MediaInfo info,
-            final boolean forceResolve, final int skipOnError, boolean chain) {
+            final boolean forceResolve, final int skipOnError, boolean chain, final Control trigger) {
 
         // if too fast to be called repeatedly,
         //   returns false.
@@ -1038,7 +1045,7 @@ public class PlayList implements Initializable {
                         //   next call targetInfo.getMedia() returns not null or throws MediaException.
                         //   as result, will not execute this block in next time.
                         controlPlayerLater(Control.SPECIFY, targetInfo, forceResolve, skipOnError,
-                                true);
+                                true, trigger);
 
                         break player_block;
                     }
@@ -1054,10 +1061,7 @@ public class PlayList implements Initializable {
 
                     targetInfo.releaseMedia(true);
                     if (0 < skipOnError) {
-                        if (control == Control.SPECIFY) {
-                            controlPlayerLater(Control.SPECIFY, targetInfo, forceResolve,
-                                    skipOnError - 1, true);
-                        } else {
+                        if (trigger != Control.SPECIFY) {
                             OtherDirection otherDirection = settings.otherDirection.getValue();
                             if (otherDirection == null) {
                                 otherDirection = OtherDirection.FORWARD;
@@ -1065,11 +1069,11 @@ public class PlayList implements Initializable {
                             switch (otherDirection) {
                                 case FORWARD:
                                     controlPlayerLater(Control.NEXT, targetInfo, forceResolve,
-                                            skipOnError - 1, true);
+                                            skipOnError - 1, true, trigger);
                                     break;
                                 case BACK:
                                     controlPlayerLater(Control.BACK, targetInfo, forceResolve,
-                                            skipOnError - 1, true);
+                                            skipOnError - 1, true, trigger);
                                     break;
                             }
                         }
@@ -1081,19 +1085,21 @@ public class PlayList implements Initializable {
                 onMediaLoadError(e, targetInfo);
 
                 if (0 < skipOnError) {
-                    OtherDirection otherDirection = settings.otherDirection.getValue();
-                    if (otherDirection == null) {
-                        otherDirection = OtherDirection.FORWARD;
-                    }
-                    switch (otherDirection) {
-                        case FORWARD:
-                            controlPlayerLater(Control.NEXT, targetInfo, forceResolve,
-                                    skipOnError - 1, true);
-                            break;
-                        case BACK:
-                            controlPlayerLater(Control.BACK, targetInfo, forceResolve,
-                                    skipOnError - 1, true);
-                            break;
+                    if (trigger != Control.SPECIFY) {
+                        OtherDirection otherDirection = settings.otherDirection.getValue();
+                        if (otherDirection == null) {
+                            otherDirection = OtherDirection.FORWARD;
+                        }
+                        switch (otherDirection) {
+                            case FORWARD:
+                                controlPlayerLater(Control.NEXT, targetInfo, forceResolve,
+                                        skipOnError - 1, true, trigger);
+                                break;
+                            case BACK:
+                                controlPlayerLater(Control.BACK, targetInfo, forceResolve,
+                                        skipOnError - 1, true, trigger);
+                                break;
+                        }
                     }
                 }
 
@@ -1316,7 +1322,7 @@ public class PlayList implements Initializable {
                             if ((dur != null) && dur.equals(Duration.ZERO)) {
                                 // occurred event too fast.
                                 controlPlayerLater(Control.SPECIFY, targetInfo, forceResolve,
-                                        skipOnError - 1, true);
+                                        skipOnError - 1, true, trigger);
                             } else {
                                 OtherDirection otherDirection = settings.otherDirection.getValue();
                                 if (otherDirection == null) {
@@ -1325,11 +1331,11 @@ public class PlayList implements Initializable {
                                 switch (otherDirection) {
                                     case FORWARD:
                                         controlPlayer(Control.NEXT, targetInfo, forceResolve,
-                                                skipOnError - 1, true);
+                                                skipOnError - 1, true, trigger);
                                         break;
                                     case BACK:
                                         controlPlayer(Control.BACK, targetInfo, forceResolve,
-                                                skipOnError - 1, true);
+                                                skipOnError - 1, true, trigger);
                                         break;
                                 }
                             }
@@ -1363,7 +1369,7 @@ public class PlayList implements Initializable {
                                 break;
                             case SAME:
                                 controlPlayer(Control.SPECIFY, targetInfo, true,
-                                        settings.skipOnError.get(), true);
+                                        settings.skipOnError.get(), true, trigger);
                                 break;
                             case OTHER:
                                 OtherDirection otherDirection = settings.otherDirection.getValue();
@@ -1373,11 +1379,11 @@ public class PlayList implements Initializable {
                                 switch (otherDirection) {
                                     case FORWARD:
                                         controlPlayer(Control.NEXT, targetInfo, true,
-                                                settings.skipOnError.get(), true);
+                                                settings.skipOnError.get(), true, trigger);
                                         break;
                                     case BACK:
                                         controlPlayer(Control.BACK, targetInfo, true,
-                                                settings.skipOnError.get(), true);
+                                                settings.skipOnError.get(), true, trigger);
                                         break;
                                 }
                                 break;
@@ -2431,6 +2437,7 @@ public class PlayList implements Initializable {
                 @Override
                 public void controlOther(String[] args) {
                     String arg0 = (0 < args.length) ? args[0] : null;
+                    String arg1 = (1 < args.length) ? args[1] : null;
                     if (arg0 != null) {
                         switch (arg0) {
                             case "ytn":
@@ -2450,6 +2457,14 @@ public class PlayList implements Initializable {
                                 break;
                             case "audio":
                                 settings.setAudioMode(infoTab);
+                                break;
+                            case "ncm":
+                                NiconicoUtils.setMail(arg1);
+                                log("Set Niconico mail : " + arg1);
+                                break;
+                            case "ncp":
+                                NiconicoUtils.setPass(arg1);
+                                log("Set Niconico pass : ***** ");
                                 break;
                         }
                     }

@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLDecoder;
-import java.nio.charset.Charset;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -101,6 +100,8 @@ public class XvideosUtils {
         return URLDecoder.decode(_url, "UTF-8");
     }
 
+    private static final HttpUtils http = HttpUtilsBuilder.createDefault().build();
+
     private static String getPageHtml(String url) throws IOException {
         if (url == null) {
             return null;
@@ -125,7 +126,6 @@ public class XvideosUtils {
             }
         }
 
-        return HttpUtils.execGet(url, "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:8.0.1)",
-                Charset.forName("UTF-8"));
+        return http.execGet(url);
     }
 }

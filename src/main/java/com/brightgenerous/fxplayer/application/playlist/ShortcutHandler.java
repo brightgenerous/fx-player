@@ -586,7 +586,7 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
             inputs.setLength(0);
         } else {
             long current = System.currentTimeMillis();
-            if ((ch == '\b') || (ch == '@') || (ch == '`')) {
+            if ((ch == '\b') || (ch == '`')) {
                 inputs.setLength(0);
             } else {
                 if ((lastTime + 30_000) < current) {

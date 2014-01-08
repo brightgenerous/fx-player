@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.lang.ref.SoftReference;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -22,6 +21,7 @@ import com.brightgenerous.fxplayer.media.MediaInfo;
 import com.brightgenerous.fxplayer.media.MediaInfo.MetaChangeListener;
 import com.brightgenerous.fxplayer.media.MediaInfoFactory;
 import com.brightgenerous.fxplayer.util.HttpUtils;
+import com.brightgenerous.fxplayer.util.HttpUtilsBuilder;
 import com.brightgenerous.fxplayer.util.IData;
 import com.brightgenerous.fxplayer.util.ListUtils;
 import com.brightgenerous.fxplayer.util.ListUtils.IConverter;
@@ -179,6 +179,8 @@ class MediaInfoLoader {
         return ret;
     }
 
+    private static final HttpUtils http = HttpUtilsBuilder.createDefault().build();
+
     public static List<MediaInfo> fromURL(String str, MetaChangeListener metaChangeListener,
             LoadDirection loadDirection) {
         if (str == null) {
@@ -227,7 +229,7 @@ class MediaInfoLoader {
 
         String text = null;
         try {
-            text = HttpUtils.execGet(str, Charset.forName("UTF-8"));
+            text = http.execGet(str);
         } catch (IOException e) {
         }
         if (text == null) {
