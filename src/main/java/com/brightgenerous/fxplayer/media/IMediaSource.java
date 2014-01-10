@@ -39,4 +39,6 @@ public interface IMediaSource {
     String getDescription();
 
     void requestResolve(boolean force);
+
+    boolean enablePreLoad();
 }

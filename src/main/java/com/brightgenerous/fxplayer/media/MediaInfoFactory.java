@@ -6,8 +6,8 @@ import java.util.Map;
 import javafx.scene.media.Media;
 
 import com.brightgenerous.fxplayer.media.MediaInfo.MetaChangeListener;
+import com.brightgenerous.fxplayer.url.UrlResolver;
 import com.brightgenerous.fxplayer.util.IData;
-import com.brightgenerous.fxplayer.util.UrlResolver;
 
 public class MediaInfoFactory {
 

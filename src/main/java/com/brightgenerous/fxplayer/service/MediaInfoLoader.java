@@ -20,16 +20,14 @@ import javafx.scene.media.Media;
 import com.brightgenerous.fxplayer.media.MediaInfo;
 import com.brightgenerous.fxplayer.media.MediaInfo.MetaChangeListener;
 import com.brightgenerous.fxplayer.media.MediaInfoFactory;
-import com.brightgenerous.fxplayer.util.HttpUtils;
-import com.brightgenerous.fxplayer.util.HttpUtilsBuilder;
+import com.brightgenerous.fxplayer.url.HttpUtils;
+import com.brightgenerous.fxplayer.url.HttpUtilsBuilder;
+import com.brightgenerous.fxplayer.url.UrlDispathcer;
+import com.brightgenerous.fxplayer.url.UrlResolver;
 import com.brightgenerous.fxplayer.util.IData;
+import com.brightgenerous.fxplayer.util.IVideoInfo;
 import com.brightgenerous.fxplayer.util.ListUtils;
 import com.brightgenerous.fxplayer.util.ListUtils.IConverter;
-import com.brightgenerous.fxplayer.util.MyServiceUtils;
-import com.brightgenerous.fxplayer.util.UrlResolver;
-import com.brightgenerous.fxplayer.util.VideoInfo;
-import com.brightgenerous.fxplayer.util.XvideosUtils;
-import com.brightgenerous.fxplayer.util.YoutubeUtils;
 
 class MediaInfoLoader {
 
@@ -172,7 +170,7 @@ class MediaInfoLoader {
         }
 
         List<MediaInfo> ret = new ArrayList<>();
-        List<VideoInfo> infos = MyServiceUtils.fromFile(file, parent);
+        List<IVideoInfo> infos = UrlDispathcer.fromFile(file, parent);
         if (infos != null) {
             ret.addAll(convert(infos, metaChangeListener, loadDirection));
         }
@@ -237,19 +235,8 @@ class MediaInfoLoader {
         }
 
         List<MediaInfo> ret = new ArrayList<>();
-        if (YoutubeUtils.isPlaylistUrl(str)) {
-            List<VideoInfo> infos = YoutubeUtils.parsePlaylist(text);
-            if (infos != null) {
-                ret.addAll(convert(infos, metaChangeListener, loadDirection));
-            }
-        } else if (YoutubeUtils.isVideoUrl(str)) {
-            String title = YoutubeUtils.extractTitle(text);
-            ret.add(createMediaInfo(str, title, metaChangeListener));
-        } else if (XvideosUtils.isVideoUrl(str)) {
-            String title = XvideosUtils.extractTitle(text);
-            ret.add(createMediaInfo(str, title, metaChangeListener));
-        } else {
-            List<VideoInfo> infos = MyServiceUtils.fromServer(text, serverPath, dirPath);
+        {
+            List<IVideoInfo> infos = UrlDispathcer.fromUrl(str, text, serverPath, dirPath);
             if (infos != null) {
                 ret.addAll(convert(infos, metaChangeListener, loadDirection));
             }
@@ -257,7 +244,7 @@ class MediaInfoLoader {
         return ret;
     }
 
-    private static List<MediaInfo> convert(List<VideoInfo> infos,
+    private static List<MediaInfo> convert(List<IVideoInfo> infos,
             MetaChangeListener metaChangeListener, LoadDirection loadDirection) {
         List<MediaInfo> ret = null;
         if (infos != null) {
@@ -280,7 +267,7 @@ class MediaInfoLoader {
         return ret;
     }
 
-    private static MediaInfo createMediaInfo(VideoInfo info, MetaChangeListener metaChangeListener) {
+    private static MediaInfo createMediaInfo(IVideoInfo info, MetaChangeListener metaChangeListener) {
         return createMediaInfo(info.getUrl(), info.getTitle(), metaChangeListener);
     }
 
@@ -290,7 +277,7 @@ class MediaInfoLoader {
         return factory.create(url, desc, metaChangeListener);
     }
 
-    private static class InfoConverter implements IConverter<MediaInfo, VideoInfo> {
+    private static class InfoConverter implements IConverter<MediaInfo, IVideoInfo> {
 
         private final MetaChangeListener metaChangeListener;
 
@@ -299,7 +286,7 @@ class MediaInfoLoader {
         }
 
         @Override
-        public MediaInfo convert(VideoInfo obj) {
+        public MediaInfo convert(IVideoInfo obj) {
             return createMediaInfo(obj, metaChangeListener);
         }
     }

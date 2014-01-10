@@ -84,9 +84,8 @@ import com.brightgenerous.fxplayer.service.LoadUrlService;
 import com.brightgenerous.fxplayer.service.SaveImageService;
 import com.brightgenerous.fxplayer.service.SaveImageService.ImageInfo;
 import com.brightgenerous.fxplayer.service.StageCloseService;
+import com.brightgenerous.fxplayer.url.UrlDispathcer;
 import com.brightgenerous.fxplayer.util.ListUtils;
-import com.brightgenerous.fxplayer.util.NiconicoUtils;
-import com.brightgenerous.fxplayer.util.YoutubeUtils;
 
 public class PlayList implements Initializable {
 
@@ -1466,11 +1465,11 @@ public class PlayList implements Initializable {
     }
 
     private boolean onNextFromTail() {
-        return movePageIfYoutube(1, true);
+        return movePageIfEnable(1, true);
     }
 
     private boolean onBackFromHead() {
-        return movePageIfYoutube(-1, true);
+        return movePageIfEnable(-1, true);
     }
 
     private void onMediaLoadError(MediaLoadException ex, MediaInfo info) {
@@ -1801,7 +1800,7 @@ public class PlayList implements Initializable {
                         }
                         for (int i = 0; i < items.size(); i++) {
                             MediaInfo info = items.get(i);
-                            if (info.loaded()) {
+                            if (!info.enablePreLoad() || info.loaded()) {
                                 continue;
                             }
 
@@ -1819,7 +1818,6 @@ public class PlayList implements Initializable {
                                     try {
                                         Thread.sleep(Math.max(
                                                 settings.loadMediaStepMilliseconds.get(), 0));
-                                        //Thread.yield();
                                     } catch (InterruptedException e) {
                                     }
                                     times++;
@@ -2440,11 +2438,11 @@ public class PlayList implements Initializable {
                     String arg1 = (1 < args.length) ? args[1] : null;
                     if (arg0 != null) {
                         switch (arg0) {
-                            case "ytn":
-                                movePageIfYoutube(1, false);
+                            case "pn":
+                                movePageIfEnable(1, false);
                                 break;
-                            case "ytb":
-                                movePageIfYoutube(-1, false);
+                            case "pb":
+                                movePageIfEnable(-1, false);
                                 break;
                             case "reset":
                                 settings.reset();
@@ -2459,11 +2457,11 @@ public class PlayList implements Initializable {
                                 settings.setAudioMode(infoTab);
                                 break;
                             case "ncm":
-                                NiconicoUtils.setMail(arg1);
+                                UrlDispathcer.setNiconicoMail(arg1);
                                 log("Set Niconico mail : " + arg1);
                                 break;
                             case "ncp":
-                                NiconicoUtils.setPass(arg1);
+                                UrlDispathcer.setNiconicoPass(arg1);
                                 log("Set Niconico pass : ***** ");
                                 break;
                         }
@@ -2475,12 +2473,12 @@ public class PlayList implements Initializable {
     // ORETOKU funny functions.
     //-------------------------
 
-    private boolean movePageIfYoutube(int inc, boolean autoStart) {
+    private boolean movePageIfEnable(int inc, boolean autoStart) {
         String text = pathText.getText().trim();
-        String url = YoutubeUtils.getQueryPageUrl(text, inc);
+        String url = UrlDispathcer.getQueryPageUrl(text, inc);
         if ((url != null) && !url.isEmpty() && !text.equals(url)) {
-            pathText.setText(url);
             if (!loadRunning()) {
+                pathText.setText(url);
                 if (autoStart) {
                     if (0 <= inc) {
                         loadUrlAutoStartHeadService.restart();

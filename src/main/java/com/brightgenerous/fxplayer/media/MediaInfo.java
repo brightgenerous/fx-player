@@ -239,6 +239,10 @@ public class MediaInfo {
         return source;
     }
 
+    public boolean enablePreLoad() {
+        return source.enablePreLoad();
+    }
+
     public boolean loaded() {
         return tryLoaded;
     }

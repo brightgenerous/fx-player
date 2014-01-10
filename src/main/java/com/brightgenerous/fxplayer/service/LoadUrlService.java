@@ -10,8 +10,7 @@ import javafx.concurrent.Task;
 
 import com.brightgenerous.fxplayer.media.MediaInfo;
 import com.brightgenerous.fxplayer.media.MediaInfo.MetaChangeListener;
-import com.brightgenerous.fxplayer.util.MyServiceUtils;
-import com.brightgenerous.fxplayer.util.YoutubeUtils;
+import com.brightgenerous.fxplayer.url.UrlDispathcer;
 
 public class LoadUrlService extends Service<List<? extends MediaInfo>> {
 
@@ -38,6 +37,8 @@ public class LoadUrlService extends Service<List<? extends MediaInfo>> {
     }
 
     private static final Pattern youtubePattern = Pattern.compile("^\\s*yt\\s*=\\s*(.*)\\s*$");
+
+    private static final Pattern niconicoPattern = Pattern.compile("^\\s*nc\\s*=\\s*(.*)\\s*$");
 
     private static final Pattern myServicePattern = Pattern
             .compile("^\\s*(?:pl|)\\s*=\\s*(.*)\\s*$");
@@ -68,7 +69,20 @@ public class LoadUrlService extends Service<List<? extends MediaInfo>> {
                         if (matcher.find()) {
                             String word = matcher.group(1);
                             if (!word.isEmpty()) {
-                                url = YoutubeUtils.getQueryUrl(word);
+                                url = UrlDispathcer.createQueryUrl(word,
+                                        UrlDispathcer.Service.YOUTUBE);
+                                text = url;
+                            }
+                            break parse;
+                        }
+                    }
+                    {
+                        Matcher matcher = niconicoPattern.matcher(url);
+                        if (matcher.find()) {
+                            String word = matcher.group(1);
+                            if (!word.isEmpty()) {
+                                url = UrlDispathcer.createQueryUrl(word,
+                                        UrlDispathcer.Service.NICONICO);
                                 text = url;
                             }
                             break parse;
@@ -77,9 +91,10 @@ public class LoadUrlService extends Service<List<? extends MediaInfo>> {
                     {
                         Matcher matcher = myServicePattern.matcher(url);
                         if (matcher.find()) {
-                            String key = matcher.group(1);
-                            if (!key.isEmpty()) {
-                                url = MyServiceUtils.getQueryUrl(key);
+                            String word = matcher.group(1);
+                            if (!word.isEmpty()) {
+                                url = UrlDispathcer.createQueryUrl(word,
+                                        UrlDispathcer.Service.MYSERVICE);
                             }
                             break parse;
                         }

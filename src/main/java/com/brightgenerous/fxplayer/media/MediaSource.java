@@ -41,6 +41,11 @@ class MediaSource implements IMediaSource, Serializable {
     }
 
     @Override
+    public boolean enablePreLoad() {
+        return fileUrl.enablePreLoad();
+    }
+
+    @Override
     public int hashCode() {
         if (url == null) {
             return -1;
