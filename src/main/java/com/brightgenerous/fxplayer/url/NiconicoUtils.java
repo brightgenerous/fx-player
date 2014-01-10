@@ -210,6 +210,25 @@ class NiconicoUtils {
         return ret;
     }
 
+    private static final Pattern patternTitle = Pattern
+            .compile("<h1[^>]*\\sitemprop\\s*=\\s*\"name\"[^>]*>([^<]*)</h1>");
+
+    public static String extractTitle(String html) {
+        if (html == null) {
+            return null;
+        }
+
+        Matcher matcher = patternTitle.matcher(html);
+        if (matcher.find()) {
+            String title = matcher.group(1);
+            if (title != null) {
+                title = title.trim();
+            }
+            return title;
+        }
+        return null;
+    }
+
     private static final Pattern urlPattern = Pattern.compile("url=([^&]*)");
 
     private static final Pattern idPattern = Pattern.compile("/([^/?&]*)(?:\\?.*|&.*|)$");

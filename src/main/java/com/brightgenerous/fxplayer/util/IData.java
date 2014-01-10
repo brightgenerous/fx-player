@@ -6,6 +6,8 @@ public interface IData<T> {
 
     void request(boolean force);
 
+    void release();
+
     void cancel();
 
     boolean enablePreLoad();

@@ -70,6 +70,10 @@ public class UrlResolver {
         }
 
         @Override
+        public void release() {
+        }
+
+        @Override
         public void cancel() {
         }
 
@@ -127,8 +131,26 @@ public class UrlResolver {
         }
 
         @Override
+        public void release() {
+            if (future != null) {
+                synchronized (lock) {
+                    if (future != null) {
+                        future.cancel(true);
+                        future = null;
+                    }
+                }
+            }
+        }
+
+        @Override
         public void cancel() {
-            future.cancel(true);
+            if (future != null) {
+                synchronized (lock) {
+                    if (future != null) {
+                        future.cancel(true);
+                    }
+                }
+            }
         }
 
         @Override
@@ -184,8 +206,26 @@ public class UrlResolver {
         }
 
         @Override
+        public void release() {
+            if (future != null) {
+                synchronized (lock) {
+                    if (future != null) {
+                        future.cancel(true);
+                        future = null;
+                    }
+                }
+            }
+        }
+
+        @Override
         public void cancel() {
-            future.cancel(true);
+            if (future != null) {
+                synchronized (lock) {
+                    if (future != null) {
+                        future.cancel(true);
+                    }
+                }
+            }
         }
 
         @Override
@@ -242,8 +282,26 @@ public class UrlResolver {
         }
 
         @Override
+        public void release() {
+            if (future != null) {
+                synchronized (lock) {
+                    if (future != null) {
+                        future.cancel(true);
+                        future = null;
+                    }
+                }
+            }
+        }
+
+        @Override
         public void cancel() {
-            future.cancel(true);
+            if (future != null) {
+                synchronized (lock) {
+                    if (future != null) {
+                        future.cancel(true);
+                    }
+                }
+            }
         }
 
         @Override

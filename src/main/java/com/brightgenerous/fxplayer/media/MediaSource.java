@@ -36,8 +36,12 @@ class MediaSource implements IMediaSource, Serializable {
     }
 
     @Override
-    public void requestResolve(boolean force) {
-        fileUrl.request(force);
+    public void release(boolean reload) {
+        if (reload) {
+            fileUrl.request(true);
+        } else {
+            fileUrl.release();
+        }
     }
 
     @Override

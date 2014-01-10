@@ -49,10 +49,14 @@ public class UrlDispathcer {
         List<IVideoInfo> ret = null;
         if (YoutubeUtils.isPlaylistUrl(url)) {
             ret = YoutubeUtils.parsePlaylist(text);
-        } else if (NiconicoUtils.isPlaylistUrl(url)) {
-            ret = NiconicoUtils.parsePlaylist(text);
         } else if (YoutubeUtils.isVideoUrl(url)) {
             String title = YoutubeUtils.extractTitle(text);
+            ret = new ArrayList<>();
+            ret.add(new VideoInfo(url, title));
+        } else if (NiconicoUtils.isPlaylistUrl(url)) {
+            ret = NiconicoUtils.parsePlaylist(text);
+        } else if (NiconicoUtils.isVideoUrl(url)) {
+            String title = NiconicoUtils.extractTitle(text);
             ret = new ArrayList<>();
             ret.add(new VideoInfo(url, title));
         } else if (XvideosUtils.isVideoUrl(url)) {

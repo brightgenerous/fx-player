@@ -1317,26 +1317,24 @@ public class PlayList implements Initializable {
                     if (0 < skipOnError) {
                         MediaPlayer player = playerProperty.getValue();
                         if ((player == null) || (mp == player)) {
-                            Duration dur = mp.getCurrentTime();
-                            if ((dur != null) && dur.equals(Duration.ZERO)) {
-                                // occurred event too fast.
-                                controlPlayerLater(Control.SPECIFY, targetInfo, forceResolve,
-                                        skipOnError - 1, true, trigger);
-                            } else {
-                                OtherDirection otherDirection = settings.otherDirection.getValue();
-                                if (otherDirection == null) {
-                                    otherDirection = OtherDirection.FORWARD;
-                                }
-                                switch (otherDirection) {
-                                    case FORWARD:
-                                        controlPlayer(Control.NEXT, targetInfo, forceResolve,
-                                                skipOnError - 1, true, trigger);
-                                        break;
-                                    case BACK:
-                                        controlPlayer(Control.BACK, targetInfo, forceResolve,
-                                                skipOnError - 1, true, trigger);
-                                        break;
-                                }
+                            //
+                            // Duration dur = mp.getCurrentTime();
+                            // when dur.equals(Duration.ZERO) then it will be such as swf.
+                            //  so, should be skipped.
+                            //
+                            OtherDirection otherDirection = settings.otherDirection.getValue();
+                            if (otherDirection == null) {
+                                otherDirection = OtherDirection.FORWARD;
+                            }
+                            switch (otherDirection) {
+                                case FORWARD:
+                                    controlPlayer(Control.NEXT, targetInfo, forceResolve,
+                                            skipOnError - 1, true, trigger);
+                                    break;
+                                case BACK:
+                                    controlPlayer(Control.BACK, targetInfo, forceResolve,
+                                            skipOnError - 1, true, trigger);
+                                    break;
                             }
                         }
                     }

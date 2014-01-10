@@ -261,18 +261,18 @@ public class MediaInfo {
             }
             tryLoaded = false;
             //media = null;
-            source.requestResolve(true);
+            source.release(true);
         }
         return null;
     }
 
-    public Media releaseMedia(boolean forceResolve) {
+    public Media releaseMedia(boolean reload) {
         Media ret;
         synchronized (lock) {
             ret = media;
             tryLoaded = false;
             media = null;
-            source.requestResolve(forceResolve);
+            source.release(reload);
             if (ret != null) {
                 // unbind
                 if (changeListener != null) {
