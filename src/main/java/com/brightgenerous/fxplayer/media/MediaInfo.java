@@ -212,6 +212,8 @@ public class MediaInfo {
         }
     }
 
+    private volatile boolean last;
+
     private volatile Media media;
 
     private volatile MapChangeListener<String, Object> changeListener;
@@ -241,6 +243,14 @@ public class MediaInfo {
 
     public boolean enablePreLoad() {
         return source.enablePreLoad();
+    }
+
+    public boolean getLast() {
+        return last;
+    }
+
+    public void setLast(boolean last) {
+        this.last = last;
     }
 
     public boolean loaded() {
@@ -317,7 +327,8 @@ public class MediaInfo {
                     }
                     if (media == null) {
                         media = createMedia(url);
-                        if ((url != null) && (media != null) && (mediaCache != null)) {
+                        if ((url != null) && (media != null) && (mediaCache != null)
+                                && source.enablePreLoad()) {
                             SoftReference<Media> sf = new SoftReference<>(media);
                             mediaCache.put(url, sf);
                         }
@@ -460,10 +471,6 @@ public class MediaInfo {
             }
         }
         return newValue;
-    }
-
-    public Boolean getExist() {
-        return Boolean.TRUE;
     }
 
     public String getDescription() {

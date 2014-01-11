@@ -34,7 +34,8 @@ public class MediaInfoFactory {
         }
         if (resolve == null) {
             resolve = resolver.getFileUrl(url);
-            if ((url != null) && (resolve != null) && (resolveCache != null)) {
+            if ((url != null) && (resolve != null) && (resolveCache != null)
+                    && resolve.enablePreLoad()) {
                 resolveCache.put(url, new SoftReference<>(resolve));
             }
         }

@@ -78,6 +78,10 @@ public class VideoPane extends Pane {
         });
     }
 
+    public VideoPane() {
+        setMediaView(null);
+    }
+
     @Override
     protected void layoutChildren() {
 
@@ -234,8 +238,14 @@ public class VideoPane extends Pane {
         layoutInArea(list, listLeft, listTop, listWidth, listHeight, 0, HPos.CENTER, VPos.CENTER);
     }
 
+    private final MediaView dummy = new MediaView();
+
     public MediaView getMediaView() {
-        return getMediaView(false);
+        MediaView ret = getMediaView(false);
+        if (ret == dummy) {
+            ret = null;
+        }
+        return ret;
     }
 
     private MediaView getMediaView(boolean managed) {
@@ -244,6 +254,7 @@ public class VideoPane extends Pane {
         for (Node node : children) {
             if (node instanceof MediaView) {
                 ret = (MediaView) node;
+                break;
             }
         }
         return ret;
@@ -260,7 +271,9 @@ public class VideoPane extends Pane {
         if (!dels.isEmpty()) {
             children.removeAll(dels);
         }
-        if (view != null) {
+        if (view == null) {
+            children.add(0, dummy);
+        } else {
             children.add(0, view);
         }
     }
@@ -275,6 +288,7 @@ public class VideoPane extends Pane {
         for (Node node : children) {
             if (node instanceof TableView) {
                 ret = (TableView<?>) node;
+                break;
             }
         }
         return ret;

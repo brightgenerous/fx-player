@@ -261,7 +261,7 @@ class ShortcutHandler implements EventHandler<KeyEvent> {
     private void handle(char ch) {
         if ((ch == ';') || (ch == '\n') || (ch == '\r')) {
             parse: {
-                String in = inputs.toString().trim().toLowerCase();
+                String in = inputs.toString().trim();
                 if (in.isEmpty()) {
                     break parse;
                 }

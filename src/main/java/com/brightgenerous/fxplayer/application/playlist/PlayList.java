@@ -1317,6 +1317,11 @@ public class PlayList implements Initializable {
                     if (0 < skipOnError) {
                         MediaPlayer player = playerProperty.getValue();
                         if ((player == null) || (mp == player)) {
+                            if (targetInfo.getLast()) {
+                                targetInfo.setLast(false);
+                                controlPlayer(Control.SPECIFY, targetInfo, forceResolve,
+                                        skipOnError - 1, true, trigger);
+                            }
                             //
                             // Duration dur = mp.getCurrentTime();
                             // when dur.equals(Duration.ZERO) then it will be such as swf.
@@ -1398,6 +1403,8 @@ public class PlayList implements Initializable {
                     }
 
                     syncControlPlayPause();
+
+                    targetInfo.setLast(true);
 
                     targetInfo.mediaStatusProperty().setValue(MediaStatus.PLAYER_PLAYING);
                 }
