@@ -16,15 +16,15 @@ public class UrlDispathcer {
     private UrlDispathcer() {
     }
 
-    public static String createQueryUrl(String word, Service service)
+    public static String createQueryUrl(String word, Integer page, Service service)
             throws UnsupportedEncodingException {
         String ret = null;
         switch (service) {
             case YOUTUBE:
-                ret = YoutubeUtils.getQueryUrl(word);
+                ret = YoutubeUtils.getQueryUrl(word, page);
                 break;
             case NICONICO:
-                ret = NiconicoUtils.getQueryUrl(word);
+                ret = NiconicoUtils.getQueryUrl(word, page);
                 break;
             case MYSERVICE:
                 ret = MyServiceUtils.getQueryUrl(word);

@@ -2480,7 +2480,7 @@ public class PlayList implements Initializable {
 
     private boolean movePageIfEnable(int inc, boolean autoStart) {
         String text = pathText.getText().trim();
-        String url = UrlDispathcer.getQueryPageUrl(text, inc);
+        String url = LoadUrlService.getQueryPageUrl(text, inc);
         if ((url != null) && !url.isEmpty() && !text.equals(url)) {
             if (!loadRunning()) {
                 pathText.setText(url);

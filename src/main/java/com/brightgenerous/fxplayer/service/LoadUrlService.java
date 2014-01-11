@@ -36,12 +36,96 @@ public class LoadUrlService extends Service<List<? extends MediaInfo>> {
         this.callback = callback;
     }
 
-    private static final Pattern youtubePattern = Pattern.compile("^\\s*yt\\s*=\\s*(.*)\\s*$");
+    private static final Pattern youtubePattern = Pattern.compile("^\\s*yt\\s*=\\s*(.*)$");
 
-    private static final Pattern niconicoPattern = Pattern.compile("^\\s*nc\\s*=\\s*(.*)\\s*$");
+    private static final Pattern niconicoPattern = Pattern.compile("^\\s*nc\\s*=\\s*(.*)$");
 
-    private static final Pattern myServicePattern = Pattern
-            .compile("^\\s*(?:pl|)\\s*=\\s*(.*)\\s*$");
+    private static final Pattern myServicePattern = Pattern.compile("^\\s*(?:pl|)\\s*=\\s*(.*)$");
+
+    private static class Query {
+
+        String word;
+
+        Integer page;
+
+        Query(String word, Integer page) {
+            this.word = word;
+            this.page = page;
+        }
+    }
+
+    private static Query getQuery(String str) {
+        return getQuery(str, null);
+    }
+
+    private static Query getQuery(String str, int inc) {
+        return getQuery(str, Integer.valueOf(inc));
+    }
+
+    private static Query getQuery(String str, Integer inc) {
+        String[] tmps = str.split(",");
+        String word = tmps[0].trim();
+        Integer page = null;
+        for (int i = 1; i < tmps.length; i++) {
+            String tmp = tmps[i].trim();
+            if (tmp.startsWith("page")) {
+                tmp = tmp.replaceAll("page\\s*=\\s*", "");
+                try {
+                    page = Integer.valueOf(tmp);
+                    break;
+                } catch (NumberFormatException e) {
+                }
+            }
+        }
+        if (inc != null) {
+            int p = (page == null) ? (1 + inc.intValue()) : (page.intValue() + inc.intValue());
+            page = Integer.valueOf(p);
+        }
+        return new Query(word, page);
+    }
+
+    public static String getQueryPageUrl(String url, int inc) {
+        String ret = null;
+        parse: {
+            {
+                Matcher matcher = youtubePattern.matcher(url);
+                if (matcher.find()) {
+                    String str = matcher.group(1);
+                    if (!str.isEmpty()) {
+                        Query query = getQuery(str, inc);
+                        ret = "yt=" + query.word + ",page=" + query.page;
+                    }
+                    break parse;
+                }
+            }
+            {
+                Matcher matcher = niconicoPattern.matcher(url);
+                if (matcher.find()) {
+                    String str = matcher.group(1);
+                    if (!str.isEmpty()) {
+                        Query query = getQuery(str, inc);
+                        ret = "nc=" + query.word + ",page=" + query.page;
+                    }
+                    break parse;
+                }
+            }
+            {
+                Matcher matcher = myServicePattern.matcher(url);
+                if (matcher.find()) {
+                    String str = matcher.group(1);
+                    if (!str.isEmpty()) {
+                        Query query = getQuery(str, inc);
+                        ret = "=" + query.word + ",page=" + query.page;
+                    }
+                    break parse;
+                }
+            }
+        }
+        if (ret != null) {
+            return ret;
+        }
+        return UrlDispathcer.getQueryPageUrl(url, inc);
+    }
 
     @Override
     protected Task<List<? extends MediaInfo>> createTask() {
@@ -67,11 +151,11 @@ public class LoadUrlService extends Service<List<? extends MediaInfo>> {
                     {
                         Matcher matcher = youtubePattern.matcher(url);
                         if (matcher.find()) {
-                            String word = matcher.group(1);
-                            if (!word.isEmpty()) {
-                                url = UrlDispathcer.createQueryUrl(word,
+                            String str = matcher.group(1);
+                            if (!str.isEmpty()) {
+                                Query query = getQuery(str);
+                                url = UrlDispathcer.createQueryUrl(query.word, query.page,
                                         UrlDispathcer.Service.YOUTUBE);
-                                text = url;
                             }
                             break parse;
                         }
@@ -79,11 +163,11 @@ public class LoadUrlService extends Service<List<? extends MediaInfo>> {
                     {
                         Matcher matcher = niconicoPattern.matcher(url);
                         if (matcher.find()) {
-                            String word = matcher.group(1);
-                            if (!word.isEmpty()) {
-                                url = UrlDispathcer.createQueryUrl(word,
+                            String str = matcher.group(1);
+                            if (!str.isEmpty()) {
+                                Query query = getQuery(str);
+                                url = UrlDispathcer.createQueryUrl(query.word, query.page,
                                         UrlDispathcer.Service.NICONICO);
-                                text = url;
                             }
                             break parse;
                         }
@@ -91,9 +175,10 @@ public class LoadUrlService extends Service<List<? extends MediaInfo>> {
                     {
                         Matcher matcher = myServicePattern.matcher(url);
                         if (matcher.find()) {
-                            String word = matcher.group(1);
-                            if (!word.isEmpty()) {
-                                url = UrlDispathcer.createQueryUrl(word,
+                            String str = matcher.group(1);
+                            if (!str.isEmpty()) {
+                                Query query = getQuery(str);
+                                url = UrlDispathcer.createQueryUrl(query.word, query.page,
                                         UrlDispathcer.Service.MYSERVICE);
                             }
                             break parse;

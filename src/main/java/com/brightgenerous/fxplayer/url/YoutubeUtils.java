@@ -28,11 +28,12 @@ class YoutubeUtils {
     private YoutubeUtils() {
     }
 
-    public static String getQueryUrl(String word) throws UnsupportedEncodingException {
+    public static String getQueryUrl(String word, Integer page) throws UnsupportedEncodingException {
         if (word == null) {
             return null;
         }
-        return URL_HOST + "/results?search_query=" + URLEncoder.encode(word, "UTF-8") + "&sm=3";
+        String qp = (page == null) ? "" : ("&page=" + page);
+        return URL_HOST + "/results?search_query=" + URLEncoder.encode(word, "UTF-8") + "&sm=3" + qp;
     }
 
     public static String getQueryPageUrl(String url, int inc) {

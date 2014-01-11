@@ -50,11 +50,12 @@ class NiconicoUtils {
         NiconicoUtils.pass = pass;
     }
 
-    public static String getQueryUrl(String word) throws UnsupportedEncodingException {
+    public static String getQueryUrl(String word, Integer page) throws UnsupportedEncodingException {
         if (word == null) {
             return null;
         }
-        return URL_HOST + "/search/" + URLEncoder.encode(word, "UTF-8") + "?sort=v&order=d";
+        String qp = (page == null) ? "" : ("&page=" + page);
+        return URL_HOST + "/search/" + URLEncoder.encode(word, "UTF-8") + "?sort=v&order=d" + qp;
     }
 
     public static String getQueryPageUrl(String url, int inc) {
