@@ -1030,6 +1030,7 @@ public class PlayList implements Initializable {
 
             log("Control Request : " + targetInfo.getDescription());
 
+            final Media md;
             final MediaPlayer mp;
             try {
                 Media media = targetInfo.getMedia();
@@ -1052,6 +1053,7 @@ public class PlayList implements Initializable {
                 if (media == null) {
                     throw new MediaLoadException("Media is null");
                 }
+                md = media;
                 try {
                     mp = new MediaPlayer(media);
                 } catch (MediaException e) {
@@ -1060,6 +1062,11 @@ public class PlayList implements Initializable {
 
                     targetInfo.releaseMedia(true);
                     if (0 < skipOnError) {
+                        if (targetInfo.getCanRetry()) {
+                            targetInfo.setCanRetry(false, md);
+                            controlPlayer(Control.SPECIFY, targetInfo, forceResolve,
+                                    skipOnError - 1, true, trigger);
+                        }
                         if (trigger != Control.SPECIFY) {
                             OtherDirection otherDirection = settings.otherDirection.getValue();
                             if (otherDirection == null) {
@@ -1317,8 +1324,8 @@ public class PlayList implements Initializable {
                     if (0 < skipOnError) {
                         MediaPlayer player = playerProperty.getValue();
                         if ((player == null) || (mp == player)) {
-                            if (targetInfo.getLast()) {
-                                targetInfo.setLast(false);
+                            if (targetInfo.getCanRetry()) {
+                                targetInfo.setCanRetry(false, md);
                                 controlPlayer(Control.SPECIFY, targetInfo, forceResolve,
                                         skipOnError - 1, true, trigger);
                             }
@@ -1396,6 +1403,8 @@ public class PlayList implements Initializable {
 
             mp.setOnPlaying(new Runnable() {
 
+                private boolean first = true;
+
                 @Override
                 public void run() {
                     if (!checkInfoOnEvent(targetInfo, mp)) {
@@ -1404,9 +1413,14 @@ public class PlayList implements Initializable {
 
                     syncControlPlayPause();
 
-                    targetInfo.setLast(true);
+                    targetInfo.setCanRetry(true, md);
 
                     targetInfo.mediaStatusProperty().setValue(MediaStatus.PLAYER_PLAYING);
+
+                    if (first) {
+                        first = false;
+                        loadSurroundMedia();
+                    }
                 }
             });
 
@@ -1775,6 +1789,26 @@ public class PlayList implements Initializable {
         }
     }
 
+    private void loadSurroundMedia() {
+        if (Platform.isFxApplicationThread()) {
+            if (loadSurroundMediaService.isRunning()) {
+                loadSurroundMediaService.cancel();
+            }
+            loadSurroundMediaService.restart();
+        } else {
+            Platform.runLater(new Runnable() {
+
+                @Override
+                public void run() {
+                    if (loadSurroundMediaService.isRunning()) {
+                        loadSurroundMediaService.cancel();
+                    }
+                    loadSurroundMediaService.restart();
+                }
+            });
+        }
+    }
+
     private final Service<Boolean> loadMediaService = new Service<Boolean>() {
 
         @Override
@@ -1827,6 +1861,72 @@ public class PlayList implements Initializable {
                                     }
                                     times++;
                                     break;
+                                }
+                            } catch (MediaLoadException e) {
+                                onMediaLoadError(e, info);
+                            }
+                        }
+                    }
+
+                    return Boolean.TRUE;
+                }
+            };
+        }
+    };
+
+    private final Service<Boolean> loadSurroundMediaService = new Service<Boolean>() {
+
+        @Override
+        protected Task<Boolean> createTask() {
+            return new Task<Boolean>() {
+
+                @Override
+                protected Boolean call() throws Exception {
+                    outer: {
+                        if (isCancelled()) {
+                            break outer;
+                        }
+
+                        MediaInfo current = currentInfoProperty.get();
+                        if (current == null) {
+                            break outer;
+                        }
+                        List<MediaInfo> items = getItemsSnapshot();
+                        int index = items.indexOf(current);
+                        if (index < 0) {
+                            break outer;
+                        }
+                        List<MediaInfo> infos = new ArrayList<>();
+                        {
+                            if (0 < index) {
+                                infos.add(items.get(index - 1));
+                            }
+                            if (index < (items.size() - 1)) {
+                                infos.add(items.get(index + 1));
+                            }
+                        }
+
+                        if (isCancelled()) {
+                            break outer;
+                        }
+
+                        for (MediaInfo info : infos) {
+                            if (info.loaded()) {
+                                continue;
+                            }
+
+                            try {
+                                if (info.load()) {
+
+                                    if (isCancelled()) {
+                                        break outer;
+                                    }
+
+                                    try {
+                                        Thread.sleep(Math.max(
+                                                settings.loadMediaStepMilliseconds.get(), 0));
+                                    } catch (InterruptedException e) {
+                                    }
                                 }
                             } catch (MediaLoadException e) {
                                 onMediaLoadError(e, info);

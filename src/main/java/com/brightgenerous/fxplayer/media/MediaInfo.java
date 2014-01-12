@@ -212,7 +212,7 @@ public class MediaInfo {
         }
     }
 
-    private volatile boolean last;
+    private volatile boolean canRetry;
 
     private volatile Media media;
 
@@ -245,12 +245,20 @@ public class MediaInfo {
         return source.enablePreLoad();
     }
 
-    public boolean getLast() {
-        return last;
+    public boolean getCanRetry() {
+        return canRetry;
     }
 
-    public void setLast(boolean last) {
-        this.last = last;
+    public void setCanRetry(boolean canRetry, Media media) {
+        synchronized (lock) {
+            if (this.media == media) {
+                prv_setCanRetry(canRetry);
+            }
+        }
+    }
+
+    private void prv_setCanRetry(boolean canRetry) {
+        this.canRetry = canRetry;
     }
 
     public boolean loaded() {
@@ -291,23 +299,41 @@ public class MediaInfo {
             }
             {
                 // reset properties
-                titleProperty.setValue("");
-                titleDescProperty.setValue(source.getDescription());
-                artistProperty.setValue("");
-                albumProperty.setValue("");
-                durationProperty.setValue(null);
                 try {
-                    durationTextProperty.setValue("");
+                    titleProperty.setValue("");
+                    titleDescProperty.setValue(source.getDescription());
+                    artistProperty.setValue("");
+                    albumProperty.setValue("");
+                    durationProperty.setValue(null);
+                    durationTextProperty.setValue(""); // have ever throw an exception
+                    imageProperty.setValue(null);
+                    audioCodecProperty.setValue(""); // have ever throw an exception
+                    videoCodecProperty.setValue("");
+                    widthProperty.set(0);
+                    heightProperty.set(0);
+                    framerateProperty.set(0);
                 } catch (IllegalStateException e) {
                     // OMAJINAI
                     // exception message => Not on FX application thread; currentThread = XXXXX
+                    Platform.runLater(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            titleProperty.setValue("");
+                            titleDescProperty.setValue(source.getDescription());
+                            artistProperty.setValue("");
+                            albumProperty.setValue("");
+                            durationProperty.setValue(null);
+                            durationTextProperty.setValue("");
+                            imageProperty.setValue(null);
+                            audioCodecProperty.setValue("");
+                            videoCodecProperty.setValue("");
+                            widthProperty.set(0);
+                            heightProperty.set(0);
+                            framerateProperty.set(0);
+                        }
+                    });
                 }
-                imageProperty.setValue(null);
-                audioCodecProperty.setValue("");
-                videoCodecProperty.setValue("");
-                widthProperty.set(0);
-                heightProperty.set(0);
-                framerateProperty.set(0);
             }
         }
         return ret;
@@ -317,6 +343,10 @@ public class MediaInfo {
         if (!tryLoaded && (media == null)) {
             synchronized (lock) {
                 if (!tryLoaded && (media == null)) {
+
+                    // can retry : false
+                    prv_setCanRetry(false);
+
                     tryLoaded = true;
                     String url = source.getFileUrl();
                     if ((url != null) && (mediaCache != null)) {
@@ -336,6 +366,9 @@ public class MediaInfo {
                     if (media != null) {
                         bind(media);
                     }
+
+                    // can retry : true
+                    prv_setCanRetry(true);
                 }
             }
         }
