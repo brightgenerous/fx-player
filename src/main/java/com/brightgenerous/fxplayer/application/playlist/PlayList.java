@@ -32,6 +32,8 @@ import javafx.collections.MapChangeListener.Change;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
+import javafx.concurrent.Worker;
+import javafx.concurrent.WorkerStateEvent;
 import javafx.event.EventHandler;
 import javafx.event.EventTarget;
 import javafx.fxml.FXML;
@@ -102,6 +104,9 @@ public class PlayList implements Initializable {
 
     @FXML
     private StoreVBox rootPane;
+
+    @FXML
+    private ToggleButton controlFullScreen;
 
     @FXML
     private ToggleButton controlHideHeader;
@@ -236,6 +241,26 @@ public class PlayList implements Initializable {
                     Bindings.when(settings.hideHeader).then(mouseOnHeader.not()).otherwise(false));
             rootPane.hideFooterProperty().bind(
                     Bindings.when(settings.hideFooter).then(mouseOnFooter.not()).otherwise(false));
+
+            controlFullScreen.textProperty().bind(
+                    Bindings.when(controlFullScreen.selectedProperty())
+                            .then(bundle.getString("control.fullScreen.on"))
+                            .otherwise(bundle.getString("control.fullScreen.off")));
+            controlFullScreen.ellipsisStringProperty().bind(
+                    Bindings.when(controlFullScreen.selectedProperty())
+                            .then(bundle.getString("control.fullScreen.ellipsis.on"))
+                            .otherwise(bundle.getString("control.fullScreen.ellipsis.off")));
+            stage.fullScreenProperty().addListener(new ChangeListener<Boolean>() {
+
+                @Override
+                public void changed(ObservableValue<? extends Boolean> observable,
+                        Boolean oldValue, Boolean newValue) {
+                    boolean value = newValue.booleanValue();
+                    if (controlFullScreen.isSelected() != value) {
+                        controlFullScreen.setSelected(value);
+                    }
+                }
+            });
 
             controlHideHeader.textProperty().bind(
                     Bindings.when(controlHideHeader.selectedProperty())
@@ -846,6 +871,11 @@ public class PlayList implements Initializable {
     }
 
     @FXML
+    protected void controlFullScreen() {
+        stage.setFullScreen(!stage.isFullScreen());
+    }
+
+    @FXML
     protected void controlHideHeader() {
         settings.toggleHideHeader();
     }
@@ -1060,14 +1090,16 @@ public class PlayList implements Initializable {
                     // changed actual file URL ?
                     onMediaPlayerError(e, targetInfo);
 
-                    targetInfo.releaseMedia(true);
+                    boolean canRetry;
+                    {
+                        canRetry = targetInfo.canRetry();
+                        targetInfo.releaseMedia(true, Boolean.FALSE);
+                    }
                     if (0 < skipOnError) {
-                        if (targetInfo.getCanRetry()) {
-                            targetInfo.setCanRetry(false, md);
-                            controlPlayer(Control.SPECIFY, targetInfo, forceResolve,
-                                    skipOnError - 1, true, trigger);
-                        }
-                        if (trigger != Control.SPECIFY) {
+                        if (canRetry) {
+                            controlPlayerLater(Control.SPECIFY, targetInfo, forceResolve,
+                                    skipOnError, true, trigger);
+                        } else if (trigger != Control.SPECIFY) {
                             OtherDirection otherDirection = settings.otherDirection.getValue();
                             if (otherDirection == null) {
                                 otherDirection = OtherDirection.FORWARD;
@@ -1320,33 +1352,37 @@ public class PlayList implements Initializable {
 
                     onMediaPlayerError(mp.getError(), targetInfo);
 
-                    targetInfo.releaseMedia(true);
+                    boolean canRetry;
+                    {
+                        canRetry = targetInfo.canRetry();
+                        targetInfo.releaseMedia(true, Boolean.FALSE);
+                    }
                     if (0 < skipOnError) {
                         MediaPlayer player = playerProperty.getValue();
                         if ((player == null) || (mp == player)) {
-                            if (targetInfo.getCanRetry()) {
-                                targetInfo.setCanRetry(false, md);
+                            if (canRetry) {
                                 controlPlayer(Control.SPECIFY, targetInfo, forceResolve,
-                                        skipOnError - 1, true, trigger);
-                            }
-                            //
-                            // Duration dur = mp.getCurrentTime();
-                            // when dur.equals(Duration.ZERO) then it will be such as swf.
-                            //  so, should be skipped.
-                            //
-                            OtherDirection otherDirection = settings.otherDirection.getValue();
-                            if (otherDirection == null) {
-                                otherDirection = OtherDirection.FORWARD;
-                            }
-                            switch (otherDirection) {
-                                case FORWARD:
-                                    controlPlayer(Control.NEXT, targetInfo, forceResolve,
-                                            skipOnError - 1, true, trigger);
-                                    break;
-                                case BACK:
-                                    controlPlayer(Control.BACK, targetInfo, forceResolve,
-                                            skipOnError - 1, true, trigger);
-                                    break;
+                                        skipOnError, true, trigger);
+                            } else {
+                                //
+                                // Duration dur = mp.getCurrentTime();
+                                // when dur.equals(Duration.ZERO) then it will be such as swf.
+                                //  so, should be skipped.
+                                //
+                                OtherDirection otherDirection = settings.otherDirection.getValue();
+                                if (otherDirection == null) {
+                                    otherDirection = OtherDirection.FORWARD;
+                                }
+                                switch (otherDirection) {
+                                    case FORWARD:
+                                        controlPlayer(Control.NEXT, targetInfo, forceResolve,
+                                                skipOnError - 1, true, trigger);
+                                        break;
+                                    case BACK:
+                                        controlPlayer(Control.BACK, targetInfo, forceResolve,
+                                                skipOnError - 1, true, trigger);
+                                        break;
+                                }
                             }
                         }
                     }
@@ -1413,7 +1449,7 @@ public class PlayList implements Initializable {
 
                     syncControlPlayPause();
 
-                    targetInfo.setCanRetry(true, md);
+                    targetInfo.setCanRetry(Boolean.TRUE, md);
 
                     targetInfo.mediaStatusProperty().setValue(MediaStatus.PLAYER_PLAYING);
 
@@ -1843,6 +1879,10 @@ public class PlayList implements Initializable {
                                 continue;
                             }
 
+                            if (!info.canRetry()) {
+                                continue;
+                            }
+
                             if (isCancelled()) {
                                 break outer;
                             }
@@ -1906,13 +1946,17 @@ public class PlayList implements Initializable {
                             }
                         }
 
-                        if (isCancelled()) {
-                            break outer;
-                        }
-
                         for (MediaInfo info : infos) {
                             if (info.loaded()) {
                                 continue;
+                            }
+
+                            if (!info.canRetry()) {
+                                continue;
+                            }
+
+                            if (isCancelled()) {
+                                break outer;
                             }
 
                             try {
@@ -2025,6 +2069,10 @@ public class PlayList implements Initializable {
             @Override
             public void onChanged(MediaInfo info, Media media,
                     Change<? extends String, ? extends Object> change) {
+                if (!settings.debug.get()) {
+                    return;
+                }
+
                 String key = change.getKey();
 
                 if (change.wasAdded()) {
@@ -2173,6 +2221,39 @@ public class PlayList implements Initializable {
         return loadDirectoryService.isRunning() || loadListFileService.isRunning()
                 || loadUrlService.isRunning() || loadUrlAutoStartHeadService.isRunning()
                 || loadUrlAutoStartTailService.isRunning();
+    }
+
+    {
+        EventHandler<WorkerStateEvent> onError = new EventHandler<WorkerStateEvent>() {
+
+            @Override
+            public void handle(WorkerStateEvent event) {
+                if (!settings.debug.get()) {
+                    return;
+                }
+
+                Worker<?> worker = event.getSource();
+                Throwable th = worker.getException();
+                log(event.toString());
+                if (th == null) {
+                    log("getException() returns null");
+                } else {
+                    log(th.getLocalizedMessage());
+                    log(Arrays.toString(th.getStackTrace()));
+                }
+            }
+        };
+        loadMediaService.setOnFailed(onError);
+        loadSurroundMediaService.setOnFailed(onError);
+        loadDirectoryService.setOnFailed(onError);
+        loadFilesService.setOnFailed(onError);
+        loadListFileService.setOnFailed(onError);
+        loadUrlService.setOnFailed(onError);
+        loadUrlAutoStartHeadService.setOnFailed(onError);
+        loadUrlAutoStartTailService.setOnFailed(onError);
+        saveTagImageService.setOnFailed(onError);
+        saveSnapshotService.setOnFailed(onError);
+        stageCloseService.setOnFailed(onError);
     }
 
     //----------------------------------------------------------------------------------
@@ -2493,7 +2574,7 @@ public class PlayList implements Initializable {
 
                 @Override
                 public void controlWindowScreen() {
-                    stage.setFullScreen(!stage.isFullScreen());
+                    PlayList.this.controlFullScreen();
                 }
 
                 @Override
@@ -2568,6 +2649,10 @@ public class PlayList implements Initializable {
                             case "ncp":
                                 UrlDispathcer.setNiconicoPass(arg1);
                                 log("Set Niconico pass : ***** ");
+                                break;
+                            case "debug":
+                                settings.toggleDebug();
+                                log("Set Debug : " + (settings.debug.get() ? "on" : "off"));
                                 break;
                         }
                     }

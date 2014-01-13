@@ -102,6 +102,8 @@ class Settings {
     public final ReadOnlyIntegerProperty skipOnError = new SimpleIntegerProperty(this,
             "skipOnError", 3);
 
+    public final BooleanProperty debug = new SimpleBooleanProperty(this, "debug");
+
     public Boolean toggleHideHeader() {
         Boolean ret = hideHeader.getValue();
         hideHeader.set((ret == null) ? true : !ret.booleanValue());
@@ -313,6 +315,12 @@ class Settings {
     public Boolean toggleMute() {
         Boolean ret = mute.getValue();
         mute.set((ret == null) ? true : !ret.booleanValue());
+        return ret;
+    }
+
+    public Boolean toggleDebug() {
+        Boolean ret = debug.getValue();
+        debug.set((ret == null) ? true : !ret.booleanValue());
         return ret;
     }
 

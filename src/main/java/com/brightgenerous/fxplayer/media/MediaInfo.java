@@ -212,7 +212,7 @@ public class MediaInfo {
         }
     }
 
-    private volatile boolean canRetry;
+    private volatile Boolean canRetry;
 
     private volatile Media media;
 
@@ -245,11 +245,16 @@ public class MediaInfo {
         return source.enablePreLoad();
     }
 
-    public boolean getCanRetry() {
+    public boolean canRetry() {
+        Boolean ret = canRetry;
+        return (ret == null) || ret.booleanValue();
+    }
+
+    public Boolean getCanRetry() {
         return canRetry;
     }
 
-    public void setCanRetry(boolean canRetry, Media media) {
+    public void setCanRetry(Boolean canRetry, Media media) {
         synchronized (lock) {
             if (this.media == media) {
                 prv_setCanRetry(canRetry);
@@ -257,7 +262,7 @@ public class MediaInfo {
         }
     }
 
-    private void prv_setCanRetry(boolean canRetry) {
+    private void prv_setCanRetry(Boolean canRetry) {
         this.canRetry = canRetry;
     }
 
@@ -285,6 +290,10 @@ public class MediaInfo {
     }
 
     public Media releaseMedia(boolean reload) {
+        return releaseMedia(reload, null);
+    }
+
+    public Media releaseMedia(boolean reload, Boolean canRetry) {
         Media ret;
         synchronized (lock) {
             ret = media;
@@ -297,6 +306,10 @@ public class MediaInfo {
                     ret.getMetadata().removeListener(changeListener);
                 }
             }
+
+            // can retry : null
+            prv_setCanRetry(canRetry);
+
             {
                 // reset properties
                 try {
@@ -343,10 +356,6 @@ public class MediaInfo {
         if (!tryLoaded && (media == null)) {
             synchronized (lock) {
                 if (!tryLoaded && (media == null)) {
-
-                    // can retry : false
-                    prv_setCanRetry(false);
-
                     tryLoaded = true;
                     String url = source.getFileUrl();
                     if ((url != null) && (mediaCache != null)) {
@@ -366,9 +375,6 @@ public class MediaInfo {
                     if (media != null) {
                         bind(media);
                     }
-
-                    // can retry : true
-                    prv_setCanRetry(true);
                 }
             }
         }

@@ -34,6 +34,9 @@
         <ToggleButton fx:id="controlLog" onAction="#controlLog"
             text="%control.log" ellipsisString="%control.log.ellipsis" mnemonicParsing="true" />
         <Button onAction="#controlLogSnap" />
+        <ToggleButton fx:id="controlFullScreen"
+            text="%control.fullScreen.off" ellipsisString="control.fullScreen.ellipsis.off"
+            onAction="#controlFullScreen" />
         <ToggleButton fx:id="controlHideHeader" selected="true"
             text="%control.hideHeader.off" ellipsisString="control.hideHeader.ellipsis.off"
             onAction="#controlHideHeader" />
