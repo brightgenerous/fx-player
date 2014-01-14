@@ -240,6 +240,7 @@ public class HttpUtils {
                 try {
                     lock.lock();
                     java.net.CookieStore cs = manager.getCookieStore();
+                    cs.removeAll();
                     for (Cookie cookie : cookieStore.getCookies()) {
                         HttpCookie httpCookie = new HttpCookie(cookie.getName(), cookie.getValue());
                         httpCookie.setComment(cookie.getComment());

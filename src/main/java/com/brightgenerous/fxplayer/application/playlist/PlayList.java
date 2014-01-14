@@ -1529,16 +1529,18 @@ public class PlayList implements Initializable {
 
     private void onMediaLoadError(MediaLoadException ex, MediaInfo info) {
         log("Load Error : " + info.getDescription());
-        if (ex != null) {
+        if (settings.debug.get() && (ex != null)) {
             log("Error Message : " + ex.getLocalizedMessage());
+            log(Arrays.toString(ex.getStackTrace()));
         }
         info.mediaStatusProperty().setValue(MediaStatus.MEDIA_ERROR);
     }
 
     private void onMediaPlayerError(MediaException ex, MediaInfo info) {
         log("Reading Error : " + info.getDescription());
-        if (ex != null) {
+        if (settings.debug.get() && (ex != null)) {
             log("Error Message : " + ex.getLocalizedMessage());
+            log(Arrays.toString(ex.getStackTrace()));
         }
         info.mediaStatusProperty().setValue(MediaStatus.MEDIA_ERROR);
     }

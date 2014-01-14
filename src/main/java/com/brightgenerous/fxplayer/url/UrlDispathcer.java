@@ -54,7 +54,7 @@ public class UrlDispathcer {
             ret = new ArrayList<>();
             ret.add(new VideoInfo(url, title));
         } else if (NiconicoUtils.isPlaylistUrl(url)) {
-            ret = NiconicoUtils.parsePlaylist(text);
+            ret = NiconicoUtils.parsePlaylist(url, text);
         } else if (NiconicoUtils.isVideoUrl(url)) {
             String title = NiconicoUtils.extractTitle(text);
             ret = new ArrayList<>();

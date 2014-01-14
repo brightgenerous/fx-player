@@ -135,29 +135,54 @@ class NiconicoUtils {
             if (path == null) {
                 return false;
             }
-            return path.startsWith("/search");
+            return path.startsWith("/search") || path.startsWith("/mylist");
         } catch (MalformedURLException e) {
         }
 
         return false;
     }
 
-    private static final Pattern anchor = Pattern
+    public static List<IVideoInfo> parsePlaylist(String url, String html) {
+        if (html == null) {
+            return null;
+        }
+
+        boolean isSearch = false;
+        try {
+            URL _url = new URL(url);
+            String host = _url.getHost();
+            if (host == null) {
+                return null;
+            }
+            if (!host.contains("nicovideo.jp")) {
+                return null;
+            }
+            String path = _url.getPath();
+            if (path == null) {
+                return null;
+            }
+            isSearch = path.startsWith("/search");
+        } catch (MalformedURLException e) {
+        }
+
+        if (isSearch) {
+            return parsePlaylistSearch(html);
+        }
+        return parsePlaylistMylist(html);
+    }
+
+    private static final Pattern anchorSearch = Pattern
             .compile("<p[^>]*\\sclass\\s*=\\s*\"(?:[^\"]*//s)?itemTitle(?://s[^\"]*)?\">\\s*"
                     + "<a" + "(?:[^>]*\\stitle\\s*=\\s*\"([^\"]*)\")?"
                     // [x] keep only first argument
                     + "[^>]*\\shref\\s*=\\s*\"(/watch[^&\"]*)[^\"]*\""
                     + "(?:[^>]*\\stitle\\s*=\\s*\"([^\"]*)\")?" + "[^>]*>" + "\\s*([^<]*)\\s*</a>");
 
-    public static List<IVideoInfo> parsePlaylist(String html) {
-        if (html == null) {
-            return null;
-        }
-
+    public static List<IVideoInfo> parsePlaylistSearch(String html) {
         List<IVideoInfo> ret = new ArrayList<>();
 
         Map<String, VideoInfo> infos = new HashMap<>();
-        Matcher matcher = anchor.matcher(html);
+        Matcher matcher = anchorSearch.matcher(html);
         while (matcher.find()) {
             String href = matcher.group(2);
             if (href.contains("ref=search_key_trendvideo")) {
@@ -195,11 +220,11 @@ class NiconicoUtils {
                             .replace("&amp;", "&").trim();
                 }
             }
-            String url = URL_HOST + href;
-            VideoInfo info = infos.get(url);
+            String _url = URL_HOST + href;
+            VideoInfo info = infos.get(_url);
             if (info == null) {
-                info = new VideoInfo(url, title);
-                infos.put(url, info);
+                info = new VideoInfo(_url, title);
+                infos.put(_url, info);
                 ret.add(info);
             } else {
                 if (info.getTitle() == null) {
@@ -209,6 +234,81 @@ class NiconicoUtils {
         }
 
         return ret;
+    }
+
+    private static final Pattern anchorMylist = Pattern
+            .compile("\"item_data\"\\s*:\\s*(\\{[^}]*\\})");
+
+    private static final Pattern anchorMylistT = Pattern.compile("\"title\"\\s*:\\s*\"([^\"]*)\"");
+
+    private static final Pattern anchorMylistW = Pattern
+            .compile("\"watch_id\"\\s*:\\s*\"([^\"]*)\"");
+
+    public static List<IVideoInfo> parsePlaylistMylist(String html) {
+        List<IVideoInfo> ret = new ArrayList<>();
+
+        Map<String, VideoInfo> infos = new HashMap<>();
+        Matcher matcher = anchorMylist.matcher(html);
+        while (matcher.find()) {
+            String data = matcher.group(1);
+            String title = null;
+            {
+                Matcher m = anchorMylistT.matcher(data);
+                if (m.find()) {
+                    title = m.group(1);
+                }
+            }
+            if (title == null) {
+                continue;
+            }
+            String watchId = null;
+            {
+                Matcher m = anchorMylistW.matcher(data);
+                if (m.find()) {
+                    watchId = m.group(1);
+                }
+            }
+            if (watchId == null) {
+                continue;
+            }
+            {
+                title = unescape(title);
+            }
+            String _url = URL_HOST + "/watch/" + watchId;
+            VideoInfo info = infos.get(_url);
+            if (info == null) {
+                info = new VideoInfo(_url, title);
+                infos.put(_url, info);
+                ret.add(info);
+            } else {
+                if (info.getTitle() == null) {
+                    info.setTitle(title);
+                }
+            }
+        }
+
+        return ret;
+    }
+
+    private static String unescape(String str) {
+        StringBuilder sb = new StringBuilder();
+        String[] codeStrs = str.split("\\\\u");
+        for (String codeStr : codeStrs) {
+            if (codeStr.isEmpty()) {
+                continue;
+            }
+            try {
+                if (codeStr.length() <= 4) {
+                    sb.append(Character.valueOf((char) Integer.parseInt(codeStr, 16)));
+                } else {
+                    sb.append(Character.valueOf((char) Integer.parseInt(codeStr.substring(0, 4), 16)));
+                    sb.append(codeStr.substring(4));
+                }
+            } catch (NumberFormatException e) {
+                sb.append(codeStr);
+            }
+        }
+        return sb.toString();
     }
 
     private static final Pattern patternTitle = Pattern
